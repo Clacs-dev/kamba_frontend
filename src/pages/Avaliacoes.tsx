@@ -49,7 +49,7 @@ export default function Avaliacoes() {
     const [ciclos, setCiclos] = useState<Ciclo[]>([]);
     const [colaboradores, setColaboradores] = useState<Colaborador[]>([]);
     const [aCarregar, setACarregar] = useState(true);
-    const [erro, setErro] = useState("");
+    const [erro] = useState("");
     const [modalCiclo, setModalCiclo] = useState(false);
     const [modalAvaliacao, setModalAvaliacao] = useState(false);
 

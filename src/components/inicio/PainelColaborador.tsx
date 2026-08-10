@@ -52,7 +52,7 @@ export default function PainelColaborador({ irPara }: { irPara: (seccao: string)
 
     // Métricas do percurso (dados reais).
     const avaliacoesValidadas = percurso.filter((p) => p.source === "avaliacao").length;
-    const ultimaFormacao = percurso.find((p) => p.source === "formacao");
+
 
     if (aCarregar) return <p className="text-dim text-sm">A carregar o seu painel...</p>;
 
