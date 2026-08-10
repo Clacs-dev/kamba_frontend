@@ -21,34 +21,55 @@ const ITENS: ItemMenu[] = [
     { caminho: "/auditoria", icone: "◈", label: "Auditoria", perfis: ["administracao"] },
 ];
 
-export default function Sidebar() {
+interface SidebarProps {
+    aberto: boolean;
+    aoFechar: () => void;
+}
+
+export default function Sidebar({ aberto, aoFechar }: SidebarProps) {
     const { user } = useAuth();
     const perfil = user?.role || "";
     const visiveis = ITENS.filter((i) => i.perfis.includes(perfil));
 
     return (
-        <nav className="w-60 bg-paper border-r border-line py-3 flex-shrink-0 min-h-screen">
-            <div className="px-4 pb-3 mb-2 border-b border-line">
-                <div className="text-xs tracking-widest uppercase text-dim mb-1">Perfil de acesso</div>
-                <div className="text-sm font-semibold text-pri-dark">{traduzPerfil(perfil)}</div>
-            </div>
-            {visiveis.map((item) => (
-                <NavLink
-                    key={item.caminho}
-                    to={item.caminho}
-                    end={item.caminho === "/"}
-                    className={({ isActive }) =>
-                        `w-full flex items-center gap-2.5 px-4 py-2.5 text-left text-sm border-l-[3px] transition-colors ${isActive
-                            ? "text-pri-dark border-pri bg-pri-bg"
-                            : "text-dim border-transparent hover:text-strong hover:bg-panel"
-                        }`
-                    }
-                >
-                    <span className="w-4 text-center">{item.icone}</span>
-                    <span>{item.label}</span>
-                </NavLink>
-            ))}
-        </nav>
+        <>
+            {/* Fundo escuro por trás do menu em mobile */}
+            {aberto && (
+                <div className="fixed inset-0 bg-black/40 z-40 md:hidden" onClick={aoFechar} />
+            )}
+
+            <nav
+                className={`
+          bg-paper border-r border-line py-3 flex-shrink-0
+          w-60 min-h-screen
+          fixed md:static top-0 left-0 z-50 md:z-auto
+          transition-transform duration-200
+          ${aberto ? "translate-x-0" : "-translate-x-full"} md:translate-x-0
+        `}
+            >
+                <div className="px-4 pb-3 mb-2 border-b border-line">
+                    <div className="text-xs tracking-widest uppercase text-dim mb-1">Perfil de acesso</div>
+                    <div className="text-sm font-semibold text-pri-dark">{traduzPerfil(perfil)}</div>
+                </div>
+                {visiveis.map((item) => (
+                    <NavLink
+                        key={item.caminho}
+                        to={item.caminho}
+                        end={item.caminho === "/"}
+                        onClick={aoFechar}
+                        className={({ isActive }) =>
+                            `w-full flex items-center gap-2.5 px-4 py-2.5 text-left text-sm border-l-[3px] transition-colors ${isActive
+                                ? "text-pri-dark border-pri bg-pri-bg"
+                                : "text-dim border-transparent hover:text-strong hover:bg-panel"
+                            }`
+                        }
+                    >
+                        <span className="w-4 text-center">{item.icone}</span>
+                        <span>{item.label}</span>
+                    </NavLink>
+                ))}
+            </nav>
+        </>
     );
 }
 
