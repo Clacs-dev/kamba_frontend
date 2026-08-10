@@ -104,65 +104,67 @@ export default function Colaboradores() {
                 <p className="text-bad text-sm">{erro}</p>
             ) : (
                 <Cartao className="p-0 overflow-hidden">
-                    <table className="w-full text-[12.8px]">
-                        <thead>
-                            <tr>
-                                <th className="text-left text-[10.3px] uppercase tracking-wide text-dim px-3 py-2.5 border-b border-line">Colaborador</th>
-                                <th className="text-left text-[10.3px] uppercase tracking-wide text-dim px-3 py-2.5 border-b border-line">Email</th>
-                                <th className="text-left text-[10.3px] uppercase tracking-wide text-dim px-3 py-2.5 border-b border-line">Perfil</th>
-                                <th className="text-left text-[10.3px] uppercase tracking-wide text-dim px-3 py-2.5 border-b border-line">Situação</th>
-                                <th className="text-right text-[10.3px] uppercase tracking-wide text-dim px-3 py-2.5 border-b border-line">Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filtrados.map((c) => (
-                                <tr key={c.id} className="hover:bg-panel transition-colors">
-                                    <td className="px-3 py-2.5 border-b border-line2">
-                                        <b className="text-strong">{c.full_name}</b>
-                                    </td>
-                                    <td className="px-3 py-2.5 border-b border-line2 text-ink">{c.email}</td>
-                                    <td className="px-3 py-2.5 border-b border-line2 text-ink">{traduzPerfil(c.role)}</td>
-                                    <td className="px-3 py-2.5 border-b border-line2">
-                                        <span className={`inline-block px-2 py-0.5 rounded-full text-[10.5px] font-semibold ${c.is_active ? "bg-ok-bg text-ok" : "bg-line2 text-dim"
-                                            }`}>
-                                            {c.is_active ? "Ativo" : "Inativo"}
-                                        </span>
-                                    </td>
-
-                                    <td className="px-3 py-2.5 border-b border-line2 text-right whitespace-nowrap">
-                                        {podeCadastrar && (
-                                            <button
-                                                onClick={() => setAcolhimentoDe(c)}
-                                                className="text-[11.5px] font-semibold cursor-pointer hover:underline text-pri mr-3"
-                                            >
-                                                Acolhimento
-                                            </button>
-                                        )}
-
-                                        {podeCadastrar && (
-                                            <button
-                                                onClick={() => setDadosRhDe(c)}
-                                                className="text-[11.5px] font-semibold cursor-pointer hover:underline text-pri mr-3"
-                                            >
-                                                Dados RH
-                                            </button>
-                                        )}
-                                        {podeCadastrar && c.id !== user?.id && (
-                                            <button
-                                                onClick={() => alternarEstado(c)}
-                                                className={`text-[11.5px] font-semibold cursor-pointer hover:underline ${c.is_active ? "text-bad" : "text-ok"
-                                                    }`}
-                                            >
-                                                {c.is_active ? "Desativar" : "Reativar"}
-                                            </button>
-                                        )}
-
-
-                                    </td>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-[12.8px] min-w-[600px]">
+                            <thead>
+                                <tr>
+                                    <th className="text-left text-[10.3px] uppercase tracking-wide text-dim px-3 py-2.5 border-b border-line">Colaborador</th>
+                                    <th className="text-left text-[10.3px] uppercase tracking-wide text-dim px-3 py-2.5 border-b border-line">Email</th>
+                                    <th className="text-left text-[10.3px] uppercase tracking-wide text-dim px-3 py-2.5 border-b border-line">Perfil</th>
+                                    <th className="text-left text-[10.3px] uppercase tracking-wide text-dim px-3 py-2.5 border-b border-line">Situação</th>
+                                    <th className="text-right text-[10.3px] uppercase tracking-wide text-dim px-3 py-2.5 border-b border-line">Ações</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {filtrados.map((c) => (
+                                    <tr key={c.id} className="hover:bg-panel transition-colors">
+                                        <td className="px-3 py-2.5 border-b border-line2">
+                                            <b className="text-strong">{c.full_name}</b>
+                                        </td>
+                                        <td className="px-3 py-2.5 border-b border-line2 text-ink">{c.email}</td>
+                                        <td className="px-3 py-2.5 border-b border-line2 text-ink">{traduzPerfil(c.role)}</td>
+                                        <td className="px-3 py-2.5 border-b border-line2">
+                                            <span className={`inline-block px-2 py-0.5 rounded-full text-[10.5px] font-semibold ${c.is_active ? "bg-ok-bg text-ok" : "bg-line2 text-dim"
+                                                }`}>
+                                                {c.is_active ? "Ativo" : "Inativo"}
+                                            </span>
+                                        </td>
+
+                                        <td className="px-3 py-2.5 border-b border-line2 text-right whitespace-nowrap">
+                                            {podeCadastrar && (
+                                                <button
+                                                    onClick={() => setAcolhimentoDe(c)}
+                                                    className="text-[11.5px] font-semibold cursor-pointer hover:underline text-pri mr-3"
+                                                >
+                                                    Acolhimento
+                                                </button>
+                                            )}
+
+                                            {podeCadastrar && (
+                                                <button
+                                                    onClick={() => setDadosRhDe(c)}
+                                                    className="text-[11.5px] font-semibold cursor-pointer hover:underline text-pri mr-3"
+                                                >
+                                                    Dados RH
+                                                </button>
+                                            )}
+                                            {podeCadastrar && c.id !== user?.id && (
+                                                <button
+                                                    onClick={() => alternarEstado(c)}
+                                                    className={`text-[11.5px] font-semibold cursor-pointer hover:underline ${c.is_active ? "text-bad" : "text-ok"
+                                                        }`}
+                                                >
+                                                    {c.is_active ? "Desativar" : "Reativar"}
+                                                </button>
+                                            )}
+
+
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                     {filtrados.length === 0 && (
                         <p className="px-3 py-6 text-dim text-center text-sm">
                             {pesquisa ? "Nenhum colaborador corresponde à pesquisa." : "Nenhum colaborador ainda."}
