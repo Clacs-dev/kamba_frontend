@@ -1,0 +1,47 @@
+@import "tailwindcss";
+
+/* Fontes do protótipo KAMBA */
+@import url('https://fonts.googleapis.com/css2?family=Lora:wght@500;600&family=Sora:wght@300;400;600&display=swap');
+
+/* Paleta e tokens do design KAMBA (do protótipo) */
+@theme {
+    --color-bg: #F6F8F7;
+    --color-paper: #FFFFFF;
+    --color-panel: #FBFCFB;
+    --color-line: #E3E9E6;
+    --color-line2: #EEF2F0;
+    --color-ink: #33434B;
+    --color-strong: #22323A;
+    --color-dim: #7C8B92;
+    --color-pri: #43808C;
+    --color-pri-dark: #356A75;
+    --color-pri-bg: #EAF2F3;
+    --color-pri-soft: #B9D4D9;
+    --color-ok: #57A183;
+    --color-ok-bg: #EAF5F0;
+    --color-warn: #C99A46;
+    --color-warn-bg: #F9F2E3;
+    --color-bad: #C57070;
+    --color-bad-bg: #F9ECEC;
+    --color-info: #6D8FBF;
+    --color-info-bg: #EDF2F9;
+    --color-gold: #B99A4A;
+
+    --font-serif: 'Lora', serif;
+    --font-sans: 'Sora', sans-serif;
+}
+
+body {
+    font-family: var(--font-sans);
+    background: var(--color-bg);
+    color: var(--color-ink);
+}
+
+h1,
+h2,
+h3,
+h4 {
+    font-family: var(--font-serif);
+    font-weight: 600;
+    color: var(--color-strong);
+}
