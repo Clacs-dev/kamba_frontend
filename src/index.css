@@ -45,3 +45,12 @@ h4 {
     font-weight: 600;
     color: var(--color-strong);
 }
+
+/* Responsividade: tabelas ganham scroll horizontal em ecrãs pequenos */
+@media (max-width: 768px) {
+    table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+}
