@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import Login from "./pages/Login";
 import Registo from "./pages/Registo";
 import Home from "./pages/Home";
+import TrocarPassword from "./pages/TrocarPassword";
 import Inicio from "./pages/Inicio";
 import Portal from "./pages/Portal";
 import Colaboradores from "./pages/Colaboradores";
@@ -15,9 +16,12 @@ import Dashboard from "./pages/Dashboard";
 import Auditoria from "./pages/Auditoria";
 
 function RotaProtegida({ children }: { children: React.ReactNode }) {
-  const { token, aCarregar } = useAuth();
+  const { token, user, aCarregar } = useAuth();
   if (aCarregar) return <div className="min-h-screen flex items-center justify-center text-slate-400">A carregar...</div>;
-  return token ? <>{children}</> : <Navigate to="/login" replace />;
+  if (!token) return <Navigate to="/login" replace />;
+  // Se o utilizador tem de trocar a password, mostra esse ecrã antes de tudo.
+  if (user?.must_change_password) return <TrocarPassword />;
+  return <>{children}</>;
 }
 
 function RotaPublica({ children }: { children: React.ReactNode }) {

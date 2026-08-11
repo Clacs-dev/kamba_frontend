@@ -11,6 +11,7 @@ interface Utilizador {
     full_name: string;
     role: string;
     is_active: boolean;
+    must_change_password: boolean;
 }
 interface AuthContextType {
     token: string | null;
@@ -18,6 +19,7 @@ interface AuthContextType {
     login: (email: string, password: string) => Promise<void>;
     logout: () => void;
     aCarregar: boolean;
+    recarregarUtilizador: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -30,13 +32,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [aCarregar, setACarregar] = useState(true);
 
     // Sempre que há token, vai buscar os dados do utilizador (/auth/me).
-    // Isto corre no arranque (se já havia token guardado) e após o login.
     useEffect(() => {
         if (token) {
             api.get("/auth/me")
                 .then((resp) => setUser(resp.data))
                 .catch(() => {
-                    // Token inválido ou expirado: limpa tudo.
                     localStorage.removeItem("kamba_token");
                     setToken(null);
                     setUser(null);
@@ -52,7 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const resp = await api.post("/auth/login", { email, password });
         const newToken = resp.data.access_token;
         localStorage.setItem("kamba_token", newToken);
-        setToken(newToken); // isto dispara o useEffect que vai buscar o /auth/me
+        setToken(newToken);
     };
 
     const logout = () => {
@@ -61,8 +61,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
     };
 
+    // Vai buscar de novo os dados do utilizador (ex.: após trocar a password).
+    const recarregarUtilizador = async () => {
+        try {
+            const resp = await api.get("/auth/me");
+            setUser(resp.data);
+        } catch {
+            /* ignora */
+        }
+    };
+
     return (
-        <AuthContext.Provider value={{ token, user, login, logout, aCarregar }}>
+        <AuthContext.Provider value={{ token, user, login, logout, aCarregar, recarregarUtilizador }}>
             {children}
         </AuthContext.Provider>
     );
