@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { Link } from "react-router-dom";
+import Botao from "../components/ui/Botao";
 
 export default function Login() {
     const { login } = useAuth();
@@ -23,39 +24,38 @@ export default function Login() {
     };
 
     return (
-        <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
-            <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl p-8">
-                <h1 className="text-3xl font-bold text-slate-800">KAMBA</h1>
-                <p className="text-slate-500 mb-6">Gestão de Capital Humano</p>
+        <div className="min-h-screen bg-bg flex items-center justify-center p-4">
+            <div className="w-full max-w-sm bg-paper border border-line rounded-xl shadow-[0_12px_40px_rgba(34,50,58,0.12)] p-6 sm:p-8">
+                <div className="flex items-baseline gap-2 mb-1">
+                    <span className="font-serif font-semibold text-xl text-pri tracking-wide">KAMBA</span>
+                </div>
+                <p className="text-[9.5px] uppercase tracking-[0.2em] text-dim mb-6">Capital Humano · Desempenho · Cultura</p>
 
-                <form onSubmit={submeter} className="space-y-4">
+                <form onSubmit={submeter} className="space-y-3">
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                        <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Email</label>
                         <input
                             type="email" value={email} onChange={(e) => setEmail(e.target.value)} required
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] text-strong focus:outline-none focus:border-pri"
                         />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
+                        <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Password</label>
                         <input
                             type="password" value={password} onChange={(e) => setPassword(e.target.value)} required
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] text-strong focus:outline-none focus:border-pri"
                         />
                     </div>
 
-                    {erro && <p className="text-sm text-red-600">{erro}</p>}
+                    {erro && <p className="text-bad text-sm">{erro}</p>}
 
-                    <button
-                        type="submit" disabled={aCarregar}
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg transition-colors disabled:opacity-50"
-                    >
+                    <Botao type="submit" disabled={aCarregar} className="w-full">
                         {aCarregar ? "A entrar..." : "Entrar"}
-                    </button>
+                    </Botao>
                 </form>
-                <p className="text-sm text-slate-500 mt-6 text-center">
+                <p className="text-dim text-[12px] mt-6 text-center">
                     Não tem conta?{" "}
-                    <Link to="/registo" className="text-blue-600 hover:underline">Criar conta</Link>
+                    <Link to="/registo" className="text-pri font-semibold hover:underline">Criar conta</Link>
                 </p>
             </div>
         </div>

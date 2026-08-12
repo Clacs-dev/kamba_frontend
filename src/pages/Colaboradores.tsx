@@ -5,6 +5,10 @@ import api from "../lib/api";
 import Cabecalho from "../components/Cabecalho";
 import Cartao from "../components/Cartao";
 import Modal from "../components/Modal";
+import Tag from "../components/ui/Tag";
+import Notice from "../components/ui/Notice";
+import Botao from "../components/ui/Botao";
+import DocRow from "../components/ui/DocRow";
 
 interface Colaborador {
     id: number;
@@ -124,10 +128,9 @@ export default function Colaboradores() {
                                         <td className="px-3 py-2.5 border-b border-line2 text-ink">{c.email}</td>
                                         <td className="px-3 py-2.5 border-b border-line2 text-ink">{traduzPerfil(c.role)}</td>
                                         <td className="px-3 py-2.5 border-b border-line2">
-                                            <span className={`inline-block px-2 py-0.5 rounded-full text-[10.5px] font-semibold ${c.is_active ? "bg-ok-bg text-ok" : "bg-line2 text-dim"
-                                                }`}>
-                                                {c.is_active ? "Ativo" : "Inativo"}
-                                            </span>
+                                            {c.is_active
+                                                ? <Tag variante="ok">Ativo</Tag>
+                                                : <Tag variante="bad">Inativo</Tag>}
                                         </td>
 
                                         <td className="px-3 py-2.5 border-b border-line2 text-right whitespace-nowrap">
@@ -197,30 +200,92 @@ export default function Colaboradores() {
     );
 }
 
-// ---- Modal de cadastro de colaborador ----
+// ---- Modal de cadastro completo de colaborador (conta + ficha profissional + documentos) ----
+const rotuloCampo = "block text-[10.5px] uppercase tracking-wide text-dim mb-1";
+const campoCls = "w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-3 focus:outline-none focus:border-pri";
+
+interface DocumentoColaborador { id: number; filename: string; doc_type?: string | null; }
+
 function ModalCadastro({ aoFechar, aoCriar }: { aoFechar: () => void; aoCriar: () => void }) {
+    // Passo 1 — dados de acesso.
     const [fullName, setFullName] = useState("");
     const [email, setEmail] = useState("");
     const [role, setRole] = useState("colaborador");
     const [erro, setErro] = useState("");
     const [aCarregar, setACarregar] = useState(false);
     const [passwordTemp, setPasswordTemp] = useState<string | null>(null);
+    const [novoId, setNovoId] = useState<number | null>(null);
 
-    const submeter = async () => {
+    // Passo 2 — ficha profissional (opcional, mas recomendada no cadastro completo).
+    const [empNumber, setEmpNumber] = useState("");
+    const [admission, setAdmission] = useState("");
+    const [contractType, setContractType] = useState("");
+    const [jobCategory, setJobCategory] = useState("");
+    const [department, setDepartment] = useState("");
+    const [workplace, setWorkplace] = useState("");
+    const [fichaGuardada, setFichaGuardada] = useState(false);
+    const [erroFicha, setErroFicha] = useState("");
+    const [aGuardarFicha, setAGuardarFicha] = useState(false);
+
+    // Passo 3 — documentos do colaborador (upload de ficheiros: BI, contrato assinado, certificados…).
+    const [tipoDocumento, setTipoDocumento] = useState("bi");
+    const [ficheiro, setFicheiro] = useState<File | null>(null);
+    const [documentos, setDocumentos] = useState<DocumentoColaborador[]>([]);
+    const [aEnviarDoc, setAEnviarDoc] = useState(false);
+    const [erroDoc, setErroDoc] = useState("");
+
+    const criarConta = async () => {
         setErro("");
         setACarregar(true);
         try {
-            const resp = await api.post("/collaborators", {
-                full_name: fullName,
-                email,
-                role,
-            });
+            const resp = await api.post("/collaborators", { full_name: fullName, email, role });
             // O backend devolve a password temporária — mostramo-la para o CH copiar.
             setPasswordTemp(resp.data.temporary_password);
+            setNovoId(resp.data.id);
         } catch (err: any) {
             setErro(err.response?.data?.detail || "Erro ao cadastrar.");
         } finally {
             setACarregar(false);
+        }
+    };
+
+    const guardarFicha = async () => {
+        if (!novoId) return;
+        setErroFicha("");
+        setAGuardarFicha(true);
+        try {
+            await api.put(`/collaborators/${novoId}/profile`, {
+                employee_number: empNumber || null,
+                admission_date: admission || null,
+                contract_type: contractType || null,
+                job_category: jobCategory || null,
+                department: department || null,
+                workplace: workplace || null,
+            });
+            setFichaGuardada(true);
+        } catch (err: any) {
+            setErroFicha(err.response?.data?.detail || "Erro ao guardar a ficha.");
+        } finally {
+            setAGuardarFicha(false);
+        }
+    };
+
+    const enviarDocumento = async () => {
+        if (!novoId || !ficheiro) return;
+        setErroDoc("");
+        setAEnviarDoc(true);
+        try {
+            const dados = new FormData();
+            dados.append("file", ficheiro);
+            dados.append("doc_type", tipoDocumento);
+            const resp = await api.post(`/collaborators/${novoId}/documents`, dados);
+            setDocumentos((prev) => [...prev, resp.data]);
+            setFicheiro(null);
+        } catch (err: any) {
+            // Endpoint ainda pendente de implementação no backend — ver docs/pending-backend-endpoints.md.
+            setErroDoc(err.response?.data?.detail || "Não foi possível enviar o documento (endpoint pendente no backend).");
+        } finally {
+            setAEnviarDoc(false);
         }
     };
 
@@ -229,76 +294,128 @@ function ModalCadastro({ aoFechar, aoCriar }: { aoFechar: () => void; aoCriar: (
             aberto={true}
             aoFechar={aoFechar}
             titulo="Cadastrar colaborador"
-            subtitulo="Cria a conta e gera uma password temporária de primeiro acesso"
+            subtitulo="Cadastro completo: conta de acesso, ficha profissional e documentos do vínculo"
         >
+            {/* Passo 1 — Conta de acesso */}
+            <h3 className="text-[14.5px] mb-2">1. Dados de acesso</h3>
             {passwordTemp ? (
-                <div>
-                    <div className="border-l-[3px] border-ok bg-ok-bg rounded-r-lg px-3.5 py-3 text-[12.8px] leading-relaxed mb-4">
-                        <b className="text-ok">Colaborador criado com sucesso!</b>
-                        <div className="mt-2">Password temporária de primeiro acesso:</div>
-                        <div className="font-mono text-[15px] text-strong bg-paper border border-line rounded-lg px-3 py-2 mt-1.5 select-all">
-                            {passwordTemp}
+                <Notice variante="soft" className="mb-4">
+                    <b>Colaborador criado com sucesso!</b>
+                    <div className="mt-2">Password temporária de primeiro acesso:</div>
+                    <div className="font-mono text-[15px] text-strong bg-paper border border-line rounded-lg px-3 py-2 mt-1.5 select-all">
+                        {passwordTemp}
+                    </div>
+                    <div className="text-dim text-[11px] mt-2">
+                        Entregue esta password ao colaborador. Ele deve alterá-la no primeiro acesso.
+                    </div>
+                </Notice>
+            ) : (
+                <div className="mb-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3">
+                        <div>
+                            <label className={rotuloCampo}>Nome completo</label>
+                            <input value={fullName} onChange={(e) => setFullName(e.target.value)} className={campoCls} />
                         </div>
-                        <div className="text-dim text-[11px] mt-2">
-                            Entregue esta password ao colaborador. Ele deve alterá-la no primeiro acesso.
+                        <div>
+                            <label className={rotuloCampo}>Email</label>
+                            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={campoCls} />
                         </div>
                     </div>
-                    <button
-                        onClick={aoCriar}
-                        className="bg-pri text-white rounded-lg px-4 py-2 text-[12.3px] font-semibold hover:bg-pri-dark transition-colors"
-                    >
-                        Concluir
-                    </button>
-                </div>
-            ) : (
-                <div>
-                    <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Nome completo</label>
-                    <input
-                        value={fullName}
-                        onChange={(e) => setFullName(e.target.value)}
-                        className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-3 focus:outline-none focus:border-pri"
-                    />
-
-                    <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Email</label>
-                    <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-3 focus:outline-none focus:border-pri"
-                    />
-
-                    <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Perfil</label>
-                    <select
-                        value={role}
-                        onChange={(e) => setRole(e.target.value)}
-                        className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-4 focus:outline-none focus:border-pri"
-                    >
+                    <label className={rotuloCampo}>Perfil</label>
+                    <select value={role} onChange={(e) => setRole(e.target.value)} className={campoCls}>
                         <option value="colaborador">Colaborador</option>
                         <option value="director">Director</option>
                         <option value="capital_humano">Capital Humano</option>
                         <option value="comissao">Comissão de Avaliação</option>
                         <option value="administracao">Administração</option>
                     </select>
-
                     {erro && <p className="text-bad text-sm mb-3">{erro}</p>}
-
-                    <div className="flex gap-2.5">
-                        <button
-                            onClick={aoFechar}
-                            className="bg-paper border border-line rounded-lg px-4 py-2 text-sm text-ink hover:border-pri hover:text-pri transition-colors"
-                        >
-                            Cancelar
-                        </button>
-                        <button
-                            onClick={submeter}
-                            disabled={aCarregar || !fullName || !email}
-                            className="bg-pri text-white rounded-lg px-4 py-2 text-[12.3px] font-semibold hover:bg-pri-dark transition-colors disabled:opacity-40"
-                        >
-                            {aCarregar ? "A criar..." : "Criar colaborador"}
-                        </button>
-                    </div>
+                    <Botao onClick={criarConta} disabled={aCarregar || !fullName || !email}>
+                        {aCarregar ? "A criar..." : "Criar conta"}
+                    </Botao>
                 </div>
             )}
+
+            {/* Passo 2 — Ficha profissional */}
+            <div className={novoId ? "" : "opacity-40 pointer-events-none select-none"}>
+                <h3 className="text-[14.5px] mb-2 mt-1">2. Ficha profissional</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3">
+                    <div>
+                        <label className={rotuloCampo}>Nº de colaborador</label>
+                        <input value={empNumber} onChange={(e) => setEmpNumber(e.target.value)} className={campoCls} />
+                    </div>
+                    <div>
+                        <label className={rotuloCampo}>Data de admissão</label>
+                        <input type="date" value={admission} onChange={(e) => setAdmission(e.target.value)} className={campoCls} />
+                    </div>
+                    <div>
+                        <label className={rotuloCampo}>Tipo de vínculo</label>
+                        <select value={contractType} onChange={(e) => setContractType(e.target.value)} className={campoCls}>
+                            <option value="">— escolher —</option>
+                            <option value="efetivo">Efetivo</option>
+                            <option value="termo_certo">Termo certo</option>
+                            <option value="termo_incerto">Termo incerto</option>
+                            <option value="estagio">Estágio</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className={rotuloCampo}>Categoria/Função</label>
+                        <input value={jobCategory} onChange={(e) => setJobCategory(e.target.value)} className={campoCls} />
+                    </div>
+                    <div>
+                        <label className={rotuloCampo}>Direção/Departamento</label>
+                        <input value={department} onChange={(e) => setDepartment(e.target.value)} className={campoCls} />
+                    </div>
+                    <div>
+                        <label className={rotuloCampo}>Local de trabalho</label>
+                        <input value={workplace} onChange={(e) => setWorkplace(e.target.value)} className={campoCls} />
+                    </div>
+                </div>
+                {erroFicha && <p className="text-bad text-sm mb-3">{erroFicha}</p>}
+                {fichaGuardada && <Tag variante="ok" className="mb-3 block w-fit">Ficha guardada</Tag>}
+                <Botao variante="ghost" onClick={guardarFicha} disabled={!novoId || aGuardarFicha}>
+                    {aGuardarFicha ? "A guardar..." : "Guardar ficha"}
+                </Botao>
+            </div>
+
+            {/* Passo 3 — Documentos do colaborador */}
+            <div className={novoId ? "mt-5" : "mt-5 opacity-40 pointer-events-none select-none"}>
+                <h3 className="text-[14.5px] mb-2">3. Documentos do colaborador</h3>
+                <p className="text-dim text-[11px] mb-2">
+                    Anexe cópias digitalizadas (BI, contrato assinado, certificados de habilitações, etc.).
+                </p>
+                {documentos.map((d) => (
+                    <DocRow key={d.id} monograma={(d.doc_type || d.filename).slice(0, 2).toUpperCase()} titulo={d.filename} meta={d.doc_type || undefined} />
+                ))}
+                <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-end mt-2">
+                    <div className="flex-1">
+                        <label className={rotuloCampo}>Tipo de documento</label>
+                        <select value={tipoDocumento} onChange={(e) => setTipoDocumento(e.target.value)} className={`${campoCls} mb-0`}>
+                            <option value="bi">Bilhete de Identidade</option>
+                            <option value="contrato_assinado">Contrato assinado</option>
+                            <option value="certificado_habilitacoes">Certificado de habilitações</option>
+                            <option value="outro">Outro</option>
+                        </select>
+                    </div>
+                    <div className="flex-1">
+                        <label className={rotuloCampo}>Ficheiro</label>
+                        <input
+                            type="file"
+                            onChange={(e) => setFicheiro(e.target.files?.[0] || null)}
+                            className="w-full bg-panel border border-line rounded-lg px-3 py-[7px] text-[12.5px] focus:outline-none focus:border-pri"
+                        />
+                    </div>
+                    <Botao variante="ghost" onClick={enviarDocumento} disabled={!novoId || !ficheiro || aEnviarDoc}>
+                        {aEnviarDoc ? "A enviar..." : "Anexar"}
+                    </Botao>
+                </div>
+                {erroDoc && <p className="text-bad text-[11px] mt-2">{erroDoc}</p>}
+            </div>
+
+            <div className="flex gap-2.5 mt-5 pt-4 border-t border-line">
+                <Botao variante="ghost" onClick={aoFechar}>Cancelar</Botao>
+                <Botao onClick={aoCriar} disabled={!novoId}>Concluir cadastro</Botao>
+            </div>
         </Modal>
     );
 }

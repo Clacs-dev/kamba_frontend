@@ -8,6 +8,7 @@ import Inicio from "./pages/Inicio";
 import Portal from "./pages/Portal";
 import Colaboradores from "./pages/Colaboradores";
 import Avaliacoes from "./pages/Avaliacoes";
+import Ausencias from "./pages/Ausencias";
 import Disciplina from "./pages/Disciplina";
 import Relatorios from "./pages/Relatorios";
 import Formacao from "./pages/Formacao";
@@ -43,6 +44,7 @@ function App() {
             <Route path="portal" element={<Portal />} />
             <Route path="colaboradores" element={<Colaboradores />} />
             <Route path="avaliacoes" element={<Avaliacoes />} />
+            <Route path="ausencias" element={<Ausencias />} />
             <Route path="disciplina" element={<Disciplina />} />
             <Route path="relatorios" element={<Relatorios />} />
             <Route path="formacao" element={<Formacao />} />

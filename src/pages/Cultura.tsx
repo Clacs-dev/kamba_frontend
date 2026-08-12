@@ -4,6 +4,10 @@ import api from "../lib/api";
 import Cabecalho from "../components/Cabecalho";
 import Cartao from "../components/Cartao";
 import Modal from "../components/Modal";
+import Notice from "../components/ui/Notice";
+import Tag from "../components/ui/Tag";
+import Barra from "../components/ui/Barra";
+import { Chip, ChipGroup } from "../components/ui/Chip";
 
 interface Inquerito {
     id: number;
@@ -92,9 +96,7 @@ export default function Cultura() {
                 descricao="Como as pessoas se sentem, medido a sério: pulses anónimos, indicadores e recomendações. Anonimato por desenho: nenhum resultado é exibido com menos de 5 respostas."
             />
 
-            {msg && (
-                <div className="border-l-[3px] border-pri bg-pri-bg rounded-r-lg px-3.5 py-2.5 text-[12.3px] mb-4">{msg}</div>
-            )}
+            {msg && <Notice className="mb-4">{msg}</Notice>}
 
             <div className="flex gap-2.5 mb-4">
                 {eCH && (
@@ -144,8 +146,8 @@ export default function Cultura() {
                                                 {d.y2025 != null ? (
                                                     <>
                                                         <b>{d.y2025}%</b>
-                                                        <div className="h-1.5 bg-line2 rounded-full mt-1 overflow-hidden max-w-[120px]">
-                                                            <div className="h-full bg-pri rounded-full" style={{ width: `${d.y2025}%` }} />
+                                                        <div className="max-w-[120px]">
+                                                            <Barra valor={d.y2025} variante="pri" />
                                                         </div>
                                                     </>
                                                 ) : "—"}
@@ -163,7 +165,7 @@ export default function Cultura() {
                             <h3 className="text-[14.5px] mb-2">Recomendações do último ciclo</h3>
                             {relatorio.recommendations.map((r, i) => (
                                 <div key={i} className="flex gap-2.5 py-1.5 border-b border-line2 last:border-0">
-                                    <span className="inline-block px-2 py-0.5 rounded-full text-[10.5px] font-semibold bg-pri-bg text-pri-dark h-fit">{i + 1}</span>
+                                    <Tag className="h-fit">{i + 1}</Tag>
                                     <span className="text-[12.6px]">{r}</span>
                                 </div>
                             ))}
@@ -181,27 +183,25 @@ export default function Cultura() {
                                 <Cartao key={inq.id}>
                                     <h3 className="text-[15px] m-0 mb-3">{inq.title} — anónimo, 60 segundos</h3>
                                     {respondido[inq.id] ? (
-                                        <div className="border-l-[3px] border-ok bg-ok-bg rounded-r-lg px-3.5 py-3 text-[12.8px]">
-                                            <b className="text-ok">Resposta registada.</b> A sua identidade nunca é associada às respostas.
-                                        </div>
+                                        <Notice variante="soft">
+                                            <b>Resposta registada.</b> A sua identidade nunca é associada às respostas.
+                                        </Notice>
                                     ) : (
                                         <>
                                             {inq.dimensions.map((dim) => (
                                                 <div key={dim} className="py-2.5 border-b border-line2 last:border-0">
                                                     <div className="text-[13.3px] text-strong mb-2">{dim}</div>
-                                                    <div className="flex gap-1.5 flex-wrap">
-                                                        {ESCALA.map((s) => {
-                                                            const sel = respostas[inq.id]?.[dim] === s.v;
-                                                            return (
-                                                                <button key={s.v} onClick={() => definirResposta(inq.id, dim, s.v)}
-                                                                    className={`flex-1 min-w-[82px] px-2 py-2.5 border rounded-lg text-center transition-colors ${sel ? "border-pri bg-pri-bg" : "border-line bg-paper hover:border-pri-soft"
-                                                                        }`}>
-                                                                    <div className={`font-serif text-[15px] ${sel ? "text-pri-dark" : "text-dim"}`}>{s.v}</div>
-                                                                    <div className={`text-[9.8px] ${sel ? "text-pri-dark" : "text-dim"}`}>{s.l}</div>
-                                                                </button>
-                                                            );
-                                                        })}
-                                                    </div>
+                                                    <ChipGroup>
+                                                        {ESCALA.map((s) => (
+                                                            <Chip
+                                                                key={s.v}
+                                                                label={s.v}
+                                                                sublabel={s.l}
+                                                                selecionado={respostas[inq.id]?.[dim] === s.v}
+                                                                onClick={() => definirResposta(inq.id, dim, s.v)}
+                                                            />
+                                                        ))}
+                                                    </ChipGroup>
                                                 </div>
                                             ))}
                                             {(() => {

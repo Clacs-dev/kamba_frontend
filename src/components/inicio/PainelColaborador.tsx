@@ -3,6 +3,8 @@ import { useAuth } from "../../context/AuthContext";
 import api from "../../lib/api";
 import Cartao from "../Cartao";
 import FlowBar from "../FlowBar";
+import Notice from "../ui/Notice";
+import { Timeline, TimelineItem } from "../ui/Timeline";
 
 const FASES = ["Autoavaliação", "Avaliação do Director", "Concordância", "Comissão", "Fechada", "Validada"];
 const FASE_INDICE: Record<string, number> = {
@@ -60,12 +62,12 @@ export default function PainelColaborador({ irPara }: { irPara: (seccao: string)
         <div>
             {/* Alerta de ação pendente */}
             {temAcaoPendente && (
-                <div className="border-l-[3px] border-pri bg-pri-bg rounded-r-lg px-4 py-3 text-[12.8px] leading-relaxed mb-4">
-                    <b className="text-pri-dark">✎ Tem uma ação pendente na sua avaliação</b> — {textoAcao}.{" "}
+                <Notice>
+                    <b>✎ Tem uma ação pendente na sua avaliação</b> — {textoAcao}.{" "}
                     <button onClick={() => irPara("avaliacoes")} className="text-pri font-semibold hover:underline">
                         Ir para a avaliação →
                     </button>
-                </div>
+                </Notice>
             )}
 
             {/* Cartões de KPI do percurso (dados reais) */}
@@ -108,17 +110,11 @@ export default function PainelColaborador({ irPara }: { irPara: (seccao: string)
                         Ainda não há eventos no seu percurso. À medida que for avaliado, formado e progredir, aparecerão aqui.
                     </p>
                 ) : (
-                    <div className="space-y-2">
+                    <Timeline>
                         {percurso.slice(0, 5).map((p, i) => (
-                            <div key={i} className="flex gap-3 pb-2 border-b border-line2 last:border-0">
-                                <div className="text-[10.3px] text-dim uppercase w-24 flex-shrink-0 pt-0.5">{p.date}</div>
-                                <div>
-                                    <div className="text-[13px] text-strong font-semibold">{p.title}</div>
-                                    {p.detail && <div className="text-[12px] text-dim">{p.detail}</div>}
-                                </div>
-                            </div>
+                            <TimelineItem key={i} data={p.date} titulo={p.title} texto={p.detail} />
                         ))}
-                    </div>
+                    </Timeline>
                 )}
             </Cartao>
         </div>

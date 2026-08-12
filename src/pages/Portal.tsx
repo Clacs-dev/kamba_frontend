@@ -6,13 +6,21 @@ import Cabecalho from "../components/Cabecalho";
 import AcolhimentoTab from "../components/portal/AcolhimentoTab";
 import SaudeTab from "../components/portal/SaudeTab";
 import RemuneracaoTab from "../components/portal/RemuneracaoTab";
+import PercursoTab from "../components/portal/PercursoTab";
+import AvaliacaoTab from "../components/portal/AvaliacaoTab";
+import DisciplinaTab from "../components/portal/DisciplinaTab";
 import Cartao from "../components/Cartao";
 import Tabs from "../components/Tabs";
+import Tag from "../components/ui/Tag";
+import Spark from "../components/ui/Spark";
 
 const TABS = [
     { chave: "ficha", label: "Ficha" },
     { chave: "acolhimento", label: "Acolhimento" },
+    { chave: "percurso", label: "Percurso" },
     { chave: "documentos", label: "Documentos" },
+    { chave: "avaliacao", label: "Avaliação" },
+    { chave: "disciplina", label: "Disciplina" },
     { chave: "saude", label: "Saúde Ocupacional" },
     { chave: "remuneracao", label: "Remuneração & Assiduidade" },
 ];
@@ -70,9 +78,7 @@ export default function Portal() {
                                     {perfil?.department && ` · ${perfil.department}`}
                                 </div>
                                 <div className="mt-1.5">
-                                    <span className="inline-block px-2 py-0.5 rounded-full text-[10.5px] font-semibold bg-ok-bg text-ok">
-                                        Ativo
-                                    </span>
+                                    <Tag variante="ok">Ativo</Tag>
                                 </div>
                             </div>
                         </div>
@@ -108,6 +114,7 @@ export default function Portal() {
                             </p>
                         ) : (
                             <div className="space-y-3">
+                                <Spark valores={historico.map((h) => h.final_score)} />
                                 {historico.map((h, i) => (
                                     <div key={i}>
                                         <div className="flex justify-between items-baseline mb-1">
@@ -132,7 +139,10 @@ export default function Portal() {
 
             )}
             {tab === "acolhimento" && <AcolhimentoTab />}
+            {tab === "percurso" && <PercursoTab />}
             {tab === "documentos" && <DocumentosTab />}
+            {tab === "avaliacao" && <AvaliacaoTab />}
+            {tab === "disciplina" && <DisciplinaTab />}
             {tab === "saude" && <SaudeTab />}
             {tab === "remuneracao" && <RemuneracaoTab />}
         </div>

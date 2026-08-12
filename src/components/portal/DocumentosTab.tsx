@@ -3,6 +3,8 @@ import { useAuth } from "../../context/AuthContext";
 import api from "../../lib/api";
 import Cartao from "../Cartao";
 import Modal from "../Modal";
+import Notice from "../ui/Notice";
+import DocRow from "../ui/DocRow";
 
 interface Documento {
     id: number;
@@ -78,23 +80,19 @@ export default function DocumentosTab() {
             )}
 
             {docs.map((doc) => (
-                <div key={doc.id} className="flex items-center gap-3 px-3 py-2.5 border border-line rounded-xl mb-2 bg-paper">
-                    <div className="w-8 h-8 rounded-lg bg-pri-bg text-pri-dark flex items-center justify-center text-[11px] font-semibold flex-shrink-0">
-                        {(doc.doc_type || doc.title).slice(0, 2).toUpperCase()}
-                    </div>
-                    <div className="flex-1">
-                        <b className="block text-[12.8px] text-strong">{doc.title}</b>
-                        <span className="text-[10.8px] text-dim">com registo de leitura</span>
-                    </div>
-                    <button onClick={() => abrir(doc.id)} className="text-[11.5px] text-pri font-semibold cursor-pointer hover:underline">
-                        Abrir
-                    </button>
-                </div>
+                <DocRow
+                    key={doc.id}
+                    monograma={(doc.doc_type || doc.title).slice(0, 2).toUpperCase()}
+                    titulo={doc.title}
+                    meta="com registo de leitura"
+                    acaoLabel="Abrir"
+                    aoAcionar={() => abrir(doc.id)}
+                />
             ))}
 
-            <div className="border-l-[3px] border-pri-soft bg-pri-bg rounded-r-lg px-3.5 py-2.5 text-[12.3px] leading-relaxed mt-3">
-                Ao abrir um documento, a <b className="text-pri-dark">leitura fica registada</b> — a prova de comunicação das normas exigida em sede disciplinar.
-            </div>
+            <Notice className="mt-3">
+                Ao abrir um documento, a <b>leitura fica registada</b> — a prova de comunicação das normas exigida em sede disciplinar.
+            </Notice>
 
             {/* Modal de leitura */}
             <Modal

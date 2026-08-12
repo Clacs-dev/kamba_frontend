@@ -6,6 +6,7 @@ import Cartao from "../components/Cartao";
 import FaixaKpis from "../components/FaixaKpis";
 import Modal from "../components/Modal";
 import FlowBar from "../components/FlowBar";
+import Notice from "../components/ui/Notice";
 
 const FASES = ["Instauração", "Nota de Culpa", "Defesa", "Decisão", "Conhecimento", "Arquivado"];
 const FASE_INDICE: Record<string, number> = {
@@ -172,9 +173,9 @@ function AcoesProcesso({ processo, eInstrutor, euId, aoAgir }: {
             {/* Fase 2 -> arguido toma conhecimento e defende-se */}
             {processo.phase === "nota_culpa" && eArguido && (
                 <div>
-                    <div className="text-[12.3px] text-pri-dark bg-pri-bg border-l-[3px] border-pri rounded-r-lg px-3.5 py-2.5 mb-2">
+                    <Notice className="mb-2">
                         Foi-lhe notificada uma nota de culpa. Tome conhecimento e apresente a sua defesa.
-                    </div>
+                    </Notice>
                     <button onClick={() => acao("acknowledge-charge")}
                         className="bg-pri text-white rounded-lg px-4 py-2 text-[12.3px] font-semibold hover:bg-pri-dark transition-colors mb-2">
                         Tomar conhecimento
@@ -227,9 +228,7 @@ function AcoesProcesso({ processo, eInstrutor, euId, aoAgir }: {
             )}
 
             {processo.phase === "arquivado" && (
-                <div className="text-[12.3px] text-ok bg-ok-bg border-l-[3px] border-ok rounded-r-lg px-3.5 py-2.5">
-                    Processo concluído e arquivado.
-                </div>
+                <Notice variante="soft">Processo concluído e arquivado.</Notice>
             )}
         </div>
     );

@@ -1,6 +1,8 @@
 import { useState } from "react";
 import api from "../../lib/api";
 import Cartao from "../Cartao";
+import { Chip, ChipGroup } from "../ui/Chip";
+import ScoreBox from "../ui/ScoreBox";
 
 // As cinco competências e três valores, com os nomes que o backend espera.
 const COMPETENCIAS = [
@@ -110,21 +112,17 @@ export default function FormularioAvaliacao({ evaluationId, modo, aoSubmeter }: 
                     {COMPETENCIAS.map((c) => (
                         <div key={c.chave} className="py-2 border-b border-line2 last:border-0">
                             <div className="text-[13.3px] text-strong mb-2">{c.label}</div>
-                            <div className="flex gap-1.5 flex-wrap">
+                            <ChipGroup>
                                 {ESCALA.map((s) => (
-                                    <button
+                                    <Chip
                                         key={s.v}
+                                        label={s.v}
+                                        sublabel={s.l}
+                                        selecionado={comps[c.chave] === s.v}
                                         onClick={() => setComps({ ...comps, [c.chave]: s.v })}
-                                        className={`flex-1 min-w-[70px] px-2 py-2.5 border rounded-lg text-center transition-colors ${comps[c.chave] === s.v
-                                                ? "border-pri bg-pri-bg"
-                                                : "border-line bg-paper hover:border-pri-soft"
-                                            }`}
-                                    >
-                                        <div className={`font-serif text-[15px] ${comps[c.chave] === s.v ? "text-pri-dark" : "text-dim"}`}>{s.v}</div>
-                                        <div className={`text-[9.8px] ${comps[c.chave] === s.v ? "text-pri-dark" : "text-dim"}`}>{s.l}</div>
-                                    </button>
+                                    />
                                 ))}
-                            </div>
+                            </ChipGroup>
                         </div>
                     ))}
                 </Cartao>
@@ -137,22 +135,20 @@ export default function FormularioAvaliacao({ evaluationId, modo, aoSubmeter }: 
                     {VALORES.map((v) => (
                         <div key={v.chave} className="py-2 border-b border-line2 last:border-0">
                             <div className="text-[13.3px] text-strong mb-2">{v.label}</div>
-                            <div className="flex gap-1.5">
-                                <button
+                            <ChipGroup>
+                                <Chip
+                                    largo
+                                    label="Sim"
+                                    selecionado={vals[v.chave] === true}
                                     onClick={() => setVals({ ...vals, [v.chave]: true })}
-                                    className={`flex-1 px-2 py-2.5 border rounded-lg text-center transition-colors ${vals[v.chave] === true ? "border-pri bg-pri-bg text-pri-dark" : "border-line bg-paper text-dim hover:border-pri-soft"
-                                        }`}
-                                >
-                                    <b>Sim</b>
-                                </button>
-                                <button
+                                />
+                                <Chip
+                                    largo
+                                    label="Não"
+                                    selecionado={vals[v.chave] === false}
                                     onClick={() => setVals({ ...vals, [v.chave]: false })}
-                                    className={`flex-1 px-2 py-2.5 border rounded-lg text-center transition-colors ${vals[v.chave] === false ? "border-pri bg-pri-bg text-pri-dark" : "border-line bg-paper text-dim hover:border-pri-soft"
-                                        }`}
-                                >
-                                    <b>Não</b>
-                                </button>
-                            </div>
+                                />
+                            </ChipGroup>
                         </div>
                     ))}
                     {erro && <p className="text-bad text-sm mt-3">{erro}</p>}
@@ -169,9 +165,7 @@ export default function FormularioAvaliacao({ evaluationId, modo, aoSubmeter }: 
             </div>
 
             {/* Caixa de pontuação em direto */}
-            <div className="sticky top-16 bg-pri-bg border border-pri-soft rounded-xl p-3.5">
-                <div className="text-[10px] uppercase tracking-widest text-dim">Pontuação em direto</div>
-                <div className="font-serif text-3xl font-semibold text-pri-dark">{notaFinal ?? "—"}</div>
+            <ScoreBox label="Pontuação em direto" valor={notaFinal ?? "—"}>
                 <table className="w-full mt-2 text-[12px]">
                     <tbody>
                         <tr><td className="text-dim py-0.5">Objetivos</td><td className="text-right">{objScore != null ? objScore.toFixed(1) : "—"}</td></tr>
@@ -179,7 +173,7 @@ export default function FormularioAvaliacao({ evaluationId, modo, aoSubmeter }: 
                         <tr><td className="text-dim py-0.5">Valores</td><td className="text-right">{valScore != null ? valScore.toFixed(1) : "—"}</td></tr>
                     </tbody>
                 </table>
-            </div>
+            </ScoreBox>
         </div>
     );
 }

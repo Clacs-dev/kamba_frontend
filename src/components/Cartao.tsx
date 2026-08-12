@@ -10,7 +10,7 @@ export default function Cartao({ children, className = "", onClick }: CartaoProp
     return (
         <div
             onClick={onClick}
-            className={`bg-paper border border-line rounded-xl p-4 shadow-sm ${onClick ? "cursor-pointer hover:border-pri hover:shadow-md transition-all" : ""
+            className={`bg-paper border border-line rounded-xl p-[15px] shadow-[0_1px_4px_rgba(34,50,58,0.04)] ${onClick ? "cursor-pointer hover:border-pri hover:shadow-[0_3px_10px_rgba(67,128,140,0.13)] hover:-translate-y-px transition-all" : ""
                 } ${className}`}
         >
             {children}

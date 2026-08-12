@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import api from "../../lib/api";
 import Cartao from "../Cartao";
+import Notice from "../ui/Notice";
+import SignatureBox from "../ui/SignatureBox";
+import Botao from "../ui/Botao";
 
 interface ItemAcolhimento {
     id: number;
@@ -57,9 +60,7 @@ export default function AcolhimentoTab() {
 
     return (
         <div className="space-y-4">
-            {msg && (
-                <div className="border-l-[3px] border-ok bg-ok-bg rounded-r-lg px-3.5 py-2.5 text-[12.3px]">{msg}</div>
-            )}
+            {msg && <Notice variante="soft">{msg}</Notice>}
 
             {/* Checklist */}
             <Cartao>
@@ -99,7 +100,7 @@ export default function AcolhimentoTab() {
                     {ASSINATURAS.map((a) => {
                         const assinada = jaAssinou(a.tipo);
                         return (
-                            <div key={a.tipo} className="flex items-start gap-3 px-3 py-3 border border-line rounded-lg">
+                            <SignatureBox key={a.tipo} className="flex items-start gap-3 !py-3">
                                 <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] flex-shrink-0 mt-0.5 ${assinada ? "bg-ok text-white" : "bg-line2 text-dim"
                                     }`}>
                                     {assinada ? "✓" : ""}
@@ -111,14 +112,11 @@ export default function AcolhimentoTab() {
                                 {assinada ? (
                                     <span className="text-[11px] text-ok font-semibold whitespace-nowrap mt-0.5">Assinado</span>
                                 ) : (
-                                    <button
-                                        onClick={() => assinar(a.tipo)}
-                                        className="bg-pri text-white rounded-lg px-3 py-1.5 text-[11.5px] font-semibold hover:bg-pri-dark transition-colors whitespace-nowrap"
-                                    >
+                                    <Botao onClick={() => assinar(a.tipo)} className="!px-3 !py-1.5 !text-[11.5px] whitespace-nowrap">
                                         Assinar
-                                    </button>
+                                    </Botao>
                                 )}
-                            </div>
+                            </SignatureBox>
                         );
                     })}
                 </div>

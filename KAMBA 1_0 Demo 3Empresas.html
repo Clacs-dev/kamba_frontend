@@ -1,0 +1,1264 @@
+<!DOCTYPE html>
+<html lang="pt-AO">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KAMBA — Capital Humano · Desempenho · Cultura</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lora:wght@500;600&family=Sora:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F6F8F7; --paper:#FFFFFF; --panel:#FBFCFB; --line:#E3E9E6; --line2:#EEF2F0;
+  --ink:#33434B; --strong:#22323A; --dim:#7C8B92;
+  --pri:#43808C; --pri-dark:#356A75; --pri-bg:#EAF2F3; --pri-soft:#B9D4D9;
+  --ok:#57A183; --ok-bg:#EAF5F0; --warn:#C99A46; --warn-bg:#F9F2E3;
+  --bad:#C57070; --bad-bg:#F9ECEC; --info:#6D8FBF; --info-bg:#EDF2F9; --gold:#B99A4A;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--ink);font-size:14px}
+h1,h2,h3,h4{font-family:'Lora',serif;font-weight:600;color:var(--strong)}
+.topbar{display:flex;align-items:center;gap:14px;padding:10px 20px;background:var(--paper);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:60;box-shadow:0 1px 5px rgba(34,50,58,.05)}
+.logo{display:flex;align-items:baseline;gap:9px}
+.logo .mark{font-family:'Lora',serif;font-weight:600;font-size:21px;color:var(--pri);letter-spacing:.04em}
+.logo .sub{font-size:9.5px;text-transform:uppercase;letter-spacing:.2em;color:var(--dim)}
+.spacer{flex:1}
+.bell{position:relative;cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:7px 12px;background:var(--panel);font-size:13px;color:var(--ink)}
+.bell .bcount{position:absolute;top:-7px;right:-7px;background:var(--bad);color:#fff;border-radius:99px;font-size:10px;font-weight:600;padding:1px 6px}
+.userpill{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--dim)}
+.avatar{width:30px;height:30px;border-radius:50%;background:var(--pri-bg);color:var(--pri-dark);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:12px}
+.wrap{display:flex;min-height:calc(100vh - 53px)}
+nav.side{width:238px;background:var(--paper);border-right:1px solid var(--line);padding:12px 0;flex-shrink:0}
+.side-block{padding:6px 14px 10px}
+.side-lab{font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);margin:8px 4px 6px}
+.co-select{width:100%;font-size:12px}
+.role-v{display:flex;flex-direction:column;gap:5px}
+.role-chip{display:flex;align-items:center;gap:8px;padding:8px 11px;border:1px solid var(--line);border-radius:9px;background:var(--paper);color:var(--dim);font-family:'Sora';font-size:12px;cursor:pointer;transition:.15s;text-align:left;position:relative}
+.role-chip:hover{border-color:var(--pri);color:var(--pri)}
+.role-chip.active{background:var(--pri);border-color:var(--pri);color:#fff;font-weight:600}
+.role-chip .rb{position:absolute;right:8px;background:var(--bad);color:#fff;border-radius:99px;font-size:9.5px;font-weight:600;padding:1px 6px}
+.role-chip.active .rb{background:#fff;color:var(--pri-dark)}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 18px;cursor:pointer;color:var(--dim);font-size:13px;border-left:3px solid transparent;transition:.15s}
+.nav-item:hover{color:var(--strong);background:var(--panel)}
+.nav-item.active{color:var(--pri-dark);border-left-color:var(--pri);background:var(--pri-bg)}
+.nav-item .ic{width:18px;text-align:center;font-size:13px}
+.nav-item .nb{margin-left:auto;background:var(--warn-bg);color:var(--warn);border-radius:99px;font-size:10px;font-weight:600;padding:1px 7px}
+main{flex:1;padding:22px 28px;max-width:1230px}
+.mod{animation:fade .25s}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.mhead{margin-bottom:16px}
+.mhead .eyebrow{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--pri)}
+.mhead h2{font-size:23px;margin-top:3px}
+.mhead p{color:var(--dim);margin-top:5px;max-width:780px;line-height:1.55}
+.grid{display:grid;gap:13px}
+.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:repeat(3,1fr)}.g4{grid-template-columns:repeat(4,1fr)}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:15px;box-shadow:0 1px 4px rgba(34,50,58,.04)}
+.card h3{font-size:14.5px;margin-bottom:9px}
+.card.click{cursor:pointer;transition:.15s}
+.card.click:hover{border-color:var(--pri);box-shadow:0 3px 10px rgba(67,128,140,.13);transform:translateY(-1px)}
+.kpi .v{font-family:'Lora';font-weight:600;font-size:26px;color:var(--pri-dark)}
+.kpi .l{font-size:10.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.09em;margin-top:2px}
+.kpi .go{font-size:10.5px;color:var(--pri);margin-top:5px}
+.tag{display:inline-block;padding:3px 9px;border-radius:999px;font-size:10.5px;font-weight:600}
+.tag.ok{background:var(--ok-bg);color:var(--ok)} .tag.warn{background:var(--warn-bg);color:var(--warn)}
+.tag.bad{background:var(--bad-bg);color:var(--bad)} .tag.info{background:var(--info-bg);color:var(--info)}
+.tag.pri{background:var(--pri-bg);color:var(--pri-dark)} .tag.gold{background:#F6F0DF;color:var(--gold)}
+table{width:100%;border-collapse:collapse;font-size:12.8px}
+th{font-size:10.3px;text-transform:uppercase;letter-spacing:.09em;color:var(--dim);text-align:left;padding:7px 9px;border-bottom:1px solid var(--line)}
+td{padding:7.5px 9px;border-bottom:1px solid var(--line2)}
+tr:hover td{background:var(--panel)}
+tr.click{cursor:pointer}
+button.btn{background:var(--pri);color:#fff;border:none;border-radius:8px;padding:9px 15px;font-family:'Sora';font-weight:600;font-size:12.3px;cursor:pointer;transition:.15s}
+button.btn:hover{background:var(--pri-dark)}
+button.btn.ghost{background:var(--paper);border:1px solid var(--line);color:var(--ink)}
+button.btn.ghost:hover{border-color:var(--pri);color:var(--pri)}
+button.btn.danger{background:var(--bad)}
+button.btn:disabled{opacity:.4;cursor:not-allowed}
+input,select,textarea{background:var(--panel);border:1px solid var(--line);border-radius:8px;color:var(--strong);padding:8px 10px;font-family:'Sora';font-size:13px;width:100%}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--pri)}
+input.num{width:90px;text-align:center;font-weight:600}
+label.f{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);margin:9px 0 4px}
+.bar{height:7px;background:var(--line2);border-radius:99px;overflow:hidden;margin-top:5px}
+.bar i{display:block;height:100%;border-radius:99px;background:var(--pri-soft);transition:width .4s}
+.bar i.ok{background:var(--ok)}.bar i.warn{background:var(--warn)}.bar i.bad{background:var(--bad)}.bar i.pri{background:var(--pri)}
+.notice{border-left:3px solid var(--pri-soft);background:var(--pri-bg);padding:10px 13px;border-radius:0 8px 8px 0;font-size:12.3px;line-height:1.55;margin:11px 0}
+.notice b{color:var(--pri-dark)}
+.notice.soft{border-color:var(--ok);background:var(--ok-bg)}
+.notice.alert{border-color:var(--bad);background:var(--bad-bg)}
+.q{padding:12px 0;border-bottom:1px solid var(--line2)}
+.q .qt{font-size:13.3px;margin-bottom:8px;color:var(--strong)}
+.chips{display:flex;gap:7px;flex-wrap:wrap}
+.chip{flex:1;min-width:82px;padding:10px 7px;border:1.5px solid var(--line);background:var(--paper);border-radius:10px;cursor:pointer;text-align:center;transition:.15s}
+.chip small{display:block;font-size:9.8px;color:var(--dim);margin-top:2px}
+.chip b{font-family:'Lora';font-size:15px;color:var(--dim)}
+.chip:hover{border-color:var(--pri-soft)}
+.chip.sel{border-color:var(--pri);background:var(--pri-bg)}
+.chip.sel b,.chip.sel small{color:var(--pri-dark)}
+.chip.sn{min-width:110px}
+.tabs{display:flex;gap:3px;flex-wrap:wrap;border-bottom:1px solid var(--line);margin-bottom:14px}
+.tab{padding:8px 13px;font-size:12.3px;color:var(--dim);cursor:pointer;border-bottom:2px solid transparent;transition:.15s}
+.tab:hover{color:var(--strong)}
+.tab.on{color:var(--pri-dark);border-bottom-color:var(--pri);font-weight:600}
+.tl{position:relative;padding-left:26px}
+.tl::before{content:"";position:absolute;left:8px;top:4px;bottom:4px;width:2px;background:var(--line)}
+.tl-item{position:relative;padding:0 0 14px}
+.tl-item::before{content:"";position:absolute;left:-24px;top:4px;width:12px;height:12px;border-radius:50%;background:var(--paper);border:3px solid var(--pri-soft)}
+.tl-item.hi::before{border-color:var(--pri)} .tl-item.neg::before{border-color:var(--bad)}
+.tl-item .d{font-size:10.3px;color:var(--dim);letter-spacing:.06em;text-transform:uppercase}
+.tl-item .t{font-size:13.3px;color:var(--strong);font-weight:600;margin:2px 0}
+.tl-item .x{font-size:12.3px;line-height:1.5}
+.doc{display:flex;align-items:center;gap:12px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;margin-bottom:7px;background:var(--paper)}
+.doc .dic{width:32px;height:32px;border-radius:8px;background:var(--pri-bg);color:var(--pri-dark);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0}
+.doc .dn{flex:1}.doc .dn b{display:block;font-size:12.8px;color:var(--strong);font-weight:600}
+.doc .dn span{font-size:10.8px;color:var(--dim)}
+.doc a{font-size:11.5px;color:var(--pri);cursor:pointer;font-weight:600}
+svg.spark{width:100%;height:56px}
+.ninebox{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.nb{border:1px solid var(--line);border-radius:10px;padding:8px;font-size:10.8px;background:var(--panel);min-height:72px}
+.nb .t{font-size:9.3px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);display:block;margin-bottom:4px}
+.nb.hot{background:var(--pri-bg);border-color:var(--pri-soft)}
+.nb-p{display:inline-block;background:var(--paper);border:1px solid var(--line);border-radius:5px;padding:2px 6px;font-size:10.3px;color:var(--strong);margin:2px 2px 0 0}
+.mini{font-size:10.8px;color:var(--dim)}
+.pill-score{font-family:'Lora';font-weight:600;font-size:15px;color:var(--pri-dark)}
+.hcard{display:flex;gap:15px;align-items:center}
+.hcard .bigav{width:58px;height:58px;border-radius:50%;background:var(--pri-bg);color:var(--pri-dark);display:flex;align-items:center;justify-content:center;font-family:'Lora';font-size:20px;font-weight:600;flex-shrink:0}
+/* fluxo */
+.flow{display:flex;gap:0;overflow-x:auto;margin:8px 0 4px}
+.fstep{flex:1;min-width:105px;text-align:center;position:relative;padding:0 4px}
+.fstep .fdot{width:26px;height:26px;border-radius:50%;background:var(--paper);border:2px solid var(--line);color:var(--dim);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;margin:0 auto 5px;position:relative;z-index:2}
+.fstep::before{content:"";position:absolute;top:13px;left:-50%;width:100%;height:2px;background:var(--line);z-index:1}
+.fstep:first-child::before{display:none}
+.fstep .fl{font-size:10.3px;color:var(--dim);line-height:1.3}
+.fstep.done .fdot{background:var(--ok);border-color:var(--ok);color:#fff}
+.fstep.done .fl{color:var(--ok)}
+.fstep.now .fdot{background:var(--pri);border-color:var(--pri);color:#fff;box-shadow:0 0 0 4px var(--pri-bg)}
+.fstep.now .fl{color:var(--pri-dark);font-weight:600}
+/* modal */
+.modal-bg{position:fixed;inset:0;background:rgba(34,50,58,.45);display:none;align-items:flex-start;justify-content:center;z-index:100;padding:30px 16px;overflow-y:auto}
+.modal-bg.on{display:flex}
+.modal{background:var(--paper);border-radius:14px;max-width:760px;width:100%;padding:26px 30px;box-shadow:0 12px 40px rgba(34,50,58,.25)}
+.modal h3{font-size:17px;margin-bottom:4px}
+.modal .msub{font-size:11px;color:var(--dim);margin-bottom:14px}
+.doctext{white-space:pre-wrap;font-size:12.6px;line-height:1.7;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px 20px;max-height:56vh;overflow-y:auto}
+.notifrow{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--line2);font-size:12.6px;align-items:flex-start}
+.notifrow .nd{width:96px;flex-shrink:0;font-size:10.5px;color:var(--dim)}
+.scorebox{position:sticky;top:64px;background:var(--pri-bg);border:1px solid var(--pri-soft);border-radius:12px;padding:14px}
+.scorebox .sv{font-family:'Lora';font-size:30px;font-weight:600;color:var(--pri-dark)}
+.sig{border:1.5px dashed var(--pri-soft);border-radius:10px;padding:14px;background:var(--panel)}
+@media(max-width:960px){.g2,.g3,.g4{grid-template-columns:1fr}nav.side{width:70px}.side-block{display:none}.nav-item span.t{display:none}main{padding:14px}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo"><span class="mark">KAMBA</span><span class="sub">Capital Humano · Desempenho · Cultura</span></div>
+  <div class="spacer"></div>
+  <div class="bell" onclick="go('notifs')">🔔 Notificações <span class="bcount" id="bellCount">0</span></div>
+  <div class="userpill" id="userPill"></div>
+</div>
+
+<div class="wrap">
+  <nav class="side" id="sideNav"></nav>
+  <main id="main"></main>
+</div>
+
+<div class="modal-bg" id="modalBg" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modalBox"></div>
+</div>
+
+<script>
+/* =====================================================================
+   KAMBA 1.0 — Plataforma SaaS multi-empresa
+   3 empresas simuladas · fluxo de avaliação funcional entre perfis ·
+   processo disciplinar instruído pelo portal (Lei n.º 12/23) ·
+   onboarding com assinatura digital · protecção de dados (Lei n.º 22/11)
+===================================================================== */
+
+/* ---------- utilitário de criação de colaborador ---------- */
+function mk(id,nome,cargo,dept,cat,adm,s1,s2,s3,pot,flag){
+ return {id,nome,cargo,dept,cat,adm,s:[s1,s2,s3],pot,flag:flag||null};
+}
+
+/* ---------- EMPRESAS ---------- */
+const CO={
+nz:{
+ nome:'NZILA Comércio & Serviços, S.A.', curto:'NZILA', sector:'Comércio e distribuição', fund:2015, sede:'Talatona, Luanda',
+ dirs:{DAF:'Adm. e Financeira',DCM:'Comercial',DOP:'Operações',DTI:'Tecnologias de Informação',DCH:'Capital Humano',DJC:'Jurídica e Conformidade'},
+ persona:{COL:1, DIR:3, CH:'Esperança Mavinga', CE:'Adm. Paulo Vemba', COM:'T. Cahilo · J. Ndala · M. Catumbela'},
+ emps:[
+  mk(1,'Domingos Cazembe','Chefe de Vendas','DCM','Chefia','2019',3.6,4.3,4.5,3,'promovido 2025'),
+  mk(2,'Marta Kiala','Directora Adm. e Financeira','DAF','Director','2016',4.0,4.1,4.2,3),
+  mk(3,'João Sassa','Director Comercial','DCM','Director','2017',3.9,3.7,3.8,2),
+  mk(4,'Lúcia Bengui','Directora de TI','DTI','Director','2018',4.4,4.5,4.6,3),
+  mk(5,'Ana Domingos','Técnica Sénior de CH','DCH','Técnico','2018',3.8,4.0,4.1,3),
+  mk(6,'Pedro Tchissola','Analista Financeiro','DAF','Técnico','2020',3.1,3.4,3.6,2),
+  mk(7,'Carlos Nzagi','Técnico de Operações','DOP','Técnico','2019',3.0,2.8,2.6,1,'recurso 2025 — decidido: nota mantida'),
+  mk(8,'Esperança Mavinga','Directora de Capital Humano','DCH','Director','2015',4.2,4.3,4.3,2),
+  mk(9,'Rui Quintas','Director de Operações','DOP','Director','2016',3.7,3.9,4.0,2),
+  mk(10,'Teresa Cahilo','Jurista','DJC','Técnico','2019',4.1,4.2,4.4,3),
+  mk(11,'Miguel Wende','Técnico de Suporte TI','DTI','Técnico','2021',3.3,3.6,3.9,2),
+  mk(12,'Josefa Ndala','Contabilista','DAF','Técnico','2017',3.9,3.9,4.0,2),
+  mk(13,'Abel Kussumua','Motorista de Logística','DOP','Apoio','2016',3.5,3.6,3.5,1),
+  mk(14,'Domingas Sachipengo','Assistente Comercial','DCM','Apoio','2020',3.4,3.7,3.9,2),
+  mk(15,'Filipe Muteka','Técnico Comercial','DCM','Técnico','2021',3.2,3.5,3.8,2),
+  mk(16,'Helena Chindumbo','Secretária de Direcção','DAF','Apoio','2015',4.0,4.0,4.1,1),
+  mk(17,'Isaac Bunga','Técnico de Armazém','DOP','Apoio','2018',3.3,3.2,3.4,1),
+  mk(18,'Joana Camati','Técnica de Marketing','DCM','Técnico','2020',3.7,4.0,4.2,3),
+  mk(19,'Kiluange Paim','Analista de Sistemas','DTI','Técnico','2019',3.8,4.1,4.3,3),
+  mk(20,'Luísa Nzola','Técnica de Tesouraria','DAF','Técnico','2018',3.6,3.7,3.7,2),
+  mk(21,'Manuel Catumbela','Supervisor de Operações','DOP','Chefia','2017',3.8,3.9,4.1,2),
+  mk(22,'Nádia Ekuikui','Técnica Jurídica','DJC','Técnico','2021',3.4,3.6,3.8,2),
+  mk(23,'Octávio Chissende','Técnico de Compras','DOP','Técnico','2019',3.5,3.4,3.6,1),
+  mk(24,'Paula Mbala','Técnica de Capital Humano','DCH','Técnico','2020',3.6,3.8,3.9,2),
+  mk(25,'Quim Zau','Electricista de Manutenção','DOP','Apoio','2015',3.7,3.6,3.6,1,'pré-reforma 2027'),
+  mk(26,'Rosa Tchingandu','Técnica de Qualidade','DOP','Técnico','2020',3.9,4.1,4.2,3),
+  mk(27,'Sérgio Luvualu','Vendedor','DCM','Apoio','2019',3.4,3.1,2.9,1,'processo disciplinar em curso'),
+  mk(28,'Tomásia Gourgel','Assistente Administrativa','DAF','Apoio','2018',3.5,3.6,3.7,1),
+  mk(29,'Ulisses Ngola','Estafeta','DOP','Apoio','2025',null,null,3.3,2,'1.ª avaliação em 2025'),
+  mk(30,'Vitória Kandingi','Técnica de Atendimento','DCM','Apoio','2019',3.7,3.8,null,2,'licença de maternidade — ciclo 2025 ajustado')
+ ],
+ objs:[['Atingir 100% da meta anual de vendas da equipa',40],['Reduzir o prazo médio de recebimento da carteira para 60 dias',30],['Garantir a adopção do CRM por 90% da equipa comercial',30]],
+ disc:{arg:27, ref:'PD n.º 02/NZILA/2026', factos:'Registo de 3 reclamações de clientes por conduta inadequada (Abr–Mai 2026) e desvio das rotas de venda definidas, com quebra de 18% na carteira atribuída.', stage:2, susp:false,
+   hist:'Antecedentes: advertência escrita em 2024 (incumprimento de rotas). Notas: 3.4 → 3.1 → 2.9.'},
+ cult:{enps:[18,27,34], resp:[61,72,79], univ:30,
+  dims:[['Confiança na liderança',58,66,71],['Clareza estratégica',52,60,64],['Reconhecimento',44,49,52],['Colaboração entre áreas',50,55,58],['Alinhamento com valores',70,74,77]],
+  rec:['Rever a política de prémios e reconhecimento não financeiro (dimensão mais frágil: 52%).','Reforçar a comunicação trimestral da estratégia às equipas de terreno.','Manter o programa de check-ins — correlaciona com a subida do eNPS.']},
+ recDes:['Formar as chefias intermédias em feedback contínuo (desvios auto/hetero acima de 1 nível em 3 casos).','Rever a carteira de objectivos da DOP — médias sistematicamente abaixo das restantes direcções.','Activar plano de sucessão da Direcção Comercial (D. Cazembe identificado).']
+},
+kl:{
+ nome:'KILAMBA Construções e Obras Públicas, LDA', curto:'KILAMBA', sector:'Construção civil e obras públicas', fund:2012, sede:'Viana, Luanda',
+ dirs:{DAF:'Adm. e Financeira',DPR:'Produção / Obras',DEQ:'Equipamentos',DSH:'Segurança, Higiene e Saúde',DCH:'Capital Humano'},
+ persona:{COL:11, DIR:4, CH:'Inês Chiteculo', CE:'Adm. Rosa Kilombo', COM:'T. Menga · G. Samakuva · S. Wilo'},
+ emps:[
+  mk(1,'Adão Mbumba','Encarregado Geral de Obra','DPR','Chefia','2014',3.8,4.0,4.2,2),
+  mk(2,'Bartolomeu Ngonga','Servente','DPR','Apoio','2019',3.2,3.0,2.7,1,'suspensão preventiva — proc. disciplinar'),
+  mk(3,'Cristina Havemba','Directora Financeira','DAF','Director','2013',4.1,4.2,4.2,2),
+  mk(4,'Daniel Tchipita','Director de Produção','DPR','Director','2012',3.9,4.0,4.1,3),
+  mk(5,'Eugénia Calei','Técnica de Segurança (HST)','DSH','Técnico','2018',4.0,4.2,4.4,3),
+  mk(6,'Faustino Muhongo','Operador de Grua','DEQ','Técnico','2016',3.6,3.7,3.7,1),
+  mk(7,'Gabriela Samakuva','Técnica de Orçamentação','DAF','Técnico','2019',3.7,3.9,4.0,2),
+  mk(8,'Horácio Bandua','Pedreiro de 1.ª','DPR','Apoio','2015',3.5,3.6,3.6,1),
+  mk(9,'Inês Chiteculo','Directora de Capital Humano','DCH','Director','2015',4.0,4.1,4.2,2),
+  mk(10,'Jacinto Ekumbi','Electricista de Obra','DPR','Técnico','2017',3.4,3.5,3.7,2),
+  mk(11,'Kudibanguela Nzinga','Topógrafo','DPR','Técnico','2018',3.8,3.9,4.1,3),
+  mk(12,'Laurinda Sapalo','Assistente Administrativa','DAF','Apoio','2016',3.6,3.7,3.7,1),
+  mk(13,'Moisés Catraio','Motorista de Pesados','DEQ','Apoio','2014',3.5,3.4,3.5,1),
+  mk(14,'Natércia Ulundo','Técnica de Aprovisionamento','DAF','Técnico','2020',3.5,3.7,3.8,2),
+  mk(15,'Osvaldo Kapinala','Carpinteiro de Cofragem','DPR','Apoio','2016',3.7,3.8,3.8,1),
+  mk(16,'Palmira Ndombasi','Enfermeira de Obra','DSH','Técnico','2019',3.9,4.0,4.1,2),
+  mk(17,'Quitéria Lumbo','Técnica de RH','DCH','Técnico','2021',3.4,3.6,3.8,2),
+  mk(18,'Raul Tchindele','Manobrador','DEQ','Apoio','2018',3.3,3.4,3.4,1),
+  mk(19,'Salomão Wilo','Fiscal de Obra','DPR','Técnico','2017',3.8,3.9,3.9,2),
+  mk(20,'Tchissola Menga','Jurista','DCH','Técnico','2020',4.0,4.1,4.3,3),
+  mk(21,'Urbano Kalufele','Mecânico de Equipamentos','DEQ','Técnico','2015',3.6,3.6,3.7,1),
+  mk(22,'Vasco Muachissengue','Servente','DPR','Apoio','2022',null,3.1,3.3,2),
+  mk(23,'Ximena Cambinda','Técnica de Qualidade','DPR','Técnico','2021',3.6,3.8,4.0,3),
+  mk(24,'Zeferino Handanga','Guarda de Obra','DSH','Apoio','2013',3.4,3.5,3.5,1)
+ ],
+ objs:[['Concluir os levantamentos topográficos das obras sem retrabalho (taxa > 95%)',40],['Zero não-conformidades de implantação nas obras atribuídas',30],['Formar 2 ajudantes na operação de estação total',30]],
+ disc:{arg:2, ref:'PD n.º 01/KILAMBA/2026', factos:'Abandono do posto de trabalho na obra do Lote 4 (Viana) durante betonagem crítica, em 22.06.2026, colocando em risco a segurança da operação, e ausência injustificada nos 2 dias seguintes.', stage:1, susp:true,
+   hist:'Antecedentes: admoestação verbal (2024, atrasos). Suspensão preventiva com remuneração desde 24.06.2026 (art.º aplicável da LGT).'},
+ cult:{enps:[9,15,22], resp:[54,63,70], univ:24,
+  dims:[['Confiança na liderança',55,60,66],['Segurança no trabalho',62,70,78],['Reconhecimento',40,45,49],['Condições de trabalho',48,54,60],['Alinhamento com valores',64,68,72]],
+  rec:['Reconhecimento nas frentes de obra: instituir o prémio mensal de equipa por marcos de segurança.','Melhorar refeitórios e transporte de pessoal nas obras fora de Luanda.','Manter o programa "Fala Segurança" — dimensão com maior subida (62→78).']},
+ recDes:['Reforçar formação de encarregados em avaliação de equipas de terreno.','Rever objectivos da DEQ — dependem de disponibilidade de peças, fora do controlo dos avaliados.','Plano de literacia digital para categorias de apoio (preenchimento assistido no portal).']
+},
+ml:{
+ nome:'MULEMBA Alimentos & Bebidas, S.A.', curto:'MULEMBA', sector:'Indústria alimentar', fund:2017, sede:'Bom Jesus, Icolo e Bengo',
+ dirs:{DAF:'Adm. e Financeira',DPR:'Produção',DQA:'Qualidade e Seg. Alimentar',DCM:'Comercial',DCH:'Capital Humano'},
+ persona:{COL:7, DIR:3, CH:'Hermenegilda Sacala', CE:'Adm. Célio Wanga', COM:'X. Lelo · M. Kifica · T. Kangovi'},
+ emps:[
+  mk(1,'Graça Ponde','Chefe de Linha de Produção','DPR','Chefia','2018',3.7,4.1,4.4,3,'promovida 2025'),
+  mk(2,'Américo Zumba','Operador de Máquinas','DPR','Apoio','2019',3.3,3.2,3.0,1,'repreensão registada (2025)'),
+  mk(3,'Benvinda Cassinda','Directora de Qualidade','DQA','Director','2017',4.2,4.3,4.4,3),
+  mk(4,'Cândido Muxima','Director de Produção','DPR','Director','2017',3.9,4.0,4.0,2),
+  mk(5,'Deolinda Kuvingua','Directora Financeira','DAF','Director','2018',4.0,4.0,4.1,2),
+  mk(6,'Ernesto Balombo','Técnico de Manutenção','DPR','Técnico','2019',3.5,3.7,3.8,2),
+  mk(7,'Felismina Ngueve','Analista de Laboratório','DQA','Técnico','2020',3.8,4.0,4.2,3),
+  mk(8,'Gaspar Mucanda','Fiel de Armazém','DPR','Apoio','2018',3.4,3.5,3.6,1),
+  mk(9,'Hermenegilda Sacala','Directora de CH','DCH','Director','2017',4.1,4.1,4.2,2),
+  mk(10,'Idalina Tchamba','Técnica Comercial','DCM','Técnico','2019',3.6,3.8,3.9,2),
+  mk(11,'Joaquim Livonge','Vendedor-Distribuidor','DCM','Apoio','2020',3.5,3.6,3.7,2),
+  mk(12,'Kelson Muteka','Técnico de TI','DAF','Técnico','2021',3.6,3.8,4.0,3),
+  mk(13,'Lurdes Capemba','Operadora de Embalagem','DPR','Apoio','2019',3.4,3.5,3.5,1),
+  mk(14,'Madalena Kifica','Contabilista','DAF','Técnico','2018',3.9,3.9,4.0,2),
+  mk(15,'Nelito Sawimbo','Técnico de HACCP','DQA','Técnico','2020',3.7,3.9,4.1,3),
+  mk(16,'Otília Mbinga','Assistente de CH','DCH','Apoio','2021',3.5,3.6,3.8,2),
+  mk(17,'Paulino Catole','Motorista de Distribuição','DCM','Apoio','2018',3.4,3.4,3.5,1),
+  mk(18,'Quirina Ndulo','Técnica de Tesouraria','DAF','Técnico','2019',3.7,3.7,3.8,2),
+  mk(19,'Romão Chitunda','Operador de Caldeiras','DPR','Técnico','2017',3.5,3.6,3.6,1),
+  mk(20,'Sandra Muhemba','Técnica de Marketing','DCM','Técnico','2021',3.7,3.9,4.1,3),
+  mk(21,'Timóteo Kangovi','Supervisor de Turno','DPR','Chefia','2018',3.8,3.9,4.0,2),
+  mk(22,'Ulika Sambongo','Recepcionista','DAF','Apoio','2020',3.6,3.7,3.7,1),
+  mk(23,'Verónica Tchindumbo','Técnica de Qualidade','DQA','Técnico','2022',null,3.5,3.8,3),
+  mk(24,'Wilson Puna','Ajudante de Produção','DPR','Apoio','2023',null,null,3.2,2,'1.ª avaliação em 2025'),
+  mk(25,'Xavier Lelo','Jurista','DCH','Técnico','2019',4.0,4.1,4.2,3),
+  mk(26,'Yolanda Micolo','Operadora de Linha','DPR','Apoio','2019',3.3,null,3.6,2,'licença de maternidade 2024 — ciclo ajustado')
+ ],
+ objs:[['Cumprir 100% do plano anual de análises laboratoriais',40],['Reduzir o tempo de libertação de lotes para 24 horas',30],['Zero desvios críticos na auditoria HACCP anual',30]],
+ disc:{arg:2, ref:'PD n.º 03/MULEMBA/2025', factos:'Incumprimento reiterado das regras de higiene e segurança alimentar na linha 2 (uso incompleto de EPI e falha no registo de lote), detectado em auditoria interna de Set 2025.', stage:5, susp:false,
+   hist:'Processo concluído em 28.10.2025. Decisão: repreensão registada. Defesa apresentada e ponderada; sem antecedentes anteriores.'},
+ cult:{enps:[14,20,29], resp:[58,67,74], univ:26,
+  dims:[['Confiança na liderança',56,62,68],['Segurança alimentar como valor',66,72,80],['Reconhecimento',43,47,51],['Colaboração entre turnos',49,54,59],['Alinhamento com valores',65,70,75]],
+  rec:['Programa de reconhecimento por turno (dimensão mais frágil: 51%).','Rotação planeada entre turnos para reduzir atritos de passagem.','Divulgar internamente os resultados das auditorias — a segurança alimentar é o orgulho da casa (80%).']},
+ recDes:['Formar supervisores de turno em condução de entrevistas de avaliação.','Ajustar objectivos da DPR ao calendário de paragens técnicas.','Criar trilha de progressão Operador → Supervisor com base nas notas de 3 ciclos.']
+}
+};
+
+/* ---------- FORMULÁRIO DE AVALIAÇÃO (etapas e indicadores) ---------- */
+const COMPS=['Orientação para resultados','Trabalho em equipa e colaboração','Ética e conformidade','Comunicação','Adaptabilidade e melhoria contínua'];
+const VALS=['Cumpri o Código de Ética e Conduta da empresa','Cumpri as normas de segurança e saúde no trabalho','Mantive assiduidade e pontualidade regulares'];
+const SCALE=[['1','Raramente'],['2','Às vezes'],['3','Com regularidade'],['4','Quase sempre'],['5','Sempre']];
+const PESOS={obj:50,comp:35,val:15};
+
+/* ---------- ESTADO GLOBAL (por empresa) ---------- */
+function freshW(){return{
+ flow:{stage:0, auto:null, dir:null, autoScore:null, dirScore:null, recursoTxt:null, recursoDate:null, comTxt:null, finalScore:null, aceite:null, validada:false},
+ notifs:{COL:[],DIR:[],CH:[],COM:[],CE:[]},
+ discStage:null, discAck:{}, onboard:{signed:null,checks:{}},
+ pulseDone:false, pulseAns:{}, trainingApproved:false, trainingExtra:[],
+ mapDone:false, absReq:[], absId:100,
+ repAnnex:[], repNoteSaved:null,
+ audit:[]
+}}
+const W={nz:freshW(), kl:freshW(), ml:freshW()};
+W.nz.discStage=CO.nz.disc.stage; W.kl.discStage=CO.kl.disc.stage; W.ml.discStage=CO.ml.disc.stage;
+
+/* ---------- SEED de ausências (mapa + pedidos + maternidade) por empresa ---------- */
+function seedAbs(cok){
+ const W_=W[cok], C=CO[cok];
+ // Mapa de férias aprovado no início do exercício para alguns colaboradores
+ W_.mapDone=true;
+ const dir=C.persona.DIR, col=C.persona.COL;
+ // Pedido de férias PENDENTE de aprovação do director (feito pelo colaborador-persona)
+ W_.absReq.push({id:++W_.absId, empId:col, tipo:'ferias', ini:'2026-08-18', fim:'2026-09-05', dias:14, motivo:'Gozo do período principal de férias de 2026.', estado:'pendente_dir', doc:null, ts:'12.07.2026 09:20', hist:['Pedido submetido pelo colaborador — aguarda autorização do director.']});
+ // Falta justificada ENTREGUE (com documento) — outro colaborador
+ const outro = C.emps.find(e=>e.id!==col && e.id!==dir && e.id!==(C.disc?C.disc.arg:-1));
+ if(outro) W_.absReq.push({id:++W_.absId, empId:outro.id, tipo:'falta', ini:'2026-06-24', fim:'2026-06-24', dias:1, motivo:'Falta por doença — consulta e repouso (atestado médico anexado).', estado:'justificada', doc:'Atestado médico — Clínica Sagrada Esperança (24.06.2026)', ts:'25.06.2026 08:05', hist:['Falta comunicada e justificada pelo colaborador com documento de saúde.','Validada automaticamente como falta justificada (art. 150.º LGT).']});
+ // Férias APROVADAS e já gozadas — histórico
+ W_.absReq.push({id:++W_.absId, empId:dir, tipo:'ferias', ini:'2026-04-07', fim:'2026-04-25', dias:15, motivo:'Férias de 2026 (1.ª parte).', estado:'aprovada', doc:null, ts:'10.01.2026 11:00', hist:['Pedido submetido.','Autorizado pela direcção.','Comunicado ao Capital Humano — averbado no mapa.']});
+}
+['nz','kl','ml'].forEach(seedAbs);
+// Licença de maternidade — Vitória Kandingi (NZILA, id 30)
+W.nz.absReq.push({id:++W.nz.absId, empId:30, tipo:'maternidade', ini:'2025-09-15', fim:'2025-12-14', dias:90, motivo:'Licença de maternidade — 3 meses (art. 253.º LGT). Início 4 semanas antes da data prevista do parto.', estado:'aprovada', doc:'Atestado médico + declaração de nascimento', ts:'20.08.2025 10:30', hist:['Comunicada pela trabalhadora com atestado médico.','Registada pelo Capital Humano — 90 dias, remunerada.','Ciclo de avaliação de 2025 ajustado proporcionalmente.']});
+
+const S={co:'nz', role:'COL', mod:'inicio', tab:'ficha', selEmp:null, form:{}, dform:{}, viewDoc:null};
+
+/* ---------- HELPERS ---------- */
+const $=id=>document.getElementById(id);
+const co=()=>CO[S.co];
+const w=()=>W[S.co];
+const emps=()=>co().emps;
+const persona=k=>co().persona[k];
+const colEmp=()=>emps().find(e=>e.id===persona('COL'));
+const dirEmp=()=>emps().find(e=>e.id===persona('DIR'));
+const ROLES=[
+ {k:'COL', l:'Colaborador', who:()=>colEmp().nome},
+ {k:'DIR', l:'Director', who:()=>dirEmp().nome},
+ {k:'CH', l:'Capital Humano', who:()=>persona('CH')},
+ {k:'COM', l:'Comissão de Avaliação', who:()=>persona('COM')},
+ {k:'CE', l:'Administração (CA/CE)', who:()=>persona('CE')}
+];
+const roleObj=()=>ROLES.find(r=>r.k===S.role);
+const nivel=n=>n>=4.5?'Excelente':n>=4?'Muito Bom':n>=3?'Bom':n>=2.5?'Suficiente':'Insuficiente';
+const nivTag=n=>n>=4?'ok':n>=3?'pri':n>=2.5?'warn':'bad';
+const today=()=>new Date().toLocaleDateString('pt-PT');
+const nowts=()=>{const d=new Date();return d.toLocaleDateString('pt-PT')+' '+d.toTimeString().slice(0,5)};
+function notify(role,txt){w().notifs[role].unshift({ts:nowts(),txt})}
+function audit(a){w().audit.unshift({ts:nowts(),u:roleObj().l,a,h:Math.random().toString(16).slice(2,8)})}
+function f26(e){ if(e.s[2]==null) return null; return Math.min(5,Math.round((e.s[2]+0.08)*10)/10); }
+function avgArr(a){const v=a.filter(x=>x!=null);return v.length?(v.reduce((x,y)=>x+y,0)/v.length):null}
+function spark(vals,wd=260,ht=52){
+ const v=vals.filter(x=>x!=null); if(v.length<2) return '<span class="mini">histórico insuficiente</span>';
+ const min=Math.min(...v)-.3,max=Math.max(...v)+.3;
+ const pts=vals.map((x,i)=>x==null?null:[(i/(vals.length-1))*(wd-16)+8,ht-8-((x-min)/(max-min))*(ht-16)]).filter(p=>p);
+ const path=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ');
+ return '<svg class="spark" viewBox="0 0 '+wd+' '+ht+'"><path d="'+path+'" fill="none" stroke="#43808C" stroke-width="2.5" stroke-linecap="round"/>'+pts.map(p=>'<circle cx="'+p[0]+'" cy="'+p[1]+'" r="3.2" fill="#fff" stroke="#43808C" stroke-width="2"/>').join('')+'</svg>';
+}
+
+/* ---------- CÁLCULO DA NOTA ---------- */
+function calcScore(f){
+ const objList=co().objs;
+ let objPct=0,objAns=0;
+ objList.forEach((o,i)=>{if(f['o'+i]!=null&&f['o'+i]!==''){objPct+=o[1]*Math.min(+f['o'+i],120)/100;objAns++}});
+ const objScore=objAns?Math.min(5,(objPct/100)*5):null;
+ const compVals=COMPS.map((_,i)=>f['c'+i]).filter(x=>x!=null);
+ const compScore=compVals.length?avgArr(compVals):null;
+ const valVals=VALS.map((_,i)=>f['v'+i]).filter(x=>x!=null).map(x=>x==='sim'?5:2.5);
+ const valScore=valVals.length?avgArr(valVals):null;
+ let final=null;
+ if(objScore!=null&&compScore!=null&&valScore!=null&&objAns===objList.length&&compVals.length===COMPS.length&&valVals.length===VALS.length){
+  final=Math.round((objScore*PESOS.obj/100+compScore*PESOS.comp/100+valScore*PESOS.val/100)*10)/10;
+ }
+ return {objScore,compScore,valScore,final,
+  done:objAns+compVals.length+valVals.length, total:objList.length+COMPS.length+VALS.length};
+}
+
+/* ---------- DOCUMENTOS COM TEXTO INTEGRAL ---------- */
+function DOCS(key){
+ const c=co(); const e=colEmp();
+ const T={
+ contrato:{t:'Contrato de Trabalho por Tempo Indeterminado', s:c.nome+' · assinado digitalmente', x:
+'CONTRATO DE TRABALHO POR TEMPO INDETERMINADO\n\nEntre: '+c.nome+', com sede em '+c.sede+', adiante designada EMPREGADOR, e '+e.nome+', adiante designado TRABALHADOR, é celebrado o presente contrato, nos termos da Lei Geral do Trabalho (Lei n.º 12/23, de 27 de Dezembro), que se rege pelas cláusulas seguintes:\n\nCláusula 1.ª (Objecto e categoria) — O Trabalhador é admitido para exercer as funções de '+e.cargo+', integrado na categoria profissional correspondente, comprometendo-se a executá-las com zelo, diligência e lealdade.\n\nCláusula 2.ª (Local de trabalho) — O Trabalhador prestará a sua actividade nas instalações do Empregador em '+c.sede+', podendo deslocar-se em serviço quando as funções o exijam.\n\nCláusula 3.ª (Período experimental) — O período experimental é o previsto na lei para a respectiva categoria, durante o qual qualquer das partes pode rescindir o contrato sem aviso prévio nem indemnização.\n\nCláusula 4.ª (Duração e horário de trabalho) — O período normal de trabalho é de 8 horas diárias e 44 semanais, de segunda a sexta-feira, das 08h00 às 16h30, com intervalo de 12h30 às 13h30.\n\nCláusula 5.ª (Remuneração) — O Empregador pagará ao Trabalhador a remuneração base mensal ilíquida correspondente ao seu enquadramento na tabela salarial em vigor, acrescida dos subsídios previstos na Política de Remuneração e Benefícios, sujeita aos descontos legais.\n\nCláusula 6.ª (Férias, feriados e faltas) — O Trabalhador tem direito a 22 dias úteis de férias remuneradas por ano, nos termos da lei e do mapa de férias aprovado.\n\nCláusula 7.ª (Avaliação de desempenho) — O Trabalhador será avaliado anualmente nos termos do Regulamento de Avaliação de Desempenho em vigor, cujos efeitos remuneratórios e de progressão constam da Política de Remuneração.\n\nCláusula 8.ª (Deveres de conduta) — O Trabalhador obriga-se a cumprir o Regulamento Interno, o Código de Ética e Conduta e as normas de segurança e saúde no trabalho, que declara conhecer através do portal do colaborador.\n\nCláusula 9.ª (Protecção de dados) — Os dados pessoais do Trabalhador são tratados nos termos da Lei n.º 22/11, de 17 de Junho (Protecção de Dados Pessoais), exclusivamente para fins de gestão da relação laboral, incluindo a avaliação de desempenho, conservando-se pelo período legalmente exigido.\n\nCláusula 10.ª (Cessação) — O contrato pode cessar nos termos previstos na Lei Geral do Trabalho.\n\nFeito em duplicado, em '+c.sede+'.\n\nO Empregador: ______________________\nO Trabalhador: '+e.nome+' (assinatura digital registada no portal)'},
+ reginterno:{t:'Regulamento Interno de Trabalho (excerto)', s:'Ver. 4 · aprovado pelo órgão de administração', x:
+'REGULAMENTO INTERNO DE TRABALHO — EXCERTO\n\nArtigo 1.º (Âmbito) — O presente regulamento aplica-se a todos os trabalhadores de '+c.nome+', independentemente da natureza do vínculo.\n\nArtigo 8.º (Horário de trabalho) — O horário geral é das 08h00 às 16h30, com tolerância de entrada de 15 minutos. Regimes especiais (turnos, obras, linhas de produção) constam de anexo próprio.\n\nArtigo 12.º (Deveres do trabalhador) — Constituem deveres, entre outros: comparecer com pontualidade e assiduidade; executar as funções com zelo; cumprir as ordens legítimas; guardar sigilo profissional; zelar pelos bens da empresa; cumprir as normas de segurança e saúde.\n\nArtigo 15.º (Poder disciplinar) — O poder disciplinar é exercido nos termos da Lei Geral do Trabalho. Nenhuma medida disciplinar é aplicada sem processo prévio em que seja garantida ao trabalhador a audiência e defesa.\n\nArtigo 16.º (Medidas disciplinares) — As medidas aplicáveis, segundo a gravidade: a) admoestação verbal; b) repreensão registada; c) suspensão do trabalho com perda de remuneração, nos limites legais; d) despedimento com justa causa. As medidas prescrevem e extinguem-se do cadastro nos termos da lei.\n\nArtigo 17.º (Processo disciplinar) — O processo inicia-se com a comunicação escrita dos factos imputados (nota de culpa/convocatória), notificada ao trabalhador através do portal do colaborador, com prazo para resposta escrita e indicação de meios de prova. Pode ser determinada suspensão preventiva, sem perda de remuneração, quando a presença do trabalhador se mostre inconveniente à averiguação. A decisão final, fundamentada, é notificada pelo mesmo canal.\n\nArtigo 23.º (Comunicação das normas) — As normas internas consideram-se comunicadas com o registo de leitura no portal do colaborador, valendo como prova do conhecimento.'},
+ assiduidade:{t:'Política de Assiduidade e Pontualidade', s:'Ver. 2', x:
+'POLÍTICA DE ASSIDUIDADE E PONTUALIDADE\n\n1. O registo de presenças é efectuado por meios electrónicos no início e termo da jornada.\n2. A tolerância de entrada é de 15 minutos; o uso reiterado (mais de 4 vezes/mês) é objecto de acompanhamento pela chefia.\n3. As faltas devem ser comunicadas até ao início do período de trabalho e justificadas por escrito no prazo de 5 dias úteis, com documento comprovativo quando aplicável.\n4. Consideram-se justificadas as faltas previstas na Lei Geral do Trabalho (doença, luto, casamento, obrigações legais, maternidade/paternidade, entre outras).\n5. As faltas injustificadas determinam perda de remuneração e relevam para efeitos disciplinares e de avaliação de desempenho.\n6. Os indicadores de assiduidade constam do portal de cada colaborador e integram o relatório anual do ciclo avaliativo.'},
+ etica:{t:'Código de Ética e Conduta (excerto)', s:'Ver. 3', x:
+'CÓDIGO DE ÉTICA E CONDUTA — EXCERTO\n\n1. Integridade — Actuamos com honestidade em todas as relações internas e externas. É proibida a solicitação ou aceitação de vantagens indevidas.\n2. Conflito de interesses — Todo o colaborador deve declarar situações susceptíveis de conflito entre o interesse pessoal e o da empresa.\n3. Respeito — Não é tolerado assédio, discriminação ou violência, sob qualquer forma.\n4. Recursos da empresa — Os bens, equipamentos e informação da empresa destinam-se exclusivamente à actividade profissional.\n5. Denúncias — Qualquer violação pode ser reportada, incluindo anonimamente, ao canal de ética; é proibida a retaliação contra denunciantes de boa-fé.\n6. Consequências — A violação deste Código constitui infracção disciplinar, apreciada nos termos do Regulamento Interno e da Lei Geral do Trabalho.'},
+ regaval:{t:'Regulamento de Avaliação de Desempenho', s:'Ciclo 2026 · aprovado pelo órgão de administração', x:
+'REGULAMENTO DE AVALIAÇÃO DE DESEMPENHO — CICLO 2026\n\nArtigo 1.º (Objecto) — Define o sistema de avaliação de desempenho, com fins de desenvolvimento, reconhecimento e gestão.\n\nArtigo 3.º (Escala) — A escala é de 1 a 5: Insuficiente (<2,5), Suficiente (2,5–2,9), Bom (3,0–3,9), Muito Bom (4,0–4,4), Excelente (≥4,5).\n\nArtigo 4.º (Componentes e ponderações) — A nota final resulta de: Objectivos (50%), Competências (35%) e Valores e Conduta (15%). Para dirigentes: 60/25/15.\n\nArtigo 5.º (Fluxo) — O ciclo compreende: contratualização de objectivos; acompanhamento com check-ins; autoavaliação; avaliação pela chefia; conferência e concordância do avaliado; recurso (quando haja discordância); validação pelo órgão de administração; relatório.\n\nArtigo 7.º (Concordância e recurso) — Notificado da avaliação da chefia, o trabalhador pode: a) aceitar, encerrando-se a avaliação; b) recorrer, por escrito e fundamentadamente, no prazo de 5 dias úteis, para a Comissão de Avaliação.\n\nArtigo 8.º (Comissão de Avaliação) — Composta por 3 membros sem relação hierárquica directa com o recorrente, decide no prazo de 8 dias úteis, podendo manter ou ajustar a nota, com fundamentação notificada ao trabalhador e à chefia.\n\nArtigo 9.º (Efeitos) — As notas validadas relevam para prémios, progressões, promoções e planos de desenvolvimento, nos termos da Política de Remuneração.\n\nArtigo 10.º (Garantias) — Todo o processo fica registado com carimbo temporal; o trabalhador tem acesso permanente ao seu processo pelo portal.'},
+ termos:{t:'Termos de Utilização do Portal e Consentimento de Dados', s:'Lei n.º 22/11, de 17 de Junho', x:
+'TERMOS DE UTILIZAÇÃO DO PORTAL DO COLABORADOR E TRATAMENTO DE DADOS PESSOAIS\n\n1. O portal do colaborador é o canal oficial de comunicação entre a empresa e o trabalhador para efeitos de gestão da relação laboral: documentos do vínculo, políticas internas, avaliação de desempenho, notificações — incluindo as de natureza disciplinar — e registos de saúde ocupacional (limitados à aptidão).\n\n2. Responsável pelo tratamento: '+c.nome+'. Subcontratante tecnológico: CLACS TECNOLOGIA (plataforma KAMBA), com dados alojados em território nacional.\n\n3. Finalidades: execução do contrato de trabalho, cumprimento de obrigações legais, gestão e avaliação de desempenho, formação, segurança e saúde no trabalho.\n\n4. Direitos do titular (Lei n.º 22/11): acesso, rectificação, actualização e, nos termos legais, oposição e eliminação. Pedidos através do Capital Humano.\n\n5. Conservação: pelo período do vínculo e prazos legais subsequentes.\n\n6. As notificações efectuadas pelo portal, com registo de recepção e leitura, valem como comunicação escrita ao trabalhador para todos os efeitos internos.\n\nAo assinar digitalmente, o trabalhador declara ter lido e compreendido estes termos, o Regulamento Interno, o Código de Ética e as políticas em vigor, e consente no tratamento dos seus dados para as finalidades indicadas.'},
+ remuneracao:{t:'Política de Remuneração e Benefícios (excerto)', s:'Ver. 3', x:
+'POLÍTICA DE REMUNERAÇÃO E BENEFÍCIOS — EXCERTO\n\n1. A remuneração compõe-se de: vencimento base (tabela salarial por grupo e escalão), subsídio de alimentação, subsídio de transporte e, quando aplicável, subsídios de função ou de turno.\n\n2. Prémio de desempenho — atribuído anualmente em função da nota validada do ciclo: Excelente: até 1,5 vencimentos; Muito Bom: até 1; Bom: até 0,5. Sem prémio abaixo de Bom.\n\n3. Progressão — a progressão de escalão pondera as notas dos últimos 2 ciclos; a promoção de categoria exige nota mínima de Muito Bom no último ciclo e parecer do comité de talento.\n\n4. Transparência — cada colaborador consulta no portal o seu enquadramento e a sua progressão salarial histórica.'},
+ notaculpa:{t:'Convocatória / Nota de Culpa — '+c.disc.ref, s:'Notificada pelo portal · registo de leitura', x:
+'PROCESSO DISCIPLINAR '+c.disc.ref+'\nNOTA DE CULPA E CONVOCATÓRIA\n\nAo trabalhador: '+emps().find(x=>x.id===c.disc.arg).nome+' ('+emps().find(x=>x.id===c.disc.arg).cargo+')\n\nNos termos da Lei Geral do Trabalho (Lei n.º 12/23) e do artigo 17.º do Regulamento Interno, comunica-se a instauração de processo disciplinar com base nos seguintes factos:\n\n'+c.disc.factos+'\n\n'+c.disc.hist+'\n\nOs factos descritos são susceptíveis de constituir infracção disciplinar aos deveres previstos no artigo 12.º do Regulamento Interno.\n\nFica V. Exa. notificado para, no prazo de 10 dias úteis, apresentar por escrito a sua defesa, requerer diligências e indicar testemunhas (máx. 3 por facto), podendo consultar o processo integral neste portal.\n\nA presente notificação considera-se efectuada com o registo de leitura no portal do colaborador.\n\nO Instrutor do Processo\n(Gabinete Jurídico / Capital Humano)'},
+ suspensao:{t:'Comunicação de Suspensão Preventiva — '+c.disc.ref, s:'Sem perda de remuneração', x:
+'PROCESSO DISCIPLINAR '+c.disc.ref+'\nCOMUNICAÇÃO DE SUSPENSÃO PREVENTIVA\n\nConsiderando a natureza dos factos em averiguação e a inconveniência da presença do trabalhador no local de trabalho durante a instrução, determina-se, nos termos da Lei Geral do Trabalho, a SUSPENSÃO PREVENTIVA do trabalhador '+emps().find(x=>x.id===c.disc.arg).nome+', SEM PERDA DE REMUNERAÇÃO, com efeitos imediatos e até à conclusão do processo.\n\nA suspensão preventiva não constitui sanção nem juízo antecipado sobre a responsabilidade do trabalhador.\n\nNotificada pelo portal do colaborador, com registo de leitura.'},
+ decisao:{t:'Decisão Final — '+c.disc.ref, s:'Fundamentada · notificada pelo portal', x:
+'PROCESSO DISCIPLINAR '+c.disc.ref+'\nDECISÃO FINAL\n\nInstruído o processo, apresentada e ponderada a defesa do trabalhador, ouvidas as testemunhas e analisada a prova documental, conclui-se pela prática de infracção disciplinar aos deveres de zelo e cumprimento das normas internas.\n\nPonderadas a gravidade dos factos, o grau de culpa, os antecedentes e as circunstâncias atenuantes apuradas, decide-se aplicar a medida disciplinar de:\n\n» '+(S.co==='ml'?'REPREENSÃO REGISTADA':'(a definir pelo instrutor no acto de decisão)')+'\n\nA medida é registada no cadastro disciplinar do trabalhador, extinguindo-se nos prazos legais mediante boa conduta.\n\nDesta decisão cabe reclamação e recurso nos termos gerais de direito.\n\nNotificada ao trabalhador pelo portal, com registo de leitura, e ao Capital Humano para execução.'}
+ };
+ return T[key];
+}
+function openDoc(key){S.viewDoc=key;const d=DOCS(key);
+ $('modalBox').innerHTML='<h3>'+d.t+'</h3><div class="msub">'+co().nome+' · '+d.s+' · hash de integridade #'+Math.random().toString(16).slice(2,8)+'</div><div class="doctext">'+d.x+'</div><div style="display:flex;gap:10px;margin-top:14px"><button class="btn ghost" onclick="closeModal()">Fechar</button><button class="btn" onclick="audit(\'Leitura registada: '+d.t.replace(/'/g,'')+'\');closeModal();render()">Registar leitura</button></div>';
+ $('modalBg').classList.add('on');
+}
+function closeModal(){$('modalBg').classList.remove('on')}
+</script>
+<script>
+/* ================= NAVEGAÇÃO ================= */
+const NAV=[
+ {k:'inicio', ic:'◈', l:'Início', roles:'all'},
+ {k:'portal', ic:'▣', l:'Portal do Colaborador', roles:'all'},
+ {k:'colabs', ic:'☰', l:'Colaboradores', roles:['CH','CE','DIR','COM']},
+ {k:'aval', ic:'✎', l:'Avaliação 2026', roles:'all', badge:()=>avalPendingFor(S.role)},
+ {k:'disc', ic:'§', l:'Processos Disciplinares', roles:['CH','CE','COM']},
+ {k:'ausencias', ic:'⧗', l:'Férias & Ausências', roles:'all', badge:()=>absPendingFor(S.role)},
+ {k:'formacao', ic:'▸', l:'Plano de Formação', roles:['CH','CE','DIR']},
+ {k:'cultura', ic:'◉', l:'Cultura', roles:'all'},
+ {k:'relatorios', ic:'▤', l:'Relatórios', roles:['CH','CE','DIR','COM']},
+ {k:'hist', ic:'↗', l:'Histórico (3 anos)', roles:'all'},
+ {k:'admin', ic:'⚙', l:'Administração', roles:['CH','CE']}
+];
+function avalPendingFor(r){
+ const st=w().flow.stage;
+ if(r==='COL'&&(st===0||st===2))return 1;
+ if(r==='DIR'&&st===1)return 1;
+ if(r==='COM'&&st===3)return 1;
+ if(r==='CE'&&st===4)return 1;
+ return 0;
+}
+function renderNav(){
+ let h='<div class="side-block"><div class="side-lab">Empresa (SaaS multi-cliente)</div>'+
+ '<select class="co-select" onchange="setCo(this.value)">'+Object.keys(CO).map(k=>'<option value="'+k+'" '+(S.co===k?'selected':'')+'>'+CO[k].nome+'</option>').join('')+'</select>'+
+ '<div class="side-lab" style="margin-top:12px">Perfil de acesso</div><div class="role-v">'+
+ ROLES.map(r=>{const n=w().notifs[r.k].length;return '<button class="role-chip '+(S.role===r.k?'active':'')+'" onclick="setRole(\''+r.k+'\')">'+r.l+(n?'<span class="rb">'+n+'</span>':'')+'</button>'}).join('')+
+ '</div></div><div style="border-top:1px solid var(--line);margin:6px 0"></div>';
+ h+=NAV.filter(n=>n.roles==='all'||n.roles.includes(S.role)).map(n=>{
+  const b=n.badge?n.badge():0;
+  return '<div class="nav-item '+(S.mod===n.k?'active':'')+'" onclick="go(\''+n.k+'\')"><span class="ic">'+n.ic+'</span><span class="t">'+n.l+'</span>'+(b?'<span class="nb">'+b+'</span>':'')+'</div>'}).join('');
+ $('sideNav').innerHTML=h;
+ $('userPill').innerHTML='<span>'+roleObj().who()+'</span><div class="avatar">'+roleObj().who().split(' ').map(x=>x[0]).slice(0,2).join('')+'</div>';
+ $('bellCount').textContent=w().notifs[S.role].length;
+}
+function setCo(k){S.co=k;S.mod='inicio';S.tab='ficha';S.form={};S.dform={};renderNav();render()}
+function setRole(k){S.role=k;const item=NAV.find(n=>n.k===S.mod);if(item&&item.roles!=='all'&&!item.roles.includes(k))S.mod='inicio';renderNav();render()}
+function go(k){S.mod=k;renderNav();render();window.scrollTo(0,0)}
+function goTab(t){S.tab=t;render()}
+function openEmp(id){S.selEmp=id;S.mod='portal';S.tab='ficha';renderNav();render()}
+function head(eb,t,p){return '<div class="mhead"><div class="eyebrow">'+eb+'</div><h2>'+t+'</h2><p>'+p+'</p></div>'}
+function kbox(v,l,mod,extra){return '<div class="card kpi click" onclick="go(\''+mod+'\')"><div class="v">'+v+'</div><div class="l">'+l+'</div><div class="go">'+(extra||'ver detalhe →')+'</div></div>'}
+
+/* ================= FLUXO DE AVALIAÇÃO — barra visual ================= */
+const FSTEPS=['Autoavaliação','Avaliação do Director','Concordância','Comissão (recurso)','Fechada','Validada CE'];
+function flowBar(){
+ const st=w().flow.stage; const skipCom=w().flow.aceite===true;
+ return '<div class="flow">'+FSTEPS.map((f,i)=>{
+  let cls=''; const idx=i;
+  if(skipCom&&i===3) return '<div class="fstep"><div class="fdot" style="opacity:.35">—</div><div class="fl" style="opacity:.5">'+f+'<br>(não necessária)</div></div>';
+  if(idx<st||(st>=4&&idx<st))cls='done'; if(idx===st)cls='now';
+  return '<div class="fstep '+cls+'"><div class="fdot">'+(cls==='done'?'✓':i+1)+'</div><div class="fl">'+f+'</div></div>'}).join('')+'</div>';
+}
+
+/* ================= INÍCIO — dashboard dinâmico ================= */
+function inicio(){
+ const c=co(); const wf=w().flow;
+ const nAv26=emps().filter(e=>f26(e)!=null).length + (wf.stage>=4?0:0);
+ const discOpen=(w().discStage!=null&&w().discStage<5)?1:0;
+ const cul=c.cult; const lastResp=Math.round(cul.resp[2]/100*cul.univ);
+ const medias=[avgArr(emps().map(e=>e.s[0])),avgArr(emps().map(e=>e.s[1])),avgArr(emps().map(e=>e.s[2]))];
+ let roleLine='';
+ if(S.role==='COL'){const p=avalPendingFor('COL');roleLine=p?'<div class="notice">✎ <b>Tem uma acção pendente na sua avaliação 2026</b> — '+(wf.stage===0?'preencha a sua autoavaliação.':'o seu Director já o avaliou: leia e decida (aceitar ou recorrer).')+' <a style="color:var(--pri);cursor:pointer;font-weight:600" onclick="go(\'aval\')">Ir para a avaliação →</a></div>':'';}
+ if(S.role==='DIR'&&wf.stage===1)roleLine='<div class="notice">🔔 <b>'+colEmp().nome+' concluiu a autoavaliação</b> — a sua avaliação está pendente. <a style="color:var(--pri);cursor:pointer;font-weight:600" onclick="go(\'aval\')">Avaliar agora →</a></div>';
+ if(S.role==='COM'&&wf.stage===3)roleLine='<div class="notice alert">§ <b>Recurso recebido</b> — a Comissão dispõe de 8 dias úteis para decidir. <a style="color:var(--pri);cursor:pointer;font-weight:600" onclick="go(\'aval\')">Analisar recurso →</a></div>';
+ if(S.role==='CE'&&wf.stage===4)roleLine='<div class="notice">✔ <b>Avaliação fechada aguarda validação da Administração.</b> <a style="color:var(--pri);cursor:pointer;font-weight:600" onclick="go(\'aval\')">Validar →</a></div>';
+ return head(c.nome+' · '+c.sector+' · desde '+c.fund,'Painel — '+roleObj().l,
+ 'Cada caixa é dinâmica: toque para abrir o módulo com o detalhe completo.')+roleLine+
+ '<div class="grid g4">'+
+  kbox(emps().length,'Colaboradores activos','colabs')+
+  kbox('3','Ciclos de avaliação concluídos (2023–2025)','hist')+
+  kbox(nAv26+'/'+emps().length,'Avaliações do ciclo 2026 (fecho previsto)','aval')+
+  kbox(discOpen+(S.co==='ml'?' <span class="mini">(1 arquivado)</span>':''),'Processos disciplinares em curso','disc','abrir processos →')+
+ '</div><div class="grid g4" style="margin-top:13px">'+
+  kbox('12','Avaliações de cultura realizadas (pulses trimestrais)','cultura')+
+  kbox('+'+cul.enps[2],'eNPS último ciclo · era +'+cul.enps[0]+' em 2023','cultura')+
+  kbox(cul.resp[2]+'%','Participação na cultura · '+lastResp+' de '+cul.univ+' responderam','cultura')+
+  kbox(medias[2].toFixed(2),'Média homologada 2025 · 2023: '+medias[0].toFixed(2),'hist')+
+ '</div><div class="grid g4" style="margin-top:13px">'+
+  kbox((w().mapDone?'✓':'—'),'Mapa de férias '+new Date().getFullYear()+' (art. 209.º LGT)','ausencias')+
+  kbox(w().absReq.filter(r=>r.tipo==='ferias').length,'Pedidos de férias no sistema','ausencias')+
+  kbox(w().absReq.filter(r=>r.tipo==='falta').length,'Faltas justificadas registadas','ausencias')+
+  kbox(w().absReq.filter(r=>r.tipo==='maternidade').length,'Licenças de maternidade (LGT)','ausencias')+
+ '</div>'+
+ '<div class="grid g2" style="margin-top:13px">'+
+  '<div class="card click" onclick="go(\'cultura\')"><h3>Recomendações — último ciclo de cultura</h3>'+c.cult.rec.map((r,i)=>'<div style="display:flex;gap:9px;padding:6px 0;border-bottom:1px solid var(--line2)"><span class="tag pri">'+(i+1)+'</span><span style="font-size:12.6px">'+r+'</span></div>').join('')+'<div class="go mini" style="color:var(--pri);margin-top:7px">abrir módulo de cultura →</div></div>'+
+  '<div class="card click" onclick="go(\'relatorios\')"><h3>Recomendações — último ciclo de desempenho (2025)</h3>'+c.recDes.map((r,i)=>'<div style="display:flex;gap:9px;padding:6px 0;border-bottom:1px solid var(--line2)"><span class="tag gold">'+(i+1)+'</span><span style="font-size:12.6px">'+r+'</span></div>').join('')+'<div class="go mini" style="color:var(--pri);margin-top:7px">abrir relatórios →</div></div>'+
+ '</div>'+
+ '<div class="card" style="margin-top:13px"><h3>Fluxo da avaliação 2026 — caso demonstrativo ('+colEmp().nome+')</h3>'+flowBar()+
+ '<div class="mini" style="margin-top:6px">O fluxo é vivo: cada submissão muda o estado e notifica o perfil seguinte. Experimente percorrê-lo mudando de perfil na barra lateral.</div></div>';
+}
+
+/* ================= PORTAL DO COLABORADOR ================= */
+function portal(){
+ const isCol=S.role==='COL';
+ const e=isCol?colEmp():(emps().find(x=>x.id===S.selEmp)||colEmp());
+ const tabs=[['ficha','Ficha'],['bemvindo','Boas-vindas & Assinaturas'],['percurso','Percurso'],['docs','Documentos'],['aval','Minhas Avaliações'],['disc','Disciplina & Notificações'],['saude','Saúde Ocupacional'],['remun','Remuneração & Assiduidade'],['politicas','Políticas']];
+ let b=''; const T=S.tab; const wf=w().flow;
+ if(T==='ficha') b='<div class="card"><div class="hcard"><div class="bigav">'+e.nome.split(' ').map(n=>n[0]).slice(0,2).join('')+'</div>'+
+  '<div style="flex:1"><h3 style="margin:0">'+e.nome+'</h3><div class="mini">'+e.cargo+' · '+e.dept+' ('+co().dirs[e.dept]+') · '+e.cat+'</div>'+
+  '<div style="margin-top:6px">'+(e.flag?'<span class="tag gold">'+e.flag+'</span> ':'')+'<span class="tag ok">Activo</span> '+(w().onboard.signed?'<span class="tag pri">políticas assinadas</span>':'<span class="tag warn">assinatura de políticas pendente</span>')+'</div></div>'+
+  '<div style="text-align:right"><div class="pill-score" style="font-size:22px">'+(e.s[2]??'—')+'</div><div class="mini">avaliação 2025</div></div></div></div>'+
+  '<div class="grid g2" style="margin-top:12px"><div class="card"><h3>Identificação e vínculo</h3><table>'+
+  '<tr><td class="mini">N.º de colaborador</td><td>'+co().curto+'-'+String(e.id).padStart(4,'0')+'</td></tr>'+
+  '<tr><td class="mini">Admissão</td><td>'+e.adm+'</td></tr>'+
+  '<tr><td class="mini">Vínculo</td><td>Contrato por tempo indeterminado — <a style="color:var(--pri);cursor:pointer;font-weight:600" onclick="openDoc(\'contrato\')">ver contrato integral</a></td></tr>'+
+  '<tr><td class="mini">Horário</td><td>2.ª a 6.ª · 08h00–16h30 (tolerância 15 min)</td></tr>'+
+  '<tr><td class="mini">Local</td><td>'+co().sede+'</td></tr></table></div>'+
+  '<div class="card"><h3>Evolução do desempenho</h3>'+spark(e.s)+
+  '<table><tr><th>Ciclo</th><th>Nota</th><th>Nível</th></tr>'+[0,1,2].map(y=>'<tr><td>'+(2023+y)+'</td><td>'+(e.s[y]??'—')+'</td><td>'+(e.s[y]?'<span class="tag '+nivTag(e.s[y])+'">'+nivel(e.s[y])+'</span>':'<span class="mini">'+(e.flag&&e.flag.indexOf('licença')>-1?'ciclo ajustado':'—')+'</span>')+'</td></tr>').join('')+'</table></div></div>';
+ if(T==='bemvindo'){
+  const ob=w().onboard; const checks=['Li o Regulamento Interno de Trabalho','Li o Código de Ética e Conduta e as políticas em vigor','Li e consinto nos Termos de Utilização do Portal e no tratamento de dados pessoais (Lei n.º 22/11)'];
+  b='<div class="grid g2"><div class="card"><h3>Bem-vindo(a) à '+co().curto+' — o seu primeiro dia</h3>'+
+  '<div class="mini" style="margin-bottom:8px">Lista de acolhimento — o que deve receber e concluir:</div><table>'+
+  [['Crachá e credenciais de acesso','ok','entregue'],['Conta de correio electrónico corporativo','ok','criada'],['Equipamento de trabalho / EPI da função','ok','entregue'],['Apresentação à equipa e visita às instalações','ok','concluída'],['Formação de acolhimento (ética, segurança, portal)','warn','agendada'],['Leitura e assinatura das políticas (ao lado)',ob.signed?'ok':'warn',ob.signed?'concluída':'pendente']].map(r=>'<tr><td>'+r[0]+'</td><td style="text-align:right"><span class="tag '+r[1]+'">'+r[2]+'</span></td></tr>').join('')+'</table></div>'+
+  '<div class="card"><h3>Aceitação das regras e consentimento de dados</h3>'+
+  (ob.signed?'<div class="notice soft"><b>Assinatura digital registada</b> em '+ob.signed+'. Documento de adesão arquivado no seu dossier com carimbo temporal e hash de integridade.</div>':
+  checks.map((c,i)=>'<div style="display:flex;gap:9px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--line2)"><input type="checkbox" style="width:16px;height:16px;margin-top:2px" '+(ob.checks[i]?'checked':'')+' onchange="w().onboard.checks['+i+']=this.checked;render()"><span style="font-size:12.6px;flex:1">'+c+' — <a style="color:var(--pri);cursor:pointer" onclick="openDoc(\''+(i===0?'reginterno':i===1?'etica':'termos')+'\')">ler documento</a></span></div>').join('')+
+  '<div class="sig" style="margin-top:12px"><label class="f" style="margin-top:0">Assinatura digital — escreva o seu nome completo</label><input id="sigName" placeholder="'+e.nome+'">'+
+  '<button class="btn" style="margin-top:10px" onclick="signOnboard()">Assinar e aceitar</button><div class="mini" style="margin-top:6px">A assinatura vale como declaração de conhecimento das normas (art.º 23.º do Regulamento Interno) e consentimento nos termos da Lei n.º 22/11.</div></div>')+'</div></div>';
+ }
+ if(T==='percurso'){
+  const isNz=S.co==='nz'&&e.id===1;
+  const items=isNz?[
+   ['Mar 2019','Admissão','Contrato por tempo indeterminado — Técnico Comercial, DCM.','hi'],
+   ['Jun 2023','Admoestação verbal','Atrasos reiterados; extinta do cadastro após 12 meses de boa conduta.','neg'],
+   ['Nov 2023','Avaliação 2023','Nota 3.6 (Bom). PID: gestão de tempo e prospecção.',''],
+   ['Jul 2024','Despacho — comissão de trabalho','Nomeado para a Comissão de Abertura da Delegação do Huambo; louvor no encerramento.','hi'],
+   ['Nov 2024','Avaliação 2024','Nota 4.3 (Muito Bom). Sinalizado no 9-Box.','hi'],
+   ['Jan 2025','Promoção','Chefe de Vendas — despacho n.º 03/DG/2025, por proposta do ciclo avaliativo.','hi'],
+   ['Nov 2025','Avaliação 2025','Nota 4.5 — 1.ª avaliação como chefia; equipa a 104% da meta.','hi'],
+   ['Mar 2026','Formação em curso','«Liderança e Gestão de Desempenho» — CLACS Academy (PID 2025).','']
+  ]:[
+   [e.adm,'Admissão',e.cargo+', '+e.dept+'.','hi'],
+   ...[0,1,2].filter(y=>e.s[y]).map(y=>['Nov '+(2023+y),'Avaliação '+(2023+y),'Nota homologada: '+e.s[y]+' ('+nivel(e.s[y])+').',e.s[y]>=4?'hi':'']),
+   ...(e.flag?[['2025–26','Nota de situação',e.flag+'.',(e.flag.indexOf('disciplinar')>-1||e.flag.indexOf('suspensão')>-1)?'neg':'hi']]:[])
+  ];
+  b='<div class="card"><h3>Percurso — do primeiro dia até hoje</h3><div class="tl">'+items.map(p=>'<div class="tl-item '+p[3]+'"><div class="d">'+p[0]+'</div><div class="t">'+p[1]+'</div><div class="x">'+p[2]+'</div></div>').join('')+'</div></div>';
+ }
+ if(T==='docs') b='<div class="card"><h3>Documentos do vínculo — texto integral disponível</h3>'+
+  [['CT','Contrato de trabalho por tempo indeterminado','contrato'],['RG','Regulamento Interno de Trabalho','reginterno'],['RA','Regulamento de Avaliação de Desempenho 2026','regaval'],['PR','Política de Remuneração e Benefícios','remuneracao'],['PA','Política de Assiduidade e Pontualidade','assiduidade'],['CE','Código de Ética e Conduta','etica'],['TU','Termos do Portal + consentimento de dados','termos']].map(d=>'<div class="doc"><div class="dic">'+d[0]+'</div><div class="dn"><b>'+d[1]+'</b><span>'+co().nome+' · com hash de integridade</span></div><a onclick="openDoc(\''+d[2]+'\')">Abrir</a></div>').join('')+
+  '<div class="notice">Todos os documentos abrem com <b>texto integral</b> e registo de leitura — a prova de comunicação das normas exigida em sede disciplinar.</div></div>';
+ if(T==='aval'){
+  b='<div class="card"><h3>As minhas avaliações</h3>'+flowBar()+
+  '<table style="margin-top:8px"><tr><th>Ciclo</th><th>Nota final</th><th>Nível</th><th>Estado</th></tr>'+
+  [0,1,2].map(y=>'<tr><td>'+(2023+y)+'</td><td>'+(e.s[y]??'—')+'</td><td>'+(e.s[y]?nivel(e.s[y]):'—')+'</td><td><span class="tag ok">validada</span></td></tr>').join('')+
+  '<tr><td><b>2026</b></td><td>'+(wf.finalScore??'—')+'</td><td>'+(wf.finalScore?nivel(wf.finalScore):'—')+'</td><td>'+['<span class="tag warn">autoavaliação pendente</span>','<span class="tag info">com o Director</span>','<span class="tag warn">aguarda a sua concordância</span>','<span class="tag bad">em recurso na Comissão</span>','<span class="tag pri">fechada — aguarda CE</span>','<span class="tag ok">validada</span>'][wf.stage]+'</td></tr></table>'+
+  '<button class="btn" style="margin-top:12px" onclick="go(\'aval\')">Ir para a avaliação 2026</button></div>';
+ }
+ if(T==='disc'){
+  const d=co().disc; const isArg=e.id===d.arg; const ds=w().discStage; const ack=w().discAck;
+  if(!isArg) b='<div class="card"><h3>Notificações disciplinares</h3><div class="notice soft"><b>Sem processos disciplinares.</b> Cadastro limpo. Qualquer notificação futura (convocatória, decisão) chegará a este separador, com assinatura de tomada de conhecimento.</div>'+
+   '<div class="mini">Para ver a experiência do trabalhador arguido, abra o dossier de '+emps().find(x=>x.id===d.arg).nome+' na lista de Colaboradores (perfis CH/CE) ou o módulo Processos Disciplinares.</div></div>';
+  else{
+   b='<div class="card"><h3>Processo disciplinar '+d.ref+' — notificações recebidas</h3>';
+   if(ds>=1) b+='<div class="doc"><div class="dic">NC</div><div class="dn"><b>Nota de Culpa / Convocatória</b><span>notificada pelo portal · prazo de defesa: 10 dias úteis</span></div><a onclick="openDoc(\'notaculpa\')">Ler</a></div>'+
+    (ack.nc?'<div class="mini" style="margin:2px 0 8px">✓ Tomada de conhecimento assinada em '+ack.nc+'</div>':'<button class="btn ghost" style="margin:2px 0 8px" onclick="w().discAck.nc=nowts();audit(\'Arguido assinou tomada de conhecimento da nota de culpa\');render()">Assinar tomada de conhecimento</button>');
+   if(d.susp) b+='<div class="doc"><div class="dic">SP</div><div class="dn"><b>Comunicação de Suspensão Preventiva</b><span>sem perda de remuneração · efeitos imediatos</span></div><a onclick="openDoc(\'suspensao\')">Ler</a></div>'+
+    (ack.sp?'<div class="mini" style="margin:2px 0 8px">✓ Tomada de conhecimento assinada em '+ack.sp+'</div>':'<button class="btn ghost" style="margin:2px 0 8px" onclick="w().discAck.sp=nowts();audit(\'Arguido assinou tomada de conhecimento da suspensão preventiva\');render()">Assinar tomada de conhecimento</button>');
+   if(ds>=3) b+='<div class="doc"><div class="dic">DF</div><div class="dn"><b>Decisão Final</b><span>fundamentada · medida disciplinar aplicada</span></div><a onclick="openDoc(\'decisao\')">Ler</a></div>'+
+    (ack.df?'<div class="mini" style="margin:2px 0 8px">✓ Tomada de conhecimento assinada em '+ack.df+'</div>':'<button class="btn ghost" style="margin:2px 0 8px" onclick="w().discAck.df=nowts();audit(\'Arguido assinou tomada de conhecimento da decisão\');render()">Assinar tomada de conhecimento</button>');
+   b+='<div class="notice"><b>Direitos do arguido:</b> consultar o processo, responder por escrito no prazo, indicar testemunhas e fazer-se acompanhar. A defesa pode ser submetida por este portal.</div>'+
+   (ds===1?'<label class="f">Submeter defesa escrita</label><textarea rows="3" id="defTxt" placeholder="Exponha a sua defesa…"></textarea><button class="btn" style="margin-top:8px" onclick="W[S.co].discStage=2;audit(\'Defesa do arguido recebida pelo portal\');notify(\'CH\',\'Defesa recebida no processo \'+co().disc.ref);render()">Submeter defesa</button>':'')+'</div>';
+  }
+ }
+ if(T==='saude') b='<div class="card"><h3>Saúde ocupacional — aptidão laboral</h3><table><tr><th>Exame</th><th>Data</th><th>Aptidão</th></tr>'+
+  [['Admissão',e.adm,'Apto sem restrições'],['Periódico','2024','Apto sem restrições'],['Periódico','2025','Apto — próximo: 2026']].map(s=>'<tr><td>'+s[0]+'</td><td>'+s[1]+'</td><td>'+s[2]+'</td></tr>').join('')+'</table>'+
+  '<div class="notice"><b>Privacidade por desenho:</b> regista-se apenas a aptidão (apto / condicionado / inapto) — nunca diagnósticos, reservados ao médico do trabalho.</div>'+
+  '<button class="btn ghost" onclick="audit(\'Exame ocupacional agendado\');alert(\'Exame periódico agendado (simulação).\')">Agendar exame de 2026</button></div>';
+ if(T==='remun') b='<div class="grid g2"><div class="card"><h3>Progressão salarial (visível ao próprio, CH e CA)</h3><table><tr><th>Ano</th><th>Vencimento base</th><th>Enquadramento</th></tr>'+
+  (S.co==='nz'&&e.id===1?[['2023','485.000 Kz','Técnico Comercial'],['2024','520.000 Kz','Técnico (progressão)'],['2025','710.000 Kz','Chefe de Vendas (promoção)'],['2026','745.000 Kz','Chefe de Vendas']]:[['2024','—','tabela salarial em vigor'],['2025','—','tabela salarial em vigor'],['2026','—','consultar CH']]).map(s=>'<tr><td>'+s[0]+'</td><td>'+s[1]+'</td><td>'+s[2]+'</td></tr>').join('')+'</table>'+
+  '<div class="mini" style="margin-top:6px">Prémio de desempenho indexado à nota validada — <a style="color:var(--pri);cursor:pointer" onclick="openDoc(\'remuneracao\')">ver política</a>.</div></div>'+
+  '<div class="card"><h3>Assiduidade 2025</h3><div class="grid g2"><div class="kpi"><div class="v">97,2%</div><div class="l">Presenças</div></div><div class="kpi"><div class="v">22</div><div class="l">Dias de férias gozados</div></div></div>'+
+  '<table style="margin-top:8px"><tr><td>Faltas justificadas</td><td style="text-align:right">3</td></tr><tr><td>Faltas injustificadas</td><td style="text-align:right">0</td></tr></table>'+
+  (isCol?'<button class="btn ghost" style="margin-top:10px" onclick="go(\'ausencias\')">Pedir férias · justificar faltas →</button>':'')+'</div></div>';
+ if(T==='politicas') b='<div class="card"><h3>Políticas e regulamentos — leitura registada</h3>'+
+  [['Regulamento Interno de Trabalho','reginterno'],['Regulamento de Avaliação de Desempenho 2026','regaval'],['Política de Remuneração e Benefícios','remuneracao'],['Política de Assiduidade e Pontualidade','assiduidade'],['Código de Ética e Conduta','etica'],['Termos do Portal + protecção de dados (Lei 22/11)','termos']].map(p=>'<div class="doc"><div class="dic">▤</div><div class="dn"><b>'+p[0]+'</b><span>'+co().nome+' · texto integral</span></div><a onclick="openDoc(\''+p[1]+'\')">Ler</a></div>').join('')+'</div>';
+ return head(isCol?'O seu dossier pessoal':'Dossier do colaborador','Portal do Colaborador — '+e.nome,
+ 'Do primeiro ao último dia: contrato, políticas, avaliações, notificações — tudo com registo e assinatura.')+
+ (isCol?'':'<div style="margin-bottom:10px"><button class="btn ghost" onclick="go(\'colabs\')">← Voltar à lista</button></div>')+
+ '<div class="tabs">'+tabs.map(t=>'<div class="tab '+(S.tab===t[0]?'on':'')+'" onclick="goTab(\''+t[0]+'\')">'+t[1]+'</div>').join('')+'</div>'+b;
+}
+function signOnboard(){
+ const ob=w().onboard;
+ if(!(ob.checks[0]&&ob.checks[1]&&ob.checks[2]))return alert('Confirme a leitura dos três documentos antes de assinar.');
+ const n=$('sigName').value.trim();
+ if(n.length<5)return alert('Escreva o seu nome completo para assinar.');
+ ob.signed=nowts();
+ audit('Adesão às políticas assinada digitalmente por '+n+' (inclui consentimento Lei 22/11)');
+ notify('CH','O colaborador '+n+' assinou a adesão às políticas e o consentimento de dados.');
+ renderNav();render();
+}
+</script>
+<script>
+/* ================= COLABORADORES ================= */
+function colabs(){
+ const isDir=S.role==='DIR';
+ const list=isDir?emps().filter(e=>e.dept===dirEmp().dept):emps();
+ return head(isDir?'A sua equipa':'Gestão de pessoas','Colaboradores — '+co().curto,
+ 'Clique num nome para abrir o dossier completo no Portal do Colaborador.')+
+ '<div style="display:flex;gap:10px;margin-bottom:12px"><input class="co-select" style="max-width:320px" placeholder="Pesquisar… (demonstração)">'+
+ (S.role==='CH'?'<button class="btn" onclick="alert(\'Assistente de cadastro (simulação): dados → contrato → categoria → horário → documentos → convite para o portal com aceitação de termos.\')">+ Cadastrar colaborador</button>':'')+'</div>'+
+ '<div class="card"><table><tr><th>Colaborador</th><th>Cargo</th><th>Dir.</th><th>Adm.</th><th>2023</th><th>2024</th><th>2025</th><th>Situação</th></tr>'+
+ list.map(e=>'<tr class="click" onclick="openEmp('+e.id+')"><td><b>'+e.nome+'</b></td><td class="mini">'+e.cargo+'</td><td>'+e.dept+'</td><td class="mini">'+e.adm+'</td><td>'+(e.s[0]??'—')+'</td><td>'+(e.s[1]??'—')+'</td><td>'+(e.s[2]?'<b>'+e.s[2]+'</b>':'—')+'</td><td>'+(e.flag?'<span class="tag '+(e.flag.indexOf('disciplinar')>-1||e.flag.indexOf('suspensão')>-1||e.flag.indexOf('repreensão')>-1?'bad':e.flag.indexOf('licença')>-1?'info':'gold')+'">'+e.flag+'</span>':'<span class="tag ok">regular</span>')+'</td></tr>').join('')+'</table></div>';
+}
+
+/* ================= AVALIAÇÃO 2026 — fluxo funcional ================= */
+function aval(){
+ const wf=w().flow; const e=colEmp(); const d=dirEmp();
+ let body='';
+ const cmp=(a,b)=>'<table style="margin-top:8px"><tr><th>Componente</th><th>Auto ('+e.nome.split(' ')[0]+')</th><th>Director</th></tr>'+
+  '<tr><td>Objectivos (50%)</td><td>'+a.objScore.toFixed(1)+'</td><td>'+b.objScore.toFixed(1)+'</td></tr>'+
+  '<tr><td>Competências (35%)</td><td>'+a.compScore.toFixed(1)+'</td><td>'+b.compScore.toFixed(1)+'</td></tr>'+
+  '<tr><td>Valores e conduta (15%)</td><td>'+a.valScore.toFixed(1)+'</td><td>'+b.valScore.toFixed(1)+'</td></tr>'+
+  '<tr><td><b>Nota final</b></td><td><b>'+a.final+'</b></td><td><b>'+b.final+'</b> <span class="tag '+(Math.abs(a.final-b.final)>=1?'bad':'ok')+'">desvio '+Math.abs(a.final-b.final).toFixed(1)+'</span></td></tr></table>';
+
+ if(S.role==='COL'){
+  if(wf.stage===0) body=formEval('auto');
+  else if(wf.stage===1) body='<div class="card"><h3>Autoavaliação submetida ✓</h3><div class="notice">A sua autoavaliação (nota provisória <b>'+wf.autoScore.final+'</b>) foi enviada. O seu Director, <b>'+d.nome+'</b>, foi notificado e fará agora a avaliação dele. Receberá uma notificação quando estiver pronta.</div></div>';
+  else if(wf.stage===2) body='<div class="card"><h3>O seu Director avaliou-o — leia e decida</h3>'+cmp(wf.autoScore,wf.dirScore)+
+   (wf.dir&&wf.dir.obs?'<div class="notice"><b>Observações do Director:</b> '+wf.dir.obs+'</div>':'')+
+   '<div class="grid g2" style="margin-top:12px"><div class="card" style="border-color:var(--ok)"><h3>Concordo com a avaliação</h3><div class="mini" style="margin-bottom:8px">A avaliação fecha com a nota do Director ('+wf.dirScore.final+') e segue para validação da Administração.</div><button class="btn" style="background:var(--ok)" onclick="acceptEval()">Aceitar a avaliação</button></div>'+
+   '<div class="card" style="border-color:var(--warn)"><h3>Não concordo — apresentar recurso</h3><label class="f" style="margin-top:0">Fundamento do recurso</label><textarea id="recTxt" rows="3" placeholder="Ex.: os objectivos 2 e 3 foram afectados por factores externos documentados nos check-ins…"></textarea><button class="btn danger" style="margin-top:8px" onclick="submitRecurso()">Submeter recurso à Comissão de Avaliação</button><div class="mini" style="margin-top:5px">Prazo de decisão da Comissão: 8 dias úteis (art.º 8.º do Regulamento).</div></div></div></div>';
+  else if(wf.stage===3) body='<div class="card"><h3>Recurso em análise</h3><div class="notice alert">O seu recurso foi remetido à <b>Comissão de Avaliação</b> ('+persona('COM')+') em '+wf.recursoDate+'. Prazo de decisão: <b>8 dias úteis</b>. Será notificado da decisão fundamentada.</div><div class="mini"><b>O seu fundamento:</b> '+wf.recursoTxt+'</div></div>';
+  else body='<div class="card"><h3>Avaliação 2026 '+(wf.stage===5?'validada':'fechada')+'</h3><div class="notice soft">Nota final: <b>'+wf.finalScore+'</b> ('+nivel(wf.finalScore)+')'+(wf.comTxt?' — decidida pela Comissão de Avaliação: '+wf.comTxt:wf.aceite?' — aceite por si':'')+'. '+(wf.stage===5?'Validada pela Administração; releva para prémio e progressão.':'Aguarda validação da Administração.')+'</div></div>';
+ }
+ if(S.role==='DIR'){
+  if(wf.stage===0) body='<div class="card"><h3>A aguardar a autoavaliação</h3><div class="notice">'+e.nome+' ainda não submeteu a autoavaliação. Será notificado no momento da submissão.</div></div>';
+  else if(wf.stage===1) body='<div class="notice">🔔 <b>'+e.nome+' terminou a autoavaliação</b> (nota provisória: '+wf.autoScore.final+'). Reveja as respostas dele lado a lado e faça a sua avaliação.</div>'+formEval('dir');
+  else if(wf.stage===2) body='<div class="card"><h3>Avaliação enviada ao colaborador</h3><div class="notice">A sua avaliação (nota <b>'+wf.dirScore.final+'</b>) foi notificada a '+e.nome+', que irá aceitar ou recorrer.</div>'+cmp(wf.autoScore,wf.dirScore)+'</div>';
+  else if(wf.stage===3) body='<div class="card"><h3>Recurso interposto</h3><div class="notice alert">'+e.nome+' recorreu da sua avaliação. A Comissão de Avaliação decide em 8 dias úteis; será notificado do desfecho.</div><div class="mini"><b>Fundamento:</b> '+wf.recursoTxt+'</div></div>';
+  else body='<div class="card"><h3>Avaliação fechada</h3><div class="notice soft">Nota final de '+e.nome+': <b>'+wf.finalScore+'</b>'+(wf.comTxt?' (decisão da Comissão: '+wf.comTxt+')':'')+'.</div>'+cmp(wf.autoScore,wf.dirScore)+'</div>';
+  body+='<div class="card" style="margin-top:12px"><h3>Restante equipa ('+d.dept+')</h3><table><tr><th>Colaborador</th><th>2025</th><th>2026</th><th>Estado</th></tr>'+
+  emps().filter(x=>x.dept===d.dept&&x.id!==d.id&&x.id!==e.id).map(x=>'<tr><td>'+x.nome+'</td><td>'+(x.s[2]??'—')+'</td><td>'+(f26(x)??'—')+'</td><td>'+(x.flag&&x.flag.indexOf('disciplinar')>-1?'<span class="tag bad">suspenso</span>':'<span class="tag ok">fechada e aceite</span>')+'</td></tr>').join('')+'</table><div class="mini" style="margin-top:6px">Para a demonstração, as restantes avaliações da empresa estão fechadas; o caso vivo é o de '+e.nome+'.</div></div>';
+ }
+ if(S.role==='COM'){
+  if(wf.stage===3) body='<div class="card"><h3>Recurso de '+e.nome+' — prazo: 8 dias úteis desde '+wf.recursoDate+'</h3>'+cmp(wf.autoScore,wf.dirScore)+
+   '<div class="notice"><b>Fundamento do recorrente:</b> '+wf.recursoTxt+'</div>'+
+   '<div class="notice"><b>Peças no processo:</b> mapa de objectivos assinado · actas de check-in Q1/Q2 · incidentes registados · autoavaliação selada · avaliação do Director.</div>'+
+   '<label class="f">Decisão da Comissão</label><select id="comDec"><option value="manter">Manter a nota do Director ('+wf.dirScore.final+')</option><option value="ajustar">Ajustar a nota (média ponderada das duas: '+(Math.round((wf.autoScore.final+wf.dirScore.final)/2*10)/10)+')</option></select>'+
+   '<label class="f">Fundamentação</label><textarea id="comTxt" rows="3" placeholder="A Comissão analisou as peças e considera que…"></textarea>'+
+   '<button class="btn" style="margin-top:10px" onclick="comDecide()">Emitir decisão e notificar as partes</button></div>';
+  else body='<div class="card"><h3>Comissão de Avaliação</h3><div class="notice">'+(wf.stage<3?'Sem recursos pendentes neste momento.':'Recurso decidido: '+(wf.comTxt||'—')+' · Nota final: '+wf.finalScore+'.')+'</div><div class="mini">Composição: '+persona('COM')+' — 3 membros sem relação hierárquica com o recorrente (art.º 8.º do Regulamento).</div></div>';
+ }
+ if(S.role==='CH'||S.role==='CE'){
+  body='<div class="card"><h3>Estado do caso demonstrativo — '+e.nome+'</h3>'+flowBar()+
+  (wf.stage>=2?cmp(wf.autoScore,wf.dirScore):'<div class="mini">As notas aparecem aqui à medida que o fluxo avança.</div>')+
+  (S.role==='CE'&&wf.stage===4?'<div class="notice">A avaliação está fechada'+(wf.comTxt?' por decisão da Comissão':' por concordância do colaborador')+'. Falta a validação da Administração para produzir efeitos (prémios, progressão) e integrar o relatório definitivo.</div><button class="btn" onclick="ceValidate()">Validar em nome da Administração</button>':'')+
+  (wf.stage===5?'<div class="notice soft"><b>Validada.</b> Nota final '+wf.finalScore+' — integrada no relatório do ciclo.</div>':'')+'</div>'+
+  '<div class="card" style="margin-top:12px"><h3>Panorama do ciclo 2026 — '+co().curto+'</h3><table><tr><th>Estado</th><th>N.º</th></tr>'+
+  '<tr><td>Fechadas e aceites (simulação)</td><td>'+(emps().length-2)+'</td></tr><tr><td>Caso vivo (fluxo demonstrativo)</td><td>1 — '+FSTEPS[wf.stage]+'</td></tr><tr><td>Suspensas (processo disciplinar)</td><td>1</td></tr></table></div>';
+ }
+ return head('Ciclo 2026 · fluxo interligado entre perfis','Avaliação de Desempenho 2026',
+ 'O procedimento completo, vivo e notificado: autoavaliação → avaliação do Director → concordância ou recurso → Comissão (8 dias úteis) → validação da Administração → relatório automático.')+
+ '<div class="card" style="margin-bottom:13px">'+flowBar()+'</div>'+body;
+}
+
+/* --------- formulário por etapas com pontuação em directo --------- */
+function formEval(mode){
+ const F=mode==='auto'?S.form:S.dform; const wf=w().flow;
+ const sc=calcScore(F);
+ const objs=co().objs;
+ const showAuto=mode==='dir';
+ const set=(k,v)=>{F[k]=v;render()};
+ window.__set=set;
+ let h='<div class="grid" style="grid-template-columns:2.2fr 1fr;align-items:start"><div>';
+ h+='<div class="card"><h3>Etapa 1 · Objectivos pactuados <span class="mini">(peso '+PESOS.obj+'% — indique a % de execução de cada objectivo)</span></h3>'+
+ objs.map((o,i)=>'<div class="q"><div class="qt">'+(i+1)+'. '+o[0]+' <span class="tag pri">peso '+o[1]+'%</span>'+(showAuto&&wf.auto?'<span class="tag info" style="margin-left:6px">auto: '+wf.auto['o'+i]+'%</span>':'')+'</div>'+
+ '<div style="display:flex;align-items:center;gap:10px"><input class="num" type="number" min="0" max="120" placeholder="%" value="'+(F['o'+i]??'')+'" oninput="__set(\'o'+i+'\',this.value)"><span class="mini">% de execução (0–120)</span></div></div>').join('')+'</div>';
+ h+='<div class="card" style="margin-top:12px"><h3>Etapa 2 · Competências <span class="mini">(peso '+PESOS.comp+'% — escala 1 a 5)</span></h3>'+
+ COMPS.map((c,i)=>'<div class="q"><div class="qt">'+c+(showAuto&&wf.auto?' <span class="tag info">auto: '+wf.auto['c'+i]+'</span>':'')+'</div><div class="chips">'+SCALE.map(s=>'<div class="chip '+(F['c'+i]==+s[0]?'sel':'')+'" onclick="__set(\'c'+i+'\','+s[0]+')"><b>'+s[0]+'</b><small>'+s[1]+'</small></div>').join('')+'</div></div>').join('')+'</div>';
+ h+='<div class="card" style="margin-top:12px"><h3>Etapa 3 · Valores e conduta <span class="mini">(peso '+PESOS.val+'% — resposta Sim / Não)</span></h3>'+
+ VALS.map((v,i)=>'<div class="q"><div class="qt">'+v+(showAuto&&wf.auto?' <span class="tag info">auto: '+wf.auto['v'+i]+'</span>':'')+'</div><div class="chips">'+
+ ['sim','nao'].map(o=>'<div class="chip sn '+(F['v'+i]===o?'sel':'')+'" onclick="__set(\'v'+i+'\',\''+o+'\')"><b>'+(o==='sim'?'Sim':'Não')+'</b><small>'+(o==='sim'?'cumpri':'não cumpri / com falhas')+'</small></div>').join('')+'</div></div>').join('')+'</div>';
+ h+='<div class="card" style="margin-top:12px"><h3>Etapa 4 · '+(mode==='auto'?'Nota à chefia (opcional)':'Observações ao colaborador')+'</h3><textarea rows="2" id="obsTxt" placeholder="'+(mode==='auto'?'Contributos, obstáculos, necessidades de formação…':'Fundamente a sua leitura — será mostrada ao colaborador…')+'">'+(F.obs||'')+'</textarea>'+
+ '<button class="btn" style="margin-top:12px" '+(sc.final==null?'disabled':'')+' onclick="'+(mode==='auto'?'submitAuto()':'submitDir()')+'">'+(sc.final==null?'Responda a tudo para submeter':'Submeter '+(mode==='auto'?'autoavaliação':'avaliação e notificar o colaborador'))+'</button></div>';
+ h+='</div><div class="scorebox"><div class="mini" style="text-transform:uppercase;letter-spacing:.1em">Pontuação em directo</div><div class="sv">'+(sc.final??'—')+'</div><div class="mini">'+(sc.final?nivel(sc.final):sc.done+' de '+sc.total+' respostas dadas')+'</div>'+
+ '<table style="margin-top:8px"><tr><td class="mini">Objectivos</td><td style="text-align:right">'+(sc.objScore!=null?sc.objScore.toFixed(1):'—')+'</td></tr><tr><td class="mini">Competências</td><td style="text-align:right">'+(sc.compScore!=null?sc.compScore.toFixed(1):'—')+'</td></tr><tr><td class="mini">Valores</td><td style="text-align:right">'+(sc.valScore!=null?sc.valScore.toFixed(1):'—')+'</td></tr></table>'+
+ '<div class="bar" style="margin-top:8px"><i class="pri" style="width:'+(sc.done/sc.total*100)+'%"></i></div><div class="mini" style="margin-top:4px">'+Math.round(sc.done/sc.total*100)+'% preenchido</div></div></div>';
+ return h;
+}
+function submitAuto(){
+ const F=S.form;F.obs=$('obsTxt').value;const sc=calcScore(F);
+ const wf=w().flow;wf.auto={...F};wf.autoScore=sc;wf.stage=1;
+ audit('Autoavaliação de '+colEmp().nome+' submetida e selada (nota provisória '+sc.final+')');
+ notify('DIR','O colaborador '+colEmp().nome+' terminou a autoavaliação 2026 (nota provisória '+sc.final+'). A sua avaliação está pendente.');
+ notify('CH','Autoavaliação de '+colEmp().nome+' submetida — fluxo passou ao Director.');
+ renderNav();render();
+ alert('Autoavaliação submetida ✓\n\nO Director '+dirEmp().nome+' foi notificado. Mude para o perfil "Director" na barra lateral para continuar o fluxo.');
+}
+function submitDir(){
+ const F=S.dform;F.obs=$('obsTxt').value;const sc=calcScore(F);
+ const wf=w().flow;wf.dir={...F};wf.dirScore=sc;wf.stage=2;
+ audit('Avaliação do Director submetida (nota '+sc.final+') — desvio '+Math.abs(sc.final-wf.autoScore.final).toFixed(1));
+ notify('COL','O seu Director avaliou-o (nota '+sc.final+'). Leia a avaliação e decida: aceitar ou recorrer.');
+ notify('CH','Avaliação do Director submetida para '+colEmp().nome+' — aguarda concordância do colaborador.');
+ renderNav();render();
+ alert('Avaliação submetida ✓\n\n'+colEmp().nome+' foi notificado para aceitar ou recorrer. Mude para o perfil "Colaborador" para continuar.');
+}
+function acceptEval(){
+ const wf=w().flow;wf.aceite=true;wf.finalScore=wf.dirScore.final;wf.stage=4;
+ audit('Colaborador aceitou a avaliação — fechada com nota '+wf.finalScore);
+ notify('DIR',colEmp().nome+' aceitou a sua avaliação. Processo fechado com nota '+wf.finalScore+'.');
+ notify('CE','Avaliação de '+colEmp().nome+' fechada por concordância — aguarda validação da Administração.');
+ notify('CH','Avaliação de '+colEmp().nome+' fechada (nota '+wf.finalScore+').');
+ renderNav();render();
+ alert('Avaliação aceite ✓ — fechada com nota '+wf.finalScore+'.\n\nA Administração (CA/CE) foi notificada para validar.');
+}
+function submitRecurso(){
+ const t=$('recTxt').value.trim();
+ if(t.length<15)return alert('Fundamente o recurso (mínimo de uma frase).');
+ const wf=w().flow;wf.aceite=false;wf.recursoTxt=t;wf.recursoDate=today();wf.stage=3;
+ audit('Recurso interposto pelo colaborador — remetido à Comissão de Avaliação (prazo: 8 dias úteis)');
+ notify('COM','Recurso de '+colEmp().nome+' recebido em '+wf.recursoDate+'. Prazo de decisão: 8 dias úteis.');
+ notify('DIR',colEmp().nome+' recorreu da sua avaliação — em análise na Comissão de Avaliação.');
+ notify('CH','Recurso interposto no caso '+colEmp().nome+'.');
+ renderNav();render();
+ alert('Recurso submetido ✓\n\nA Comissão de Avaliação foi notificada (prazo: 8 dias úteis). Mude para o perfil "Comissão de Avaliação" para decidir.');
+}
+function comDecide(){
+ const wf=w().flow;const dec=$('comDec').value;const t=$('comTxt').value.trim();
+ if(t.length<15)return alert('A decisão tem de ser fundamentada.');
+ wf.finalScore=dec==='manter'?wf.dirScore.final:Math.round((wf.autoScore.final+wf.dirScore.final)/2*10)/10;
+ wf.comTxt=(dec==='manter'?'nota mantida':'nota ajustada')+' — '+t;wf.stage=4;
+ audit('Decisão da Comissão de Avaliação: '+wf.comTxt+' (nota final '+wf.finalScore+')');
+ notify('COL','A Comissão de Avaliação decidiu o seu recurso: '+wf.comTxt+'. Nota final: '+wf.finalScore+'.');
+ notify('DIR','A Comissão decidiu o recurso de '+colEmp().nome+': '+wf.comTxt+'. Nota final: '+wf.finalScore+'.');
+ notify('CE','Recurso decidido — avaliação fechada, aguarda validação da Administração.');
+ renderNav();render();
+ alert('Decisão emitida ✓ — colaborador e Director notificados.\n\nMude para o perfil "Administração" para validar.');
+}
+function ceValidate(){
+ const wf=w().flow;wf.stage=5;wf.validada=true;
+ audit('Administração validou a avaliação — nota final '+wf.finalScore+' com efeitos remuneratórios');
+ notify('COL','A Administração validou a sua avaliação 2026 (nota '+wf.finalScore+'). Releva para prémio e progressão.');
+ notify('DIR','Avaliação de '+colEmp().nome+' validada pela Administração.');
+ notify('CH','Avaliação validada — relatório do ciclo actualizado automaticamente.');
+ renderNav();render();
+ alert('Validada ✓ — o relatório consolidado do ciclo foi actualizado automaticamente (módulo Relatórios).');
+}
+</script>
+<script>
+/* ================= PROCESSOS DISCIPLINARES (CH/CE/COM) ================= */
+const DSTEPS=['Instauração','Convocatória notificada','Defesa recebida','Decisão emitida','Tomada de conhecimento','Concluído / arquivado'];
+function disc(){
+ const d=co().disc; const arg=emps().find(x=>x.id===d.arg); const ds=w().discStage;
+ const bar='<div class="flow">'+DSTEPS.map((f,i)=>'<div class="fstep '+(i<ds?'done':i===ds?'now':'')+'"><div class="fdot">'+(i<ds?'✓':i+1)+'</div><div class="fl">'+f+'</div></div>').join('')+'</div>';
+ let actions='';
+ if(S.role==='CH'||S.role==='CE'){
+  if(ds===0)actions='<button class="btn" onclick="W[S.co].discStage=1;audit(\'Processo disciplinar instaurado e convocatória notificada pelo portal\');notify(\'CH\',\'Convocatória do processo \'+co().disc.ref+\' notificada ao arguido.\');render()">Instaurar e notificar convocatória pelo portal</button>';
+  if(ds===1)actions='<div class="mini" style="margin-bottom:8px">A aguardar defesa do arguido (prazo: 10 dias úteis). O arguido pode submeter a defesa pelo próprio portal.</div><button class="btn ghost" onclick="W[S.co].discStage=2;audit(\'Defesa do arguido junta ao processo\');render()">Registar defesa recebida</button>';
+  if(ds===2)actions='<label class="f">Medida disciplinar a aplicar (após audiência e ponderação da defesa)</label><select id="medida"><option>Admoestação simples</option><option>Repreensão registada</option><option>Suspensão do trabalho com perda de remuneração (dentro dos limites legais)</option><option>Despedimento com justa causa</option><option>Arquivamento — factos não provados</option></select><button class="btn" style="margin-top:10px" onclick="const m=document.getElementById(\'medida\').value;W[S.co].discStage=3;audit(\'Decisão final emitida: \'+m);notify(\'CH\',\'Decisão do processo \'+co().disc.ref+\' notificada ao arguido pelo portal.\');render();alert(\'Decisão emitida e notificada ao arguido pelo portal, com pedido de assinatura de tomada de conhecimento.\')">Emitir decisão fundamentada e notificar pelo portal</button>';
+  if(ds===3)actions='<div class="mini" style="margin-bottom:8px">Decisão notificada; a aguardar assinatura de tomada de conhecimento pelo arguido (visível no portal dele).</div><button class="btn ghost" onclick="W[S.co].discStage=4;audit(\'Tomada de conhecimento da decisão registada\');render()">Registar tomada de conhecimento</button>';
+  if(ds===4)actions='<button class="btn" onclick="W[S.co].discStage=5;audit(\'Processo disciplinar concluído e arquivado; medida registada no cadastro\');render()">Concluir e arquivar (regista no cadastro do colaborador)</button>';
+  if(ds===5)actions='<div class="notice soft"><b>Processo concluído e arquivado.</b> Medida registada no cadastro disciplinar do colaborador, com extinção automática nos prazos legais mediante boa conduta.</div>';
+ }
+ return head('Instrução pelo portal · Lei n.º 12/23','Processos Disciplinares — '+co().curto,
+ 'O processo corre no portal, com todas as garantias: nota de culpa notificada com registo de leitura, prazo de defesa, suspensão preventiva quando necessária, decisão fundamentada e tomada de conhecimento assinada.')+
+ '<div class="card"><div style="display:flex;align-items:center;gap:12px;margin-bottom:8px"><h3 style="margin:0">'+d.ref+' — '+arg.nome+' ('+arg.cargo+')</h3>'+(d.susp?'<span class="tag bad">suspensão preventiva activa · sem perda de remuneração</span>':'')+'</div>'+bar+
+ '<div class="notice"><b>Factos imputados:</b> '+d.factos+'<br><b>Contexto:</b> '+d.hist+'</div>'+
+ '<div class="grid g3" style="margin:10px 0">'+
+ '<div class="doc"><div class="dic">NC</div><div class="dn"><b>Nota de Culpa / Convocatória</b><span>'+(ds>=1?'notificada · leitura registada':'por emitir')+'</span></div>'+(ds>=1?'<a onclick="openDoc(\'notaculpa\')">Ler</a>':'')+'</div>'+
+ (d.susp?'<div class="doc"><div class="dic">SP</div><div class="dn"><b>Suspensão Preventiva</b><span>notificada · sem perda de remuneração</span></div><a onclick="openDoc(\'suspensao\')">Ler</a></div>':'')+
+ '<div class="doc"><div class="dic">DF</div><div class="dn"><b>Decisão Final</b><span>'+(ds>=3?'emitida e notificada':'pendente')+'</span></div>'+(ds>=3?'<a onclick="openDoc(\'decisao\')">Ler</a>':'')+'</div></div>'+actions+'</div>'+
+ '<div class="notice"><b>Vista do arguido:</b> abra o Portal do Colaborador de '+arg.nome+' (lista de Colaboradores → separador «Disciplina & Notificações») para ver exactamente o que o trabalhador recebe e assinar as tomadas de conhecimento.</div>'+
+ (S.co!=='ml'?'<div class="card" style="margin-top:12px"><h3>Arquivo</h3><div class="mini">Sem processos concluídos neste ano. O caso arquivado de demonstração completa está na empresa MULEMBA (mude de empresa na barra lateral).</div></div>':'');
+}
+
+/* ================= PLANO DE FORMAÇÃO ================= */
+function formacao(){
+ const auto=[];
+ emps().forEach(e=>{const n=e.s[2];if(n!=null&&n<3.5)auto.push([e.nome,e.dept,'Nota 2025: '+n,'Reforço de competências da função']);});
+ auto.push([colEmp().nome,colEmp().dept,'PID do ciclo','Liderança e Gestão de Desempenho']);
+ const extra=w().trainingExtra;
+ return head('Gerado automaticamente a partir das avaliações','Plano de Formação '+co().curto+' 2026/27',
+ 'A plataforma identifica as necessidades formativas a partir das notas e dos PIDs, junta as necessidades indicadas pelas áreas, e submete o plano consolidado à aprovação da Administração.')+
+ '<div class="grid g2"><div class="card"><h3>Necessidades identificadas automaticamente</h3><table><tr><th>Colaborador</th><th>Área</th><th>Origem</th><th>Formação sugerida</th></tr>'+
+ auto.map(a=>'<tr><td>'+a[0]+'</td><td>'+a[1]+'</td><td class="mini">'+a[2]+'</td><td>'+a[3]+'</td></tr>').join('')+'</table>'+
+ '<div class="mini" style="margin-top:6px">Critério automático: nota do último ciclo abaixo de 3,5 e recomendações dos PIDs. Ligação directa ao catálogo CLACS Academy.</div></div>'+
+ '<div class="card"><h3>Necessidades indicadas pelas áreas</h3>'+
+ (extra.length?('<table><tr><th>Área</th><th>Necessidade</th></tr>'+extra.map(x=>'<tr><td>'+x[0]+'</td><td>'+x[1]+'</td></tr>').join('')+'</table>'):'<div class="mini" style="margin-bottom:8px">Ainda sem registos das áreas neste ciclo.</div>')+
+ (S.role==='DIR'||S.role==='CH'?'<label class="f">Adicionar necessidade formativa da sua área</label><input id="needTxt" placeholder="Ex.: formação em atendimento ao cliente para a equipa de vendas"><button class="btn ghost" style="margin-top:8px" onclick="const t=document.getElementById(\'needTxt\').value.trim();if(t.length<8)return alert(\'Descreva a necessidade.\');w().trainingExtra.push([roleObj().who(),t]);audit(\'Necessidade formativa registada pela área\');render()">Registar necessidade</button>':'')+'</div></div>'+
+ '<div class="card" style="margin-top:12px"><h3>Aprovação do plano</h3>'+
+ (w().trainingApproved?'<div class="notice soft"><b>Plano aprovado pela Administração</b> — '+(auto.length+extra.length)+' acções de formação; execução ao longo de 2026/27 com acompanhamento no portal de cada colaborador.</div>':
+ '<div class="mini" style="margin-bottom:8px">Plano consolidado: '+(auto.length+extra.length)+' acções de formação. Aguarda deliberação da Administração (CA/CE).</div>'+
+ (S.role==='CE'?'<button class="btn" onclick="w().trainingApproved=true;audit(\'Plano de formação aprovado pela Administração\');notify(\'CH\',\'O plano de formação foi aprovado pela Administração — pode iniciar a execução.\');renderNav();render()">Aprovar plano de formação</button>':'<div class="tag warn">aprovação reservada ao perfil Administração</div>'))+'</div>';
+}
+
+/* ================= CULTURA — pulse funcional ================= */
+function cultura(){
+ const c=co().cult;
+ const done=w().pulseDone; const pa=w().pulseAns;
+ const qs=[['p1','Sinto que o meu trabalho é reconhecido.'],['p2','Confio nas decisões da liderança.'],['p3','Recomendaria a '+co().curto+' como um bom lugar para trabalhar.']];
+ const allAns=qs.every(q=>pa[q[0]]!=null);
+ return head('12 pulses realizados · 3 anos de série','Cultura Organizacional — '+co().curto,
+ 'Como as pessoas se sentem, medido a sério: pulses trimestrais anónimos, eNPS e recomendações accionáveis. Anonimato por desenho: nenhum grupo com menos de 5 respostas é exibido.')+
+ '<div class="grid g4">'+
+ kbox('+'+c.enps[2],'eNPS 2025 · era +'+c.enps[0]+' em 2023','cultura','série de 3 anos')+
+ kbox(c.resp[2]+'%','Participação 2025 ('+Math.round(c.resp[2]/100*c.univ)+' de '+c.univ+')','cultura','tendência: '+c.resp[0]+'% → '+c.resp[2]+'%')+
+ kbox('12','Pulses realizados (2023–2026)','cultura','trimestrais')+
+ kbox('31 Jul','Pulse Q3 2026 encerra','cultura',done?'✓ já respondeu':'responda ao lado')+
+ '</div><div class="grid g2" style="margin-top:13px">'+
+ '<div class="card"><h3>Dimensões — evolução 2023 → 2025</h3><table><tr><th>Dimensão</th><th>2023</th><th>2024</th><th>2025</th></tr>'+
+ c.dims.map(d=>'<tr><td>'+d[0]+'</td><td>'+d[1]+'%</td><td>'+d[2]+'%</td><td><b>'+d[3]+'%</b><div class="bar"><i class="'+(d[3]>=70?'ok':d[3]>=55?'pri':'warn')+'" style="width:'+d[3]+'%"></i></div></td></tr>').join('')+'</table>'+
+ '<div class="notice"><b>Recomendações do último ciclo:</b><br>'+c.rec.map((r,i)=>(i+1)+'. '+r).join('<br>')+'</div></div>'+
+ '<div class="card"><h3>Pulse Q3 2026 — anónimo, 60 segundos</h3>'+
+ (done?'<div class="notice soft"><b>Resposta registada com sucesso.</b> Obrigado pelo contributo — a identidade nunca é associada às respostas. Resultados publicados após 31 Jul com o mínimo de 5 respostas por grupo.</div>':
+ qs.map(q=>'<div class="q"><div class="qt">'+q[1]+'</div><div class="chips">'+SCALE.map(s=>'<div class="chip '+(pa[q[0]]==+s[0]?'sel':'')+'" onclick="w().pulseAns.'+q[0]+'='+s[0]+';render()"><b>'+s[0]+'</b><small>'+s[1]+'</small></div>').join('')+'</div></div>').join('')+
+ '<button class="btn" style="margin-top:10px" '+(allAns?'':'disabled')+' onclick="w().pulseDone=true;audit(\'Resposta anónima ao pulse Q3 registada (sem associação de identidade)\');render()">'+(allAns?'Submeter anonimamente':'Responda às 3 perguntas para submeter')+'</button>')+'</div></div>';
+}
+
+/* ================= RELATÓRIOS ================= */
+function repData(){
+ const wf=w().flow;
+ const rows=Object.keys(co().dirs).map(dk=>{
+  const dEmps=emps().filter(e=>e.dept===dk);
+  const m25=avgArr(dEmps.map(e=>e.s[2]));
+  const list26=dEmps.map(e=>{
+    if(e.id===colEmp().id) return (wf.stage>=4)?wf.finalScore:null;
+    if(e.flag&&e.flag.indexOf('disciplinar')>-1) return null;
+    return f26(e);
+  });
+  return [dk, co().dirs[dk], dEmps.length, m25, avgArr(list26)];
+ });
+ const g25=avgArr(emps().map(e=>e.s[2]));
+ const g26=avgArr(rows.map(r=>r[4]).filter(x=>x!=null));
+ const v25=emps().map(e=>e.s[2]).filter(x=>x!=null);
+ const dist=[['Excelente (≥4,5)',v25.filter(x=>x>=4.5).length],['Muito Bom (4,0–4,4)',v25.filter(x=>x>=4&&x<4.5).length],['Bom (3,0–3,9)',v25.filter(x=>x>=3&&x<4).length],['Suficiente (2,5–2,9)',v25.filter(x=>x>=2.5&&x<3).length],['Insuficiente (<2,5)',v25.filter(x=>x<2.5).length]];
+ const sorted=rows.filter(r=>r[3]!=null).slice().sort((a,b)=>b[3]-a[3]);
+ const best=sorted[0], worst=sorted[sorted.length-1];
+ const lows=emps().filter(e=>e.s[2]!=null&&e.s[2]<3);
+ const tops=emps().filter(e=>e.s[2]!=null&&e.s[2]>=4.3&&e.pot===3);
+ const needF=emps().filter(e=>e.s[2]!=null&&e.s[2]<3.5);
+ const dimFraca=co().cult.dims.slice().sort((a,b)=>a[3]-b[3])[0];
+ const dimForte=co().cult.dims.slice().sort((a,b)=>b[3]-a[3])[0];
+ return {rows,g25,g26,dist,best,worst,lows,tops,needF,dimFraca,dimForte,nAval:v25.length,wf};
+}
+
+function relatorios(){
+ if(S.repView) return relatorioDoc();
+ const d=repData(); const wf=d.wf; const definitivo=wf.stage===5;
+ return head('Gerado automaticamente a partir dos fechos','Relatórios — Ciclo 2026',
+ 'O relatório constrói-se sozinho: cada avaliação fechada e validada pela Administração entra imediatamente na consolidação por direcção, por categoria e geral.')+
+ '<div class="notice '+(definitivo?'soft':'')+'"><b>Estado: '+(definitivo?'ciclo do caso demonstrativo validado — relatório actualizado':'relatório provisório')+'.</b> '+(definitivo?'A nota validada de '+colEmp().nome+' ('+wf.finalScore+') já está reflectida na direcção '+colEmp().dept+'.':'Complete e valide o fluxo do caso demonstrativo (módulo Avaliação) e veja este relatório actualizar-se.')+'</div>'+
+ '<div class="card" style="border-color:var(--pri-soft);background:var(--pri-bg)"><div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap"><div style="flex:1;min-width:260px"><h3 style="margin:0">Relatório Consolidado de Avaliação de Desempenho</h3><div class="mini" style="margin-top:4px">Documento integral para o CA, accionistas e planeamento estratégico — introdução, desenvolvimento, análise, recomendações e anexos.</div></div><button class="btn" onclick="S.repView=true;audit(\'Relatório consolidado do ciclo aberto\');render();window.scrollTo(0,0)">Abrir relatório completo →</button></div></div>'+
+ '<div class="grid g3" style="margin-top:13px">'+
+ '<div class="card kpi"><div class="v">'+d.g25.toFixed(2)+'</div><div class="l">Média geral 2025 (homologada)</div></div>'+
+ '<div class="card kpi"><div class="v">'+(d.g26?d.g26.toFixed(2):'—')+'</div><div class="l">Média geral 2026 ('+(definitivo?'inclui caso validado':'provisória')+')</div></div>'+
+ '<div class="card kpi"><div class="v">'+emps().filter(e=>f26(e)!=null).length+'</div><div class="l">Avaliações consolidadas</div></div></div>'+
+ '<div class="card" style="margin-top:13px"><h3>Consolidação por direcção</h3><table><tr><th>Direcção</th><th>Designação</th><th>Efectivo</th><th>Média 2025</th><th>Média 2026</th><th>Variação</th></tr>'+
+ d.rows.map(r=>{const v=(r[4]!=null&&r[3]!=null)?(r[4]-r[3]):null;return '<tr><td><b>'+r[0]+'</b></td><td class="mini">'+r[1]+'</td><td>'+r[2]+'</td><td>'+(r[3]?r[3].toFixed(2):'—')+'</td><td>'+(r[4]?r[4].toFixed(2):'—')+'</td><td>'+(v==null?'—':v>=0?'<span class="tag ok">▲ +'+v.toFixed(2)+'</span>':'<span class="tag bad">▼ '+v.toFixed(2)+'</span>')+'</td></tr>'}).join('')+'</table></div>'+
+ '<div class="grid g2" style="margin-top:13px">'+
+ '<div class="card"><h3>Consolidação por categoria</h3><table><tr><th>Categoria</th><th>Efectivo</th><th>Média 2026</th></tr>'+
+ ['Director','Chefia','Técnico','Apoio'].map(cat=>{const l=emps().filter(e=>e.cat===cat);const m=avgArr(l.map(e=>e.id===colEmp().id&&wf.stage>=4?wf.finalScore:f26(e)));return '<tr><td>'+cat+'</td><td>'+l.length+'</td><td>'+(m?m.toFixed(2):'—')+'</td></tr>'}).join('')+'</table></div>'+
+ '<div class="card"><h3>Emissão de relatórios</h3>'+
+ [['Relatório geral do ciclo (empresa)','pronto'],['Relatórios por direcção ('+Object.keys(co().dirs).length+')','prontos'],['Relatório para o CA / Assembleia Geral','pronto'],['Anexo: distribuição de níveis e 9-Box','pronto']].map(r=>'<div class="doc"><div class="dic">▤</div><div class="dn"><b>'+r[0]+'</b><span>'+r[1]+' · gerado automaticamente</span></div><a onclick="audit(\'Relatório emitido: '+r[0].replace(/'/g,'')+'\');alert(\'Relatório emitido em PDF (simulação), com verificação de integridade.\')">Emitir</a></div>').join('')+'</div></div>';
+}
+
+/* ---------- RELATÓRIO CONSOLIDADO — documento integral ---------- */
+function relatorioDoc(){
+ const c=co(); const d=repData(); const ano=2026; const wf=d.wf;
+ const sec=(n,t)=>'<div style="margin:26px 0 10px"><h3 style="font-size:16.5px;color:var(--pri-dark)">'+n+'. '+t+'</h3></div>';
+ const sub=(t)=>'<div style="margin:14px 0 6px;font-weight:600;font-size:13.5px;color:var(--strong)">'+t+'</div>';
+ const P=(t)=>'<p style="font-size:13px;line-height:1.7;color:var(--ink);text-align:justify;margin-bottom:10px">'+t+'</p>';
+ const li=(arr,tag)=>arr.map(x=>'<div style="display:flex;gap:9px;padding:5px 0"><span class="tag '+tag+'" style="flex-shrink:0;height:fit-content">•</span><span style="font-size:12.8px;line-height:1.55">'+x+'</span></div>').join('');
+
+ /* análise computada */
+ const fortes=[
+  'Trajectória ascendente sustentada da média global homologada, culminando em '+d.g25.toFixed(2)+' no ciclo de 2025, sem inflação de notas (apenas '+d.dist[0][1]+' classificação(ões) de Excelente em '+d.nAval+' avaliados).',
+  'A direcção '+d.best[0]+' ('+d.best[1]+') consolida-se como referência interna, com média de '+d.best[3].toFixed(2)+'.',
+  'Clima organizacional em melhoria contínua: eNPS de +'+c.cult.enps[2]+' (era +'+c.cult.enps[0]+' há dois ciclos) e dimensão «'+d.dimForte[0]+'» em '+d.dimForte[3]+'%.',
+  'Zero litígios laborais emergentes do processo avaliativo — as garantias procedimentais (concordância, recurso, comissão) estão a funcionar.'
+ ];
+ const fracos=[
+  'A direcção '+d.worst[0]+' ('+d.worst[1]+') apresenta a média mais baixa ('+d.worst[3].toFixed(2)+'), com desvio persistente face às restantes unidades.',
+  d.lows.length+' colaborador(es) com desempenho abaixo de 3,0 no último ciclo'+(d.lows.length?' ('+d.lows.map(e=>e.nome).join('; ')+')':'')+', exigindo planos de recuperação individuais.',
+  'A dimensão cultural «'+d.dimFraca[0]+'» permanece a mais frágil ('+d.dimFraca[3]+'%), correlacionada com as unidades de menor desempenho.'
+ ];
+ const melhorar=c.recDes.slice(0,3);
+ const manter=[
+  'O programa de check-ins trimestrais — correlaciona positivamente com a subida do eNPS e com a redução dos desvios entre autoavaliação e heteroavaliação.',
+  'A homologação colegial e o circuito de recurso com comissão independente — pilares da credibilidade do sistema.',
+  'A ligação avaliação → formação → talento (PID, 9-Box, sucessão), que já produziu promoções por mérito e retenções críticas.'
+ ];
+ const rec_form=[
+  'Inscrever em acções de formação os '+d.needF.length+' colaboradores com nota inferior a 3,5, conforme identificação automática do módulo de Formação'+(d.needF.length?' (destaque: '+d.needF.slice(0,3).map(e=>e.nome.split(' ')[0]+' '+e.nome.split(' ').slice(-1)).join('; ')+(d.needF.length>3?'; entre outros':'')+')':'')+'.',
+  'Executar o plano de formação consolidado (necessidades das áreas + PID) submetido à aprovação da Administração no módulo respectivo.',
+  'Formar as chefias intermédias em feedback contínuo e condução de entrevistas de avaliação.'
+ ];
+ const rec_tal=[
+  (d.tops.length?'Activar planos de sucessão e retenção para os talentos identificados ('+d.tops.map(e=>e.nome).join('; ')+').':'Rever a matriz 9-Box no próximo comité de talento.'),
+  'Rever o enquadramento remuneratório das retenções críticas antes do fecho do exercício.',
+  'Estabelecer plano de recuperação com reavaliação intercalar para os desempenhos insuficientes.'
+ ];
+ const rec_org=c.cult.rec;
+
+ const annexFixed=[
+  ['Mapa de notas homologadas do ciclo (por colaborador)','gerado pelo sistema'],
+  ['Actas das entrevistas de avaliação','arquivo digital · '+d.nAval+' actas'],
+  ['Decisões da Comissão de Avaliação (recursos)','arquivo digital'],
+  ['Acta de validação da Administração (CA/CE)','pendente do fecho do ciclo'],
+  ['Distribuição de níveis e matriz 9-Box','gerado pelo sistema'],
+  ['Plano de formação proposto','módulo de Formação'],
+  ['Relatório de cultura organizacional (série de 3 anos)','módulo de Cultura']
+ ];
+ const ann=w().repAnnex;
+
+ return '<div style="max-width:860px">'+
+ '<div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">'+
+  '<button class="btn ghost" onclick="S.repView=false;render();window.scrollTo(0,0)">← Voltar à consolidação</button>'+
+  '<button class="btn" onclick="audit(\'Relatório consolidado emitido em PDF para o CA\');alert(\'Relatório emitido em PDF (simulação), com anexos, verificação de integridade e numeração de páginas.\')">Emitir PDF para o CA</button>'+
+  '<button class="btn ghost" onclick="audit(\'Relatório partilhado com os accionistas (área reservada)\');alert(\'Relatório disponibilizado na área reservada dos accionistas (simulação).\')">Partilhar com accionistas</button>'+
+ '</div>'+
+ '<div class="card" style="padding:34px 40px">'+
+  '<div style="text-align:center;border-bottom:2px solid var(--pri-soft);padding-bottom:18px;margin-bottom:8px">'+
+   '<div class="eyebrow" style="letter-spacing:.2em">'+c.nome+'</div>'+
+   '<h2 style="font-size:21px;margin-top:8px">RELATÓRIO CONSOLIDADO DE AVALIAÇÃO DE DESEMPENHO</h2>'+
+   '<div class="mini" style="margin-top:6px">Ciclo Avaliativo de '+ano+' · Ref.ª REL/CH/AVAL/'+ano+'/001 · '+today()+'</div>'+
+   '<div class="mini">Destinatários: Conselho de Administração · Accionistas · Direcção de Planeamento Estratégico</div>'+
+  '</div>'+
+
+  sec(1,'Introdução')+
+  P('O presente relatório consolida os resultados do ciclo de avaliação de desempenho de '+ano+' da '+c.nome+', elaborado ao abrigo do Regulamento de Avaliação de Desempenho (REG/CH/AVAL/'+ano+') e em conformidade com a Lei Geral do Trabalho (Lei n.º 12/23, de 27 de Dezembro). Destina-se a suportar a análise e a tomada de decisão do Conselho de Administração e dos accionistas, e a servir de instrumento de estudo à Direcção de Planeamento Estratégico na melhoria e desenvolvimento do capital humano.')+
+  P('A metodologia assentou em três componentes ponderadas — objectivos pactuados (50%), competências comportamentais (35%) e valores e conformidade (15%), com ponderação 60/25/15 para dirigentes — numa escala de 1 a 5, com autoavaliação, avaliação da chefia, concordância do avaliado, recurso a comissão independente e validação final da Administração. Todo o processo correu na plataforma KAMBA, com registo integral e trilha de auditoria.')+
+
+  sec(2,'Desenvolvimento')+
+  sub('2.1. Universo avaliado')+
+  P('Foram abrangidos '+emps().length+' colaboradores, distribuídos por '+Object.keys(c.dirs).length+' direcções. Concluíram o ciclo anterior '+d.nAval+' avaliados; os restantes correspondem a ciclos ajustados nos termos do regulamento (admissões recentes, licença de maternidade, processo disciplinar suspensivo).')+
+  sub('2.2. Resultados globais')+
+  P('A média global homologada do ciclo de 2025 fixou-se em <b>'+d.g25.toFixed(2)+'</b> ('+nivel(d.g25)+'); a consolidação provisória de '+ano+' aponta para <b>'+(d.g26?d.g26.toFixed(2):'—')+'</b>. A distribuição por níveis revela uma curva saudável, sem inflação classificativa: '+d.dist.map(x=>x[1]+' em '+x[0]).join('; ')+'.')+
+  sub('2.3. Resultados por direcção')+
+  '<table style="margin:8px 0 4px"><tr><th>Direcção</th><th>Efectivo</th><th>Média 2025</th><th>Média '+ano+'</th></tr>'+d.rows.map(r=>'<tr><td><b>'+r[0]+'</b> <span class="mini">'+r[1]+'</span></td><td>'+r[2]+'</td><td>'+(r[3]?r[3].toFixed(2):'—')+'</td><td>'+(r[4]?r[4].toFixed(2):'—')+'</td></tr>').join('')+'</table>'+
+  sub('2.4. Garantias procedimentais')+
+  P('Registou-se '+(c.curto==='NZILA'?'um recurso, decidido pela Comissão de Avaliação dentro do prazo regulamentar de 8 dias úteis':'o pleno cumprimento dos prazos de concordância e recurso')+'. Não emergiu qualquer litígio laboral do processo avaliativo.')+
+  sub('2.5. Correlação com a cultura organizacional')+
+  P('O eNPS evoluiu de +'+c.cult.enps[0]+' para +'+c.cult.enps[2]+' no triénio, com participação de '+c.cult.resp[2]+'%. A dimensão mais frágil («'+d.dimFraca[0]+'», '+d.dimFraca[3]+'%) coincide territorialmente com as unidades de menor média — evidência de que clima e desempenho devem ser geridos em conjunto.')+
+
+  sec(3,'Análise')+
+  sub('3.1. Pontos fortes')+li(fortes,'ok')+
+  sub('3.2. Pontos fracos')+li(fracos,'bad')+
+  sub('3.3. Pontos a melhorar')+li(melhorar,'warn')+
+  sub('3.4. Pontos a manter')+li(manter,'pri')+
+
+  sec(4,'Recomendações')+
+  sub('4.1. Formação e capacitação')+li(rec_form,'gold')+
+  sub('4.2. Gestão do talento')+li(rec_tal,'gold')+
+  sub('4.3. Desenvolvimento organizacional')+li(rec_org,'gold')+
+
+  sec(5,'Conclusão e proposta de deliberação')+
+  P('O sistema de avaliação encontra-se consolidado e a produzir efeitos práticos — promoções por mérito, planos de desenvolvimento e decisões de talento fundamentadas. Propõe-se ao Conselho de Administração: (i) a homologação do presente relatório; (ii) a aprovação do plano de formação anexo; (iii) o mandato à Direcção de Planeamento Estratégico para incorporar as recomendações do capítulo 4 no plano estratégico de capital humano; e (iv) a comunicação da síntese aos accionistas na próxima Assembleia Geral.')+
+  '<div style="display:flex;justify-content:space-between;margin-top:26px;padding-top:14px;border-top:1px solid var(--line)"><div class="mini" style="text-align:center;flex:1">____________________<br>Direcção de Capital Humano<br>'+persona('CH')+'</div><div class="mini" style="text-align:center;flex:1">____________________<br>Administração (CA/CE)<br>'+persona('CE')+'</div></div>'+
+ '</div>'+
+
+ /* ---- ANEXOS ---- */
+ '<div class="card" style="margin-top:14px"><h3>6. Anexos ao relatório</h3>'+
+  '<div class="mini" style="margin-bottom:10px">Anexos gerados automaticamente pelo sistema:</div>'+
+  annexFixed.map(a=>'<div class="doc"><div class="dic">▤</div><div class="dn"><b>'+a[0]+'</b><span>'+a[1]+'</span></div><a onclick="alert(\'Anexo aberto (simulação).\')">Abrir</a></div>').join('')+
+  '<div class="mini" style="margin:14px 0 8px">Anexos adicionados pelo Capital Humano (documentos, imagens, notas):</div>'+
+  (ann.length?ann.map((a,i)=>'<div class="doc"><div class="dic">'+a.ic+'</div><div class="dn"><b>'+a.nome+'</b><span>'+a.tipo+' · anexado em '+a.ts+(a.nota?' — «'+a.nota+'»':'')+'</span></div><a onclick="w().repAnnex.splice('+i+',1);audit(\'Anexo removido do relatório\');render()">Remover</a></div>').join(''):'<div class="mini" style="margin-bottom:8px">Ainda sem anexos adicionados.</div>')+
+  '<div class="grid g3" style="margin-top:10px">'+
+   '<button class="btn ghost" onclick="addAnnex(\'doc\')">＋ Anexar documento</button>'+
+   '<button class="btn ghost" onclick="addAnnex(\'img\')">＋ Anexar imagem</button>'+
+   '<button class="btn ghost" onclick="addAnnex(\'nota\')">＋ Adicionar nota</button>'+
+  '</div>'+
+  '<div class="notice" style="margin-top:12px">Cada anexo recebe <b>hash de integridade e carimbo temporal</b> e passa a fazer parte do relatório emitido — o PDF final inclui a lista de anexos com as respectivas verificações.</div>'+
+ '</div></div>';
+}
+function addAnnex(tipo){
+ const w_=w();
+ if(tipo==='nota'){
+  const n=prompt('Escreva a nota a anexar ao relatório:');
+  if(!n||n.trim().length<3)return;
+  w_.repAnnex.push({ic:'✎',nome:'Nota do Capital Humano',tipo:'nota',nota:n.trim(),ts:nowts()});
+  audit('Nota anexada ao relatório consolidado');
+ } else if(tipo==='img'){
+  w_.repAnnex.push({ic:'▣',nome:'Gráfico da distribuição de níveis (imagem)',tipo:'imagem PNG',nota:null,ts:nowts()});
+  audit('Imagem anexada ao relatório consolidado');
+ } else {
+  w_.repAnnex.push({ic:'▤',nome:'Documento de suporte (PDF)',tipo:'documento PDF',nota:null,ts:nowts()});
+  audit('Documento anexado ao relatório consolidado');
+ }
+ notify('CE','Novo anexo adicionado ao Relatório Consolidado do Ciclo pelo Capital Humano.');
+ render();
+}
+
+/* ================= HISTÓRICO ================= */
+function hist(){
+ const years=[2023,2024,2025];
+ const medias=years.map((_,y)=>avgArr(emps().map(e=>e.s[y])));
+ return head('Séries de 3 ciclos','Histórico — '+co().curto,
+ 'Três anos de avaliações homologadas: evolução global, por direcção e distribuição de níveis.')+
+ '<div class="grid g2"><div class="card"><h3>Média global por ciclo</h3>'+spark(medias,420,64)+
+ '<div class="mini" style="display:flex;justify-content:space-between">'+years.map((y,i)=>'<span>'+y+' · '+medias[i].toFixed(2)+'</span>').join('')+'</div></div>'+
+ '<div class="card"><h3>Distribuição de níveis — 2025</h3>'+(()=>{const v=emps().map(e=>e.s[2]).filter(x=>x!=null);
+ return [['Excelente (≥4,5)',v.filter(x=>x>=4.5).length,'ok'],['Muito Bom (4,0–4,4)',v.filter(x=>x>=4&&x<4.5).length,'ok'],['Bom (3,0–3,9)',v.filter(x=>x>=3&&x<4).length,'pri'],['Suficiente (2,5–2,9)',v.filter(x=>x>=2.5&&x<3).length,'warn'],['Insuficiente (<2,5)',v.filter(x=>x<2.5).length,'bad']].map(x=>'<div style="margin:8px 0"><div style="display:flex;justify-content:space-between;font-size:12.5px"><span>'+x[0]+'</span><b>'+x[1]+'</b></div><div class="bar"><i class="'+x[2]+'" style="width:'+(x[1]/v.length*100)+'%"></i></div></div>').join('')})()+'</div></div>'+
+ '<div class="card" style="margin-top:13px"><h3>Média por direcção (2023 → 2025)</h3><table><tr><th>Direcção</th><th>2023</th><th>2024</th><th>2025</th><th>Tendência</th></tr>'+
+ Object.keys(co().dirs).map(dk=>{const ms=years.map((_,y)=>avgArr(emps().filter(e=>e.dept===dk).map(e=>e.s[y])));const t=(ms[2]!=null&&ms[0]!=null)?ms[2]-ms[0]:null;
+ return '<tr><td><b>'+dk+'</b> <span class="mini">'+co().dirs[dk]+'</span></td>'+ms.map(m=>'<td>'+(m?m.toFixed(2):'—')+'</td>').join('')+'<td>'+(t==null?'—':t>0.05?'<span class="tag ok">▲ +'+t.toFixed(2)+'</span>':t<-0.05?'<span class="tag bad">▼ '+t.toFixed(2)+'</span>':'<span class="tag info">estável</span>')+'</td></tr>'}).join('')+'</table></div>';
+}
+
+/* ================= NOTIFICAÇÕES / ADMIN ================= */
+function notifs(){
+ const list=w().notifs[S.role];
+ return head('Perfil: '+roleObj().l,'Notificações',
+ 'Tudo o que os outros perfis desencadearam e lhe diz respeito — o tecido que liga o fluxo.')+
+ '<div class="card">'+(list.length?list.map(n=>'<div class="notifrow"><span class="nd">'+n.ts+'</span><span>'+n.txt+'</span></div>').join(''):'<div class="mini">Sem notificações. Elas surgem à medida que o fluxo avança nos outros perfis (submissões, decisões, validações, assinaturas).</div>')+
+ (list.length?'<button class="btn ghost" style="margin-top:10px" onclick="w().notifs[S.role]=[];renderNav();render()">Limpar notificações</button>':'')+'</div>';
+}
+function admin(){
+ return head('Parametrização & conformidade','Administração — '+co().curto,
+ 'Parâmetros do ciclo, plano SaaS e trilha de auditoria imutável.')+
+ '<div class="grid g2"><div class="card"><h3>Parâmetros do ciclo 2026</h3><table>'+
+ '<tr><td class="mini">Escala</td><td>1–5 · níveis de Insuficiente a Excelente</td></tr>'+
+ '<tr><td class="mini">Ponderações</td><td>Objectivos 50% · Competências 35% · Valores 15% (dirigentes: 60/25/15)</td></tr>'+
+ '<tr><td class="mini">Concordância do avaliado</td><td>obrigatória · aceitar ou recorrer em 5 dias úteis</td></tr>'+
+ '<tr><td class="mini">Comissão de Avaliação</td><td>'+persona('COM')+' · decide em 8 dias úteis</td></tr>'+
+ '<tr><td class="mini">Validação final</td><td>Administração (CA/CE) · efeitos remuneratórios</td></tr>'+
+ '<tr><td class="mini">Regulamento</td><td><a style="color:var(--pri);cursor:pointer;font-weight:600" onclick="openDoc(\'regaval\')">ler texto integral</a></td></tr></table></div>'+
+ '<div class="card"><h3>Plano SaaS</h3><table>'+
+ '<tr><td class="mini">Plano</td><td>Empresarial · facturação mensal em Kz · '+emps().length+' colaboradores</td></tr>'+
+ '<tr><td class="mini">Módulos</td><td>Portal · Avaliação · Disciplina · Formação · Cultura · Relatórios</td></tr>'+
+ '<tr><td class="mini">Alojamento</td><td>dados em território nacional · cópias diárias · modo offline</td></tr>'+
+ '<tr><td class="mini">Multi-empresa</td><td>cada cliente num espaço isolado (mude de empresa na barra lateral)</td></tr></table></div></div>'+
+ '<div class="card" style="margin-top:13px"><h3>Trilha de auditoria (registos imutáveis, carimbo temporal + hash)</h3>'+
+ (w().audit.length?w().audit.slice(0,12).map(a=>'<div class="notifrow"><span class="nd">'+a.ts+'</span><span class="mini" style="width:70px;flex-shrink:0;font-family:monospace">#'+a.h+'</span><span><b>'+a.u+'</b> — '+a.a+'</span></div>').join(''):'<div class="mini">A trilha preenche-se com as acções que fizer na demonstração: submissões, assinaturas, decisões, leituras de documentos.</div>')+'</div>';
+}
+
+
+/* ================= FÉRIAS & AUSÊNCIAS — gestão conforme LGT (Lei 12/23) ================= */
+/* Tipos de falta justificada (art. 150.º LGT) */
+const FALTA_TIPOS=[
+ ['casamento','Casamento do trabalhador','8 dias úteis'],
+ ['nascimento','Nascimento de filho (paternidade)','1 dia útil'],
+ ['obito_conj','Falecimento de cônjuge, pai, mãe ou filho','8 dias úteis'],
+ ['obito_fam','Falecimento de avós, netos, irmãos, sogros','2 dias úteis'],
+ ['assist_fam','Assistência a membro do agregado familiar','3 dias/mês (máx. 12/ano)'],
+ ['doenca_filho','Doença de filho menor de 10 anos','até 24 dias úteis/ano'],
+ ['doenca','Doença ou acidente do próprio (com atestado)','conforme atestado'],
+ ['sindical','Actividade sindical','conforme mandato'],
+ ['tribunal','Cumprimento de obrigações legais (tribunal, etc.)','tempo necessário']
+];
+const FEM_NAMES=['Marta','Lúcia','Ana','Esperança','Teresa','Josefa','Domingas','Helena','Joana','Luísa','Nádia','Paula','Rosa','Tomásia','Vitória','Cristina','Eugénia','Gabriela','Inês','Isabel','Fernanda','Beatriz','Carla','Sónia','Wanga','Lurdes','Neusa','Alice','Catarina','Bela','Deolinda','Elsa','Graça','Mena'];
+function isFem(nome){return FEM_NAMES.includes(nome.split(' ')[0])}
+function absEmp(cok,id){return CO[cok].emps.find(e=>e.id===id)}
+function absPendingFor(role){
+ const rq=w().absReq;
+ if(role==='DIR'){const dd=dirEmp().dept; return rq.filter(r=>r.estado==='pendente_dir'&&absEmp(S.co,r.empId)&&absEmp(S.co,r.empId).dept===dd).length||0;}
+ if(role==='CH'||role==='CE'){return rq.filter(r=>r.estado==='pendente_ch').length||0;}
+ return 0;
+}
+const estadoTag=e=>({pendente_dir:['warn','aguarda director'],pendente_ch:['info','aguarda Capital Humano'],aprovada:['ok','aprovada'],autorizada:['ok','autorizada'],recusada:['bad','recusada'],justificada:['ok','justificada'],gozada:['pri','gozada']}[e]||['info',e]);
+const tipoLabel=t=>({ferias:'Férias',falta:'Falta justificada',maternidade:'Licença de maternidade',paternidade:'Licença de paternidade'}[t]||t);
+
+/* ---- saldo de férias (22 dias úteis/ano, art. 201.º LGT) ---- */
+function saldoFerias(cok,empId){
+ const gozados=w().absReq.filter(r=>r.empId===empId&&r.tipo==='ferias'&&(r.estado==='aprovada'||r.estado==='gozada')).reduce((s,r)=>s+r.dias,0);
+ const marcados=w().absReq.filter(r=>r.empId===empId&&r.tipo==='ferias'&&(r.estado==='pendente_dir'||r.estado==='pendente_ch')).reduce((s,r)=>s+r.dias,0);
+ return {total:22, gozados, marcados, disp:22-gozados-marcados};
+}
+
+function ausencias(){
+ const R=S.role;
+ if(R==='COL') return absCol();
+ if(R==='DIR') return absDir();
+ return absCH(); // CH, CE
+}
+
+/* ---------- COLABORADOR: pedir férias, justificar faltas, ver saldo ---------- */
+function absCol(){
+ const e=colEmp(); const sal=saldoFerias(S.co,e.id);
+ const meus=w().absReq.filter(r=>r.empId===e.id).sort((a,b)=>b.id-a.id);
+ return head('O seu tempo · '+co().curto,'Férias & Ausências',
+  'Peça férias, justifique faltas e acompanhe as aprovações — sem papel, sem idas ao Capital Humano. Tudo conforme a Lei Geral do Trabalho.')+
+ '<div class="grid g4">'+
+  '<div class="card kpi"><div class="v">'+sal.total+'</div><div class="l">Dias de férias/ano (art. 201.º)</div></div>'+
+  '<div class="card kpi"><div class="v">'+sal.gozados+'</div><div class="l">Já gozados / aprovados</div></div>'+
+  '<div class="card kpi"><div class="v">'+sal.marcados+'</div><div class="l">Marcados (a aguardar)</div></div>'+
+  '<div class="card kpi"><div class="v" style="color:var(--pri)">'+sal.disp+'</div><div class="l">Disponíveis</div></div>'+
+ '</div>'+
+ '<div class="grid g2" style="margin-top:13px">'+
+  /* pedir férias */
+  '<div class="card"><h3>Solicitar férias</h3>'+
+   '<div class="notice"><b>Regra LGT:</b> o gozo faz-se de acordo com o mapa anual; carece de autorização da chefia e comunicação ao Capital Humano. A empresa não pode impedir o gozo do direito (art. 214.º).</div>'+
+   '<div class="grid g2"><div><label class="f">Data de início</label><input type="date" id="fIni" value="2026-08-18"></div>'+
+   '<div><label class="f">Data de fim</label><input type="date" id="fFim" value="2026-09-05"></div></div>'+
+   '<label class="f">Observações (opcional)</label><input id="fObs" placeholder="Ex.: período principal de férias">'+
+   '<button class="btn" style="margin-top:12px" onclick="reqFerias()">Submeter pedido ao director</button>'+
+  '</div>'+
+  /* justificar falta */
+  '<div class="card"><h3>Justificar uma falta</h3>'+
+   '<label class="f">Motivo (art. 150.º LGT)</label><select id="jTipo">'+FALTA_TIPOS.map(t=>'<option value="'+t[0]+'">'+t[1]+' — '+t[2]+'</option>').join('')+'</select>'+
+   '<div class="grid g2"><div><label class="f">De</label><input type="date" id="jIni"></div><div><label class="f">Até</label><input type="date" id="jFim"></div></div>'+
+   '<label class="f">Documento de suporte (atestado, certidão…)</label>'+
+   '<div id="jDocBox" class="doc" style="cursor:pointer" onclick="fakeUpload()"><div class="dic">＋</div><div class="dn"><b id="jDocName">Anexar documento</b><span>PDF ou imagem — atestado médico, certidão, convocatória</span></div></div>'+
+   '<button class="btn" style="margin-top:10px" onclick="justificarFalta()">Submeter justificação</button>'+
+  '</div>'+
+ '</div>'+
+ /* histórico do colaborador */
+ '<div class="card" style="margin-top:13px"><h3>Os meus pedidos e ausências</h3>'+absTable(meus,false)+'</div>';
+}
+
+let _uploaded=null;
+function fakeUpload(){ _uploaded='Atestado médico — '+today(); document.getElementById('jDocName').textContent='✓ '+_uploaded; document.getElementById('jDocBox').style.borderColor='var(--ok)'; }
+
+function reqFerias(){
+ const ini=$('fIni').value, fim=$('fFim').value;
+ if(!ini||!fim||fim<ini) return alert('Verifique as datas do pedido.');
+ const dias=diasUteis(ini,fim); const e=colEmp(); const sal=saldoFerias(S.co,e.id);
+ if(dias>sal.disp) return alert('Só tem '+sal.disp+' dias disponíveis; está a pedir '+dias+'.');
+ const r={id:++w().absId, empId:e.id, tipo:'ferias', ini, fim, dias, motivo:$('fObs').value.trim()||'Gozo de férias.', estado:'pendente_dir', doc:null, ts:nowts(), hist:['Pedido submetido pelo colaborador — aguarda autorização do director.']};
+ w().absReq.push(r);
+ audit('Pedido de férias submetido ('+dias+' dias úteis: '+fmtD(ini)+'–'+fmtD(fim)+')');
+ notify('DIR',e.nome+' solicitou '+dias+' dias de férias ('+fmtD(ini)+'–'+fmtD(fim)+') — aguarda a sua autorização.');
+ renderNav();render();
+ alert('Pedido de férias submetido ✓\n\nO seu director foi notificado para autorizar. Mude para o perfil "Director" para ver o pedido a chegar.');
+}
+function justificarFalta(){
+ const tipo=$('jTipo').value, ini=$('jIni').value, fim=$('jFim').value||ini;
+ if(!ini) return alert('Indique a data da falta.');
+ const dias=diasUteis(ini,fim); const e=colEmp();
+ const tl=FALTA_TIPOS.find(t=>t[0]===tipo);
+ const r={id:++w().absId, empId:e.id, tipo:'falta', subtipo:tipo, ini, fim, dias, motivo:tl[1]+' ('+tl[2]+')', estado:'justificada', doc:_uploaded, ts:nowts(), hist:['Falta comunicada e justificada pelo colaborador'+(_uploaded?' com documento anexado.':' (sem documento).'),'Registada como falta justificada — art. 150.º LGT.']};
+ w().absReq.push(r);
+ audit('Falta justificada submetida — '+tl[1]+' ('+fmtD(ini)+(fim!==ini?'–'+fmtD(fim):'')+')');
+ notify('CH',e.nome+' justificou uma falta ('+tl[1]+')'+(_uploaded?' com documento de suporte.':'.'));
+ _uploaded=null; renderNav();render();
+ alert('Falta justificada ✓\n\nO Capital Humano foi notificado. A justificação e o documento ficam registados no seu portal.');
+}
+
+/* ---------- DIRECTOR: autorizar pedidos da equipa ---------- */
+function absDir(){
+ const dd=dirEmp().dept;
+ const equipa=emps().filter(e=>e.dept===dd);
+ const ids=equipa.map(e=>e.id);
+ const pend=w().absReq.filter(r=>r.estado==='pendente_dir'&&ids.includes(r.empId));
+ const outros=w().absReq.filter(r=>ids.includes(r.empId)&&r.estado!=='pendente_dir').sort((a,b)=>b.id-a.id);
+ return head('A sua equipa · '+CO[S.co].dirs[dd],'Férias & Ausências — autorizações',
+  'Autoriza aqui os pedidos de férias da sua equipa. A decisão notifica o colaborador e o Capital Humano, e alimenta o mapa de férias.')+
+ '<div class="card"><h3>Pedidos a aguardar a sua autorização'+(pend.length?' ('+pend.length+')':'')+'</h3>'+
+  (pend.length?pend.map(r=>{const e=absEmp(S.co,r.empId);const sal=saldoFerias(S.co,r.empId);return '<div class="doc" style="align-items:flex-start"><div class="dic">'+(r.tipo==='ferias'?'☼':'!')+'</div><div class="dn" style="flex:1"><b>'+e.nome+' — '+tipoLabel(r.tipo)+'</b><span>'+fmtD(r.ini)+' a '+fmtD(r.fim)+' · '+r.dias+' dias úteis · saldo disponível: '+sal.disp+' dias</span><div class="mini" style="margin-top:4px">'+r.motivo+'</div></div><div style="display:flex;gap:6px;flex-shrink:0"><button class="btn" onclick="dirDecideAbs('+r.id+',true)">Autorizar</button><button class="btn ghost" onclick="dirDecideAbs('+r.id+',false)">Recusar</button></div></div>';}).join(''):'<div class="mini">Sem pedidos pendentes. Quando um colaborador seu pedir férias, aparece aqui com uma notificação.</div>')+
+ '</div>'+
+ '<div class="card" style="margin-top:13px"><h3>Histórico da equipa</h3>'+absTable(outros,true)+'</div>';
+}
+function dirDecideAbs(id,ok){
+ const r=w().absReq.find(x=>x.id===id); if(!r)return;
+ const e=absEmp(S.co,r.empId);
+ if(ok){ r.estado='pendente_ch'; r.hist.push('Autorizado pela direcção ('+nowts()+') — comunicado ao Capital Humano.');
+  audit('Pedido de férias de '+e.nome+' autorizado pela direcção');
+  notify('CH','Férias de '+e.nome+' autorizadas pela direcção — para averbamento no mapa.');
+  notify('COL','O seu director autorizou as suas férias ('+fmtD(r.ini)+'–'+fmtD(r.fim)+'). Segue para o Capital Humano.');
+  alert('Pedido autorizado ✓\n\nO Capital Humano foi notificado para averbar no mapa de férias.');
+ } else { r.estado='recusada'; r.hist.push('Não autorizado pela direcção ('+nowts()+').');
+  audit('Pedido de férias de '+e.nome+' recusado pela direcção');
+  notify('COL','O seu director não autorizou o pedido de férias ('+fmtD(r.ini)+'–'+fmtD(r.fim)+'). Contacte a sua chefia.');
+  alert('Pedido recusado. O colaborador foi notificado.');
+ }
+ renderNav();render();
+}
+
+/* ---------- CAPITAL HUMANO / CE: mapa anual + averbamento + maternidade ---------- */
+function absCH(){
+ const isCE=S.role==='CE';
+ const rq=w().absReq;
+ const pendCH=rq.filter(r=>r.estado==='pendente_ch');
+ const mat=rq.filter(r=>r.tipo==='maternidade');
+ const totFer=rq.filter(r=>r.tipo==='ferias').length;
+ return head(isCE?'Visão de gestão':'Gestão de assiduidade · '+co().curto,'Férias & Ausências'+(isCE?'':' — Capital Humano'),
+  'O mapa de férias, os averbamentos, as faltas justificadas e as licenças de maternidade — geridos num só lugar, conforme a Lei Geral do Trabalho.')+
+ '<div class="grid g4">'+
+  '<div class="card kpi click" onclick="scrollMap()"><div class="v">'+(w().mapDone?'✓':'—')+'</div><div class="l">Mapa de férias '+new Date().getFullYear()+'</div></div>'+
+  '<div class="card kpi"><div class="v">'+pendCH.length+'</div><div class="l">A averbar (autorizados)</div></div>'+
+  '<div class="card kpi"><div class="v">'+rq.filter(r=>r.tipo==='falta').length+'</div><div class="l">Faltas justificadas</div></div>'+
+  '<div class="card kpi"><div class="v">'+mat.length+'</div><div class="l">Licenças de maternidade</div></div>'+
+ '</div>'+
+ (!isCE?
+ '<div class="grid g2" style="margin-top:13px">'+
+  '<div class="card"><h3>Início do exercício — mapa de férias</h3>'+
+   (w().mapDone?'<div class="notice soft"><b>Mapa de '+new Date().getFullYear()+' elaborado.</b> Os pedidos dos colaboradores são confrontados com o mapa e averbados à medida que são autorizados.</div>':'<div class="notice"><b>Obrigação legal (art. 209.º LGT):</b> a empresa elabora anualmente o mapa de férias. Gere aqui a base do mapa para todo o efectivo.</div>'+'<button class="btn" onclick="chBuildMap()">Elaborar mapa de férias '+new Date().getFullYear()+'</button>')+
+  '</div>'+
+  '<div class="card"><h3>Registar licença de maternidade</h3>'+
+   '<div class="notice"><b>Art. 253.º LGT:</b> licença de 3 meses (90 dias), remunerada; pode iniciar 4 semanas antes do parto; +4 semanas em parto múltiplo. Licença complementar opcional de 4 semanas.</div>'+
+   '<label class="f">Colaboradora</label><select id="matEmp">'+emps().filter(e=>isFem(e.nome)).map(e=>'<option value="'+e.id+'">'+e.nome+'</option>').join('')+'</select>'+
+   '<div class="grid g2"><div><label class="f">Início da licença</label><input type="date" id="matIni" value="2026-07-01"></div><div><label class="f">Parto múltiplo?</label><select id="matMult"><option value="0">Não — 90 dias</option><option value="1">Sim — 90 + 28 dias</option></select></div></div>'+
+   '<button class="btn" style="margin-top:10px" onclick="chMaternidade()">Registar licença</button>'+
+  '</div>'+
+ '</div>':'')+
+ /* averbamentos pendentes */
+ (pendCH.length?'<div class="card" style="margin-top:13px"><h3>Averbar no mapa (férias autorizadas pela direcção)</h3>'+
+  pendCH.map(r=>{const e=absEmp(S.co,r.empId);return '<div class="doc"><div class="dic">☼</div><div class="dn"><b>'+e.nome+'</b><span>'+fmtD(r.ini)+'–'+fmtD(r.fim)+' · '+r.dias+' dias · autorizado pela direcção</span></div>'+(isCE?'<span class="tag info">aguarda CH</span>':'<button class="btn" onclick="chAverbar('+r.id+')">Averbar no mapa</button>')+'</div>';}).join('')+'</div>':'')+
+ /* mapa consolidado */
+ '<div class="card" id="mapCard" style="margin-top:13px"><h3>Mapa de férias & ausências — '+co().curto+'</h3>'+absTable(rq.slice().sort((a,b)=>b.id-a.id),true)+'</div>';
+}
+function chBuildMap(){ w().mapDone=true; audit('Mapa de férias '+new Date().getFullYear()+' elaborado pelo Capital Humano'); notify('CE','Mapa de férias '+new Date().getFullYear()+' elaborado — disponível para consulta.'); render(); alert('Mapa de férias elaborado ✓\n\nA partir de agora, os pedidos autorizados são averbados no mapa.'); }
+function chAverbar(id){ const r=w().absReq.find(x=>x.id===id); if(!r)return; const e=absEmp(S.co,r.empId); r.estado='aprovada'; r.hist.push('Averbado no mapa de férias pelo Capital Humano ('+nowts()+').'); audit('Férias de '+e.nome+' averbadas no mapa'); notify('COL','As suas férias foram averbadas no mapa pelo Capital Humano — está tudo confirmado. Bom descanso!'); notify('DIR','Férias de '+e.nome+' averbadas no mapa.'); render(); alert('Férias averbadas no mapa ✓\n\nO colaborador e o director foram notificados. O ciclo do pedido está completo.'); }
+function chMaternidade(){
+ const id=+$('matEmp').value, ini=$('matIni').value, mult=$('matMult').value==='1';
+ const e=absEmp(S.co,id); const dias=mult?118:90;
+ const d=new Date(ini); const fim=new Date(d.getTime()+dias*86400000).toISOString().slice(0,10);
+ w().absReq.push({id:++w().absId, empId:id, tipo:'maternidade', ini, fim, dias, motivo:'Licença de maternidade — '+(mult?'parto múltiplo (90+28 dias)':'90 dias')+' (art. 253.º LGT), remunerada.', estado:'aprovada', doc:'Atestado médico', ts:nowts(), hist:['Registada pelo Capital Humano.','Ciclo de avaliação ajustado proporcionalmente ao período de licença.']});
+ audit('Licença de maternidade registada — '+e.nome+' ('+dias+' dias)');
+ notify('COL','A sua licença de maternidade foi registada ('+dias+' dias, remunerada). Bom descanso.');
+ notify('DIR','Licença de maternidade de '+e.nome+' registada — '+dias+' dias. Planeie a substituição.');
+ render(); alert('Licença de maternidade registada ✓ ('+dias+' dias)\n\nA colaboradora e a direcção foram notificadas; o ciclo de avaliação é ajustado automaticamente.');
+}
+function scrollMap(){ const c=document.getElementById('mapCard'); if(c)c.scrollIntoView({behavior:'smooth'}); }
+
+/* ---- tabela de ausências reutilizável ---- */
+function absTable(list,showName){
+ if(!list.length) return '<div class="mini">Sem registos.</div>';
+ return '<table><tr>'+(showName?'<th>Colaborador</th>':'')+'<th>Tipo</th><th>Período</th><th>Dias</th><th>Documento</th><th>Estado</th><th></th></tr>'+
+  list.map(r=>{const e=absEmp(S.co,r.empId);const et=estadoTag(r.estado);return '<tr>'+(showName?'<td><b>'+(e?e.nome:'—')+'</b></td>':'')+
+   '<td>'+tipoLabel(r.tipo)+'</td><td>'+fmtD(r.ini)+(r.fim!==r.ini?'–'+fmtD(r.fim):'')+'</td><td>'+r.dias+'</td>'+
+   '<td>'+(r.doc?'<span class="tag ok">anexado</span>':'<span class="mini">—</span>')+'</td>'+
+   '<td><span class="tag '+et[0]+'">'+et[1]+'</span></td>'+
+   '<td style="text-align:right"><a style="color:var(--pri);cursor:pointer;font-size:11px" onclick="absDetail('+r.id+')">detalhe</a></td></tr>';}).join('')+'</table>';
+}
+function absDetail(id){
+ const r=w().absReq.find(x=>x.id===id); if(!r)return; const e=absEmp(S.co,r.empId);
+ alert('AUSÊNCIA · '+tipoLabel(r.tipo).toUpperCase()+'\n'+e.nome+'\n\nPeríodo: '+fmtD(r.ini)+' a '+fmtD(r.fim)+' ('+r.dias+' dias úteis)\nMotivo: '+r.motivo+(r.doc?'\nDocumento: '+r.doc:'')+'\n\nTramitação:\n• '+r.hist.join('\n• '));
+}
+
+/* ---- utilitários de data ---- */
+function fmtD(s){ if(!s)return '—'; const p=s.split('-'); return p[2]+'.'+p[1]+'.'+p[0]; }
+function diasUteis(ini,fim){ let d=new Date(ini),e=new Date(fim),n=0; while(d<=e){const w=d.getDay(); if(w!==0&&w!==6)n++; d=new Date(d.getTime()+86400000);} return n; }
+
+
+/* ================= ROUTER ================= */
+function render(){
+ const R={inicio,portal,colabs,aval,disc,ausencias,formacao,cultura,relatorios,hist,notifs,admin};
+ $('main').innerHTML='<div class="mod">'+(R[S.mod]||inicio)()+'</div>';
+}
+renderNav();render();
+</script>
+</body>
+</html>

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import api from "../../lib/api";
 import Cartao from "../Cartao";
+import Tag from "../ui/Tag";
+import Notice from "../ui/Notice";
 
 interface Exame {
     id: number;
@@ -20,10 +22,10 @@ function traduzAptidao(f: string): string {
     return mapa[f] || f;
 }
 
-function corAptidao(f: string): string {
-    if (f === "apto") return "bg-ok-bg text-ok";
-    if (f === "apto_com_restricoes") return "bg-warn-bg text-warn";
-    return "bg-bad-bg text-bad";
+function varianteAptidao(f: string): "ok" | "warn" | "bad" {
+    if (f === "apto") return "ok";
+    if (f === "apto_com_restricoes") return "warn";
+    return "bad";
 }
 
 export default function SaudeTab() {
@@ -59,9 +61,7 @@ export default function SaudeTab() {
                             <tr key={e.id}>
                                 <td className="py-2 border-b border-line2">{e.exam_date}</td>
                                 <td className="py-2 border-b border-line2">
-                                    <span className={`inline-block px-2 py-0.5 rounded-full text-[10.5px] font-semibold ${corAptidao(e.fitness)}`}>
-                                        {traduzAptidao(e.fitness)}
-                                    </span>
+                                    <Tag variante={varianteAptidao(e.fitness)}>{traduzAptidao(e.fitness)}</Tag>
                                     {e.restriction_note && (
                                         <span className="text-dim text-[11px] ml-2">{e.restriction_note}</span>
                                     )}
@@ -73,9 +73,9 @@ export default function SaudeTab() {
                 </table>
             )}
 
-            <div className="border-l-[3px] border-pri-soft bg-pri-bg rounded-r-lg px-3.5 py-2.5 text-[12.3px] leading-relaxed mt-3">
-                <b className="text-pri-dark">Privacidade por desenho:</b> regista-se apenas a aptidão — nunca diagnósticos, reservados ao médico do trabalho.
-            </div>
+            <Notice className="mt-3">
+                <b>Privacidade por desenho:</b> regista-se apenas a aptidão — nunca diagnósticos, reservados ao médico do trabalho.
+            </Notice>
         </Cartao>
     );
 }

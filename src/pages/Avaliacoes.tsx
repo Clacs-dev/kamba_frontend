@@ -9,6 +9,7 @@ import Cabecalho from "../components/Cabecalho";
 import Cartao from "../components/Cartao";
 import Modal from "../components/Modal";
 import FlowBar from "../components/FlowBar";
+import Notice from "../components/ui/Notice";
 
 const FASES = ["Autoavaliação", "Avaliação do Director", "Concordância", "Comissão", "Fechada", "Validada"];
 
@@ -151,9 +152,9 @@ export default function Avaliacoes() {
 
                             {av.phase === "avaliacao_director" && av.director_id === user?.id && (
                                 <div className="mt-4 pt-4 border-t border-line">
-                                    <div className="text-[12.3px] text-pri-dark bg-pri-bg border-l-[3px] border-pri rounded-r-lg px-3.5 py-2.5 mb-4">
+                                    <Notice className="mb-4">
                                         O colaborador concluiu a autoavaliação. Faça agora a sua avaliação.
-                                    </div>
+                                    </Notice>
                                     <FormularioAvaliacao
                                         evaluationId={av.id}
                                         modo="director"

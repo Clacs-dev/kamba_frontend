@@ -4,6 +4,8 @@ import api from "../lib/api";
 import FaixaKpis from "../components/FaixaKpis";
 import Cabecalho from "../components/Cabecalho";
 import Cartao from "../components/Cartao";
+import Notice from "../components/ui/Notice";
+import Tag from "../components/ui/Tag";
 
 interface Necessidade {
     collaborator_id: number;
@@ -104,11 +106,7 @@ export default function Formacao() {
                 { valor: planos.filter(p => p.status === "rascunho").length, label: "Em rascunho" },
             ]} />
 
-            {msg && (
-                <div className="border-l-[3px] border-pri bg-pri-bg rounded-r-lg px-3.5 py-2.5 text-[12.3px] mb-4">
-                    {msg}
-                </div>
-            )}
+            {msg && <Notice className="mb-4">{msg}</Notice>}
 
             {aCarregar ? (
                 <p className="text-dim text-sm">A carregar...</p>
@@ -140,9 +138,9 @@ export default function Formacao() {
                                 </tbody>
                             </table>
                         )}
-                        <div className="border-l-[3px] border-pri-soft bg-pri-bg m-4 rounded-r-lg px-3.5 py-2.5 text-[12.3px] leading-relaxed">
-                            Critério automático: nota do último ciclo <b className="text-pri-dark">abaixo de 3,5</b>.
-                        </div>
+                        <Notice className="m-4">
+                            Critério automático: nota do último ciclo <b>abaixo de 3,5</b>.
+                        </Notice>
                     </Cartao>
 
                     {/* Gestão de planos (só gestores) */}
@@ -176,11 +174,12 @@ export default function Formacao() {
                                         <div key={p.id} className="flex items-center justify-between border border-line rounded-lg px-3 py-2.5">
                                             <div>
                                                 <b className="text-strong text-[13px]">{p.name}</b>
-                                                <span className={`ml-2 inline-block px-2 py-0.5 rounded-full text-[10.5px] font-semibold ${p.status === "aprovado" ? "bg-ok-bg text-ok" :
-                                                    p.status === "submetido" ? "bg-info-bg text-info" : "bg-warn-bg text-warn"
-                                                    }`}>
+                                                <Tag
+                                                    className="ml-2"
+                                                    variante={p.status === "aprovado" ? "ok" : p.status === "submetido" ? "info" : "warn"}
+                                                >
                                                     {traduzEstadoPlano(p.status)}
-                                                </span>
+                                                </Tag>
                                             </div>
                                             <div className="flex gap-2">
                                                 {eCH && p.status === "rascunho" && (
