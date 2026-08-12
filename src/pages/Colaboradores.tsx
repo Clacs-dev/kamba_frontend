@@ -36,6 +36,7 @@ export default function Colaboradores() {
     const [acolhimentoDe, setAcolhimentoDe] = useState<Colaborador | null>(null);
     const [colaboradores, setColaboradores] = useState<Colaborador[]>([]);
     const [dadosRhDe, setDadosRhDe] = useState<Colaborador | null>(null);
+    const [mudarPerfilDe, setMudarPerfilDe] = useState<Colaborador | null>(null);
     const [aCarregar, setACarregar] = useState(true);
     const [erro, setErro] = useState("");
     const [pesquisa, setPesquisa] = useState("");
@@ -151,6 +152,15 @@ export default function Colaboradores() {
                                                     Dados RH
                                                 </button>
                                             )}
+
+                                            {podeCadastrar && c.id !== user?.id && (
+                                                <button
+                                                    onClick={() => setMudarPerfilDe(c)}
+                                                    className="text-[11.5px] font-semibold cursor-pointer hover:underline text-pri mr-3"
+                                                >
+                                                    Mudar perfil
+                                                </button>
+                                            )}
                                             {podeCadastrar && c.id !== user?.id && (
                                                 <button
                                                     onClick={() => alternarEstado(c)}
@@ -194,6 +204,14 @@ export default function Colaboradores() {
                 <ModalDadosRh
                     colaborador={dadosRhDe}
                     aoFechar={() => setDadosRhDe(null)}
+                />
+            )}
+
+            {mudarPerfilDe && (
+                <ModalMudarPerfil
+                    colaborador={mudarPerfilDe}
+                    aoFechar={() => setMudarPerfilDe(null)}
+                    aoMudar={() => { setMudarPerfilDe(null); carregar(); }}
                 />
             )}
         </div>
