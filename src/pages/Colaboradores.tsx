@@ -795,3 +795,45 @@ function ModalDadosRh({ colaborador, aoFechar }: { colaborador: Colaborador; aoF
         </Modal>
     );
 }
+
+// ---- Modal de mudança de perfil ----
+function ModalMudarPerfil({ colaborador, aoFechar, aoMudar }: { colaborador: Colaborador; aoFechar: () => void; aoMudar: () => void }) {
+    const [novoRole, setNovoRole] = useState(colaborador.role);
+    const [erro, setErro] = useState("");
+    const [aGuardar, setAGuardar] = useState(false);
+
+    const guardar = async () => {
+        setErro("");
+        setAGuardar(true);
+        try {
+            await api.patch(`/collaborators/${colaborador.id}/role`, { role: novoRole });
+            aoMudar();
+        } catch (err: any) {
+            setErro(err.response?.data?.detail || "Não foi possível mudar o perfil.");
+        } finally {
+            setAGuardar(false);
+        }
+    };
+
+    return (
+        <Modal aberto={true} aoFechar={aoFechar} titulo={`Mudar perfil — ${colaborador.full_name}`} subtitulo="Altere o perfil de acesso deste colaborador">
+            <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Novo perfil</label>
+            <select value={novoRole} onChange={(e) => setNovoRole(e.target.value)}
+                className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-4 focus:outline-none focus:border-pri">
+                <option value="colaborador">Colaborador</option>
+                <option value="director">Director</option>
+                <option value="capital_humano">Capital Humano</option>
+                <option value="comissao">Comissão de Avaliação</option>
+                <option value="administracao">Administração</option>
+            </select>
+            {erro && <p className="text-bad text-sm mb-3">{erro}</p>}
+            <div className="flex gap-2.5">
+                <button onClick={aoFechar} className="bg-paper border border-line rounded-lg px-4 py-2 text-sm text-ink hover:border-pri hover:text-pri transition-colors">Cancelar</button>
+                <button onClick={guardar} disabled={aGuardar || novoRole === colaborador.role}
+                    className="bg-pri text-white rounded-lg px-4 py-2 text-[12.3px] font-semibold hover:bg-pri-dark transition-colors disabled:opacity-40">
+                    {aGuardar ? "A guardar..." : "Mudar perfil"}
+                </button>
+            </div>
+        </Modal>
+    );
+}
