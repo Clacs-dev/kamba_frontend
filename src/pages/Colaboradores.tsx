@@ -536,6 +536,9 @@ function ModalDadosRh({ colaborador, aoFechar }: { colaborador: Colaborador; aoF
     const [department, setDepartment] = useState("");
     const [workplace, setWorkplace] = useState("");
     const [fichaCarregada, setFichaCarregada] = useState(false);
+    const [jobTitle, setJobTitle] = useState("");
+    const [workSchedule, setWorkSchedule] = useState("");
+    const [situationTags, setSituationTags] = useState("");
 
     // Evento de percurso
     const [eventType, setEventType] = useState("promocao");
@@ -554,6 +557,10 @@ function ModalDadosRh({ colaborador, aoFechar }: { colaborador: Colaborador; aoF
                 setJobCategory(p.job_category || "");
                 setDepartment(p.department || "");
                 setWorkplace(p.workplace || "");
+                setWorkplace(p.workplace || "");
+                setJobTitle(p.job_title || "");
+                setWorkSchedule(p.work_schedule || "");
+                setSituationTags(p.situation_tags || "");
             })
             .catch(() => { })
             .finally(() => setFichaCarregada(true));
@@ -579,8 +586,11 @@ function ModalDadosRh({ colaborador, aoFechar }: { colaborador: Colaborador; aoF
                 admission_date: admission || null,
                 contract_type: contractType || null,
                 job_category: jobCategory || null,
+                job_title: jobTitle || null,
                 department: department || null,
                 workplace: workplace || null,
+                work_schedule: workSchedule || null,
+                situation_tags: situationTags || null,
             });
             feito("Ficha atualizada.");
         } catch (e) { falhou(e); }
@@ -659,10 +669,16 @@ function ModalDadosRh({ colaborador, aoFechar }: { colaborador: Colaborador; aoF
                     </select>
                     <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Categoria/Função</label>
                     <input value={jobCategory} onChange={(e) => setJobCategory(e.target.value)} className={inputCls} />
+                    <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Cargo específico</label>
+                    <input value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} placeholder="Ex.: Chefe de Vendas" className={inputCls} />
                     <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Direção/Departamento</label>
                     <input value={department} onChange={(e) => setDepartment(e.target.value)} className={inputCls} />
                     <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Local de trabalho</label>
                     <input value={workplace} onChange={(e) => setWorkplace(e.target.value)} className={inputCls} />
+                    <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Horário de trabalho</label>
+                    <input value={workSchedule} onChange={(e) => setWorkSchedule(e.target.value)} placeholder="Ex.: 2.ª a 6.ª · 08h00-16h30" className={inputCls} />
+                    <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Etiquetas de situação (separadas por vírgula)</label>
+                    <input value={situationTags} onChange={(e) => setSituationTags(e.target.value)} placeholder="Ex.: promovido 2025, Chefia" className={inputCls} />
                     <button onClick={gravarFicha} disabled={!fichaCarregada}
                         className="bg-pri text-white rounded-lg px-4 py-2 text-[12.3px] font-semibold hover:bg-pri-dark transition-colors disabled:opacity-40">
                         Guardar ficha
