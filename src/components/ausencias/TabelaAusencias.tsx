@@ -31,12 +31,13 @@ const ROTULO_ESTADO: Record<PedidoAusencia["status"], { texto: string; variante:
 interface Props {
     pedidos: PedidoAusencia[];
     mostrarColaborador?: boolean;
+    mostrarDocumento?: boolean;
     acoes?: (p: PedidoAusencia) => React.ReactNode;
     vazio?: string;
 }
 
 // Tabela de pedidos de férias/faltas, reutilizada nas 3 vistas por perfil (colaborador/director/CH).
-export default function TabelaAusencias({ pedidos, mostrarColaborador, acoes, vazio }: Props) {
+export default function TabelaAusencias({ pedidos, mostrarColaborador, mostrarDocumento, acoes, vazio }: Props) {
     if (pedidos.length === 0) {
         return (
             <Cartao>
@@ -55,6 +56,7 @@ export default function TabelaAusencias({ pedidos, mostrarColaborador, acoes, va
                             <Th>Tipo</Th>
                             <Th>Período</Th>
                             <Th>Dias</Th>
+                            {mostrarDocumento && <Th>Documento</Th>}
                             <Th>Estado</Th>
                             {acoes && <Th className="text-right">Ações</Th>}
                         </tr>
@@ -71,14 +73,16 @@ export default function TabelaAusencias({ pedidos, mostrarColaborador, acoes, va
                                     )}
                                     <td className="px-3 py-2.5 border-b border-line2 text-ink">
                                         {ROTULO_TIPO[p.type]}
-                                        {p.document_name && (
-                                            <span className="ml-1.5 text-[10.3px] text-dim">(com documento anexado)</span>
-                                        )}
                                     </td>
                                     <td className="px-3 py-2.5 border-b border-line2 text-ink whitespace-nowrap">
                                         {p.start_date} → {p.end_date}
                                     </td>
                                     <td className="px-3 py-2.5 border-b border-line2 text-ink">{p.days}</td>
+                                    {mostrarDocumento && (
+                                        <td className="px-3 py-2.5 border-b border-line2 text-ink">
+                                            {p.document_name || <span className="text-dim">—</span>}
+                                        </td>
+                                    )}
                                     <td className="px-3 py-2.5 border-b border-line2">
                                         <Tag variante={estado.variante}>{estado.texto}</Tag>
                                     </td>

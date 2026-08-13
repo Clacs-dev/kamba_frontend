@@ -6,6 +6,7 @@ import Cartao from "../components/Cartao";
 import FaixaKpis from "../components/FaixaKpis";
 import Botao from "../components/ui/Botao";
 import Notice from "../components/ui/Notice";
+import Modal from "../components/Modal";
 import TabelaAusencias, { type PedidoAusencia } from "../components/ausencias/TabelaAusencias";
 
 // ---------------------------------------------------------------------------
@@ -36,30 +37,52 @@ export default function Ausencias() {
     return (
         <div>
             <Cabecalho
-                eyebrow="Gestão de tempo de trabalho"
+                eyebrow={perfil === "colaborador" ? `O seu tempo · ${user?.company_name || "KAMBA"}` : "Gestão de tempo de trabalho"}
                 titulo="Férias & Ausências"
-                descricao="Pedidos de férias e faltas justificadas, aprovação pela chefia e mapa anual da empresa."
+                descricao={perfil === "colaborador"
+                    ? "Peça férias, justifique faltas e acompanhe as aprovações — sem papel, sem idas ao Capital Humano. Tudo conforme a Lei Geral do Trabalho."
+                    : "Pedidos de férias e faltas justificadas, aprovação pela chefia e mapa anual da empresa."}
             />
             {eCH ? <VistaCH /> : eDirector ? <VistaDirector /> : <VistaColaborador />}
         </div>
     );
 }
 
+// Motivos de falta justificada (art. 150.º LGT) — como no protótipo.
+const FALTA_TIPOS = [
+    { valor: "casamento", rotulo: "Casamento do trabalhador", duracao: "8 dias úteis" },
+    { valor: "nascimento", rotulo: "Nascimento de filho (paternidade)", duracao: "1 dia útil" },
+    { valor: "obito_conj", rotulo: "Falecimento de cônjuge, pai, mãe ou filho", duracao: "8 dias úteis" },
+    { valor: "obito_fam", rotulo: "Falecimento de avós, netos, irmãos, sogros", duracao: "2 dias úteis" },
+    { valor: "assist_fam", rotulo: "Assistência a membro do agregado familiar", duracao: "3 dias/mês (máx. 12/ano)" },
+    { valor: "doenca_filho", rotulo: "Doença de filho menor de 10 anos", duracao: "até 24 dias úteis/ano" },
+    { valor: "doenca", rotulo: "Doença ou acidente do próprio (com atestado)", duracao: "conforme atestado" },
+    { valor: "sindical", rotulo: "Actividade sindical", duracao: "conforme mandato" },
+    { valor: "tribunal", rotulo: "Cumprimento de obrigações legais (tribunal, etc.)", duracao: "tempo necessário" },
+];
+
 // ---------------- Colaborador ----------------
 function VistaColaborador() {
-    const { user } = useAuth();
     const [saldo, setSaldo] = useState<Saldo | null>(null);
     const [pedidos, setPedidos] = useState<PedidoAusencia[]>([]);
     const [aCarregar, setACarregar] = useState(true);
     const [erroCarga, setErroCarga] = useState("");
+    const [detalheDe, setDetalheDe] = useState<PedidoAusencia | null>(null);
 
-    const [tipo, setTipo] = useState<"ferias" | "falta">("ferias");
-    const [inicio, setInicio] = useState("");
-    const [fim, setFim] = useState("");
-    const [motivo, setMotivo] = useState("");
-    const [documento, setDocumento] = useState<File | null>(null);
-    const [erro, setErro] = useState("");
-    const [aEnviar, setAEnviar] = useState(false);
+    // Formulário de férias.
+    const [fInicio, setFInicio] = useState("");
+    const [fFim, setFFim] = useState("");
+    const [fObs, setFObs] = useState("");
+    const [erroFerias, setErroFerias] = useState("");
+    const [aEnviarFerias, setAEnviarFerias] = useState(false);
+
+    // Formulário de justificação de falta.
+    const [jMotivo, setJMotivo] = useState("casamento");
+    const [jInicio, setJInicio] = useState("");
+    const [jFim, setJFim] = useState("");
+    const [jDocumento, setJDocumento] = useState<File | null>(null);
+    const [erroFalta, setErroFalta] = useState("");
+    const [aEnviarFalta, setAEnviarFalta] = useState(false);
 
     const carregar = () => {
         setACarregar(true);
@@ -71,94 +94,163 @@ function VistaColaborador() {
         ]).finally(() => setACarregar(false));
     };
 
-    useEffect(() => { carregar(); }, [user?.id]);
+    useEffect(() => { carregar(); }, []);
 
-    const submeter = async () => {
-        setErro("");
-        setAEnviar(true);
+    const submeterFerias = async () => {
+        setErroFerias("");
+        setAEnviarFerias(true);
         try {
-            // Envia como multipart para permitir anexar o documento comprovativo (ex.: atestado médico).
             const dados = new FormData();
-            dados.append("tipo", tipo);
-            dados.append("inicio", inicio);
-            dados.append("fim", fim);
-            dados.append("motivo", motivo);
-            if (documento) dados.append("documento", documento);
+            dados.append("tipo", "ferias");
+            dados.append("inicio", fInicio);
+            dados.append("fim", fFim);
+            dados.append("motivo", fObs.trim() || "Gozo de férias");
             await api.post("/leave/requests", dados);
-            setInicio(""); setFim(""); setMotivo(""); setDocumento(null);
+            setFInicio(""); setFFim(""); setFObs("");
             carregar();
         } catch (err: any) {
-            setErro(err.response?.data?.detail || "Não foi possível submeter o pedido.");
+            setErroFerias(err.response?.data?.detail || "Não foi possível submeter o pedido.");
         } finally {
-            setAEnviar(false);
+            setAEnviarFerias(false);
+        }
+    };
+
+    const submeterFalta = async () => {
+        setErroFalta("");
+        setAEnviarFalta(true);
+        try {
+            const tipo = FALTA_TIPOS.find((t) => t.valor === jMotivo) || FALTA_TIPOS[0];
+            const dados = new FormData();
+            dados.append("tipo", "falta");
+            dados.append("inicio", jInicio);
+            dados.append("fim", jFim);
+            dados.append("motivo", `${tipo.rotulo} — ${tipo.duracao}`);
+            if (jDocumento) dados.append("documento", jDocumento);
+            await api.post("/leave/requests", dados);
+            setJMotivo("casamento"); setJInicio(""); setJFim(""); setJDocumento(null);
+            carregar();
+        } catch (err: any) {
+            setErroFalta(err.response?.data?.detail || "Não foi possível submeter a justificação.");
+        } finally {
+            setAEnviarFalta(false);
         }
     };
 
     return (
         <div>
             <FaixaKpis kpis={[
-                { valor: saldo?.direito ?? "—", label: "Dias de direito" },
-                { valor: saldo?.gozados ?? "—", label: "Dias gozados" },
-                { valor: saldo?.marcados ?? "—", label: "Dias marcados" },
-                { valor: saldo?.disponiveis ?? "—", label: "Dias disponíveis", cor: "ok" },
+                { valor: saldo?.direito ?? "—", label: "Dias de férias/ano (art. 201.º)" },
+                { valor: saldo?.gozados ?? "—", label: "Já gozados / aprovados" },
+                { valor: saldo?.marcados ?? "—", label: "Marcados (a aguardar)" },
+                { valor: saldo?.disponiveis ?? "—", label: "Disponíveis", cor: "ok" },
             ]} />
 
-            <Cartao className="mb-4">
-                <h3 className="text-[14.5px] mb-3">Solicitar férias ou falta justificada</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3">
-                    <div>
-                        <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Tipo</label>
-                        <select value={tipo} onChange={(e) => setTipo(e.target.value as "ferias" | "falta")}
-                            className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-3 focus:outline-none focus:border-pri">
-                            <option value="ferias">Férias</option>
-                            <option value="falta">Falta justificada</option>
-                        </select>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-5">
+                {/* Solicitar férias */}
+                <Cartao>
+                    <h3 className="text-[14.5px] mb-3">Solicitar férias</h3>
+                    <Notice className="mb-3">
+                        <b>Regra LGT:</b> o gozo faz-se de acordo com o mapa anual; carece de autorização da chefia e comunicação ao Capital Humano. A empresa não pode impedir o gozo do direito (art. 214.º).
+                    </Notice>
+                    <div className="grid grid-cols-2 gap-x-3">
+                        <div>
+                            <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Data de início</label>
+                            <input type="date" value={fInicio} onChange={(e) => setFInicio(e.target.value)}
+                                className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-3 focus:outline-none focus:border-pri" />
+                        </div>
+                        <div>
+                            <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Data de fim</label>
+                            <input type="date" value={fFim} onChange={(e) => setFFim(e.target.value)}
+                                className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-3 focus:outline-none focus:border-pri" />
+                        </div>
                     </div>
-                    <div />
-                    <div>
-                        <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Data de início</label>
-                        <input type="date" value={inicio} onChange={(e) => setInicio(e.target.value)}
-                            className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-3 focus:outline-none focus:border-pri" />
-                    </div>
-                    <div>
-                        <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Data de fim</label>
-                        <input type="date" value={fim} onChange={(e) => setFim(e.target.value)}
-                            className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-3 focus:outline-none focus:border-pri" />
-                    </div>
-                </div>
-                <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Motivo</label>
-                <textarea value={motivo} onChange={(e) => setMotivo(e.target.value)} rows={2}
-                    placeholder="Ex.: Gozo do período principal de férias."
-                    className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-3 focus:outline-none focus:border-pri" />
-                {tipo === "falta" && (
-                    <>
-                        <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">
-                            Documento comprovativo (ex.: atestado médico)
-                        </label>
-                        <input
-                            type="file"
-                            onChange={(e) => setDocumento(e.target.files?.[0] || null)}
-                            className="w-full bg-panel border border-line rounded-lg px-3 py-[7px] text-[12.5px] mb-3 focus:outline-none focus:border-pri"
-                        />
-                    </>
-                )}
-                {erro && <p className="text-bad text-sm mb-3">{erro}</p>}
-                <Botao onClick={submeter} disabled={aEnviar || !inicio || !fim || !motivo}>
-                    {aEnviar ? "A submeter..." : "Submeter pedido"}
-                </Botao>
-            </Cartao>
+                    <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Observações (opcional)</label>
+                    <input value={fObs} onChange={(e) => setFObs(e.target.value)}
+                        placeholder="Ex.: período principal de férias"
+                        className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-3 focus:outline-none focus:border-pri" />
+                    {erroFerias && <p className="text-bad text-sm mb-3">{erroFerias}</p>}
+                    <Botao onClick={submeterFerias} disabled={aEnviarFerias || !fInicio || !fFim}>
+                        {aEnviarFerias ? "A submeter..." : "Submeter pedido ao director"}
+                    </Botao>
+                </Cartao>
 
-            <h3 className="text-[14.5px] mb-3">O seu histórico</h3>
+                {/* Justificar uma falta */}
+                <Cartao>
+                    <h3 className="text-[14.5px] mb-3">Justificar uma falta</h3>
+                    <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Motivo (art. 150.º LGT)</label>
+                    <select value={jMotivo} onChange={(e) => setJMotivo(e.target.value)}
+                        className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-3 focus:outline-none focus:border-pri">
+                        {FALTA_TIPOS.map((t) => (
+                            <option key={t.valor} value={t.valor}>{t.rotulo} — {t.duracao}</option>
+                        ))}
+                    </select>
+                    <div className="grid grid-cols-2 gap-x-3">
+                        <div>
+                            <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">De</label>
+                            <input type="date" value={jInicio} onChange={(e) => setJInicio(e.target.value)}
+                                className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-3 focus:outline-none focus:border-pri" />
+                        </div>
+                        <div>
+                            <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Até</label>
+                            <input type="date" value={jFim} onChange={(e) => setJFim(e.target.value)}
+                                className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-3 focus:outline-none focus:border-pri" />
+                        </div>
+                    </div>
+                    <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Documento de suporte (atestado, certidão…)</label>
+                    <input type="file" onChange={(e) => setJDocumento(e.target.files?.[0] || null)}
+                        className="w-full bg-panel border border-line rounded-lg px-3 py-[7px] text-[12.5px] mb-1 focus:outline-none focus:border-pri" />
+                    <p className="text-[10.8px] text-dim mb-3">
+                        PDF ou imagem — atestado médico, certidão, convocatória. Com documento, a falta regista-se como justificada.
+                    </p>
+                    {erroFalta && <p className="text-bad text-sm mb-3">{erroFalta}</p>}
+                    <Botao onClick={submeterFalta} disabled={aEnviarFalta || !jInicio || !jFim}>
+                        {aEnviarFalta ? "A submeter..." : "Submeter justificação"}
+                    </Botao>
+                </Cartao>
+            </div>
+
+            <h3 className="text-[14.5px] mb-3">Os meus pedidos e ausências</h3>
             {aCarregar ? (
                 <p className="text-dim text-sm">A carregar...</p>
             ) : erroCarga ? (
                 <Notice variante="alert">{erroCarga}</Notice>
             ) : (
-                <TabelaAusencias pedidos={pedidos} vazio="Ainda não fez nenhum pedido de férias ou falta." />
+                <TabelaAusencias
+                    pedidos={pedidos}
+                    mostrarDocumento
+                    vazio="Ainda não fez nenhum pedido de férias ou falta."
+                    acoes={(p) => (
+                        <button onClick={() => setDetalheDe(p)} className="text-[11.5px] font-semibold cursor-pointer hover:underline text-pri">
+                            detalhe
+                        </button>
+                    )}
+                />
+            )}
+
+            {detalheDe && (
+                <Modal aberto={true} aoFechar={() => setDetalheDe(null)} titulo="Detalhe do pedido" subtitulo="Tramitação registada">
+                    <div className="text-[12.8px] space-y-1.5">
+                        <p><b className="text-strong">Período:</b> {detalheDe.start_date} → {detalheDe.end_date} ({detalheDe.days} dias)</p>
+                        <p><b className="text-strong">Motivo:</b> {detalheDe.reason}</p>
+                        <p><b className="text-strong">Documento:</b> {detalheDe.document_name || "—"}</p>
+                        <p><b className="text-strong">Estado:</b> {ROTULO_ESTADO_DETALHE[detalheDe.status]}</p>
+                    </div>
+                    <div className="flex gap-2.5 mt-4">
+                        <button onClick={() => setDetalheDe(null)} className="bg-paper border border-line rounded-lg px-4 py-2 text-sm text-ink hover:border-pri hover:text-pri transition-colors">Fechar</button>
+                    </div>
+                </Modal>
             )}
         </div>
     );
 }
+
+const ROTULO_ESTADO_DETALHE: Record<string, string> = {
+    pendente_dir: "Aguarda o director",
+    pendente_ch: "Aguarda o Capital Humano",
+    aprovada: "Aprovada",
+    justificada: "Justificada",
+    recusada: "Recusada",
+};
 
 // ---------------- Director ----------------
 function VistaDirector() {
