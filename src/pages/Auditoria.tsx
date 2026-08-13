@@ -57,7 +57,7 @@ export default function Auditoria() {
             <Cabecalho
                 eyebrow="Prova documental · capítulo 7"
                 titulo="Trilha de Auditoria"
-                descricao="Registo dos atos relevantes praticados na plataforma — quem, o quê e quando. Reservado à Administração."
+                descricao="Registo dos atos relevantes praticados na plataforma — quem, o quê e quando. Acesso à Administração e ao Capital Humano."
             />
 
             {aCarregar ? (

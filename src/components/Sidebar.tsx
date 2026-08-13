@@ -19,7 +19,9 @@ const ITENS: ItemMenu[] = [
     { caminho: "/cultura", icone: "◉", label: "Cultura", perfis: ["colaborador", "director", "capital_humano", "comissao", "administracao"] },
     { caminho: "/relatorios", icone: "▤", label: "Relatórios", perfis: ["capital_humano", "administracao", "director", "comissao"] },
     { caminho: "/dashboard", icone: "◇", label: "Dashboard", perfis: ["capital_humano", "administracao"] },
-    { caminho: "/auditoria", icone: "↗", label: "Auditoria", perfis: ["administracao"] },
+    { caminho: "/historico", icone: "↗", label: "Histórico (3 anos)", perfis: ["colaborador", "director", "capital_humano", "comissao", "administracao"] },
+    { caminho: "/auditoria", icone: "§", label: "Auditoria", perfis: ["capital_humano", "administracao"] },
+    { caminho: "/administracao", icone: "⚙", label: "Administração", perfis: ["capital_humano", "administracao"] },
 ];
 
 interface SidebarProps {
