@@ -33,16 +33,31 @@ export default function Ausencias() {
     const perfil = user?.role || "";
     const eDirector = perfil === "director";
     const eCH = perfil === "capital_humano" || perfil === "administracao";
+    const [departamento, setDepartamento] = useState("");
+
+    useEffect(() => {
+        if (perfil === "director") {
+            api.get("/me/profile").then((r) => setDepartamento(r.data.department || "")).catch(() => { });
+        }
+    }, [perfil]);
+
+    const eyebrow =
+        perfil === "colaborador" ? `O seu tempo · ${user?.company_name || "KAMBA"}` :
+        perfil === "director" ? (departamento ? `A sua equipa · ${departamento}` : "A sua equipa") :
+        "Gestão de tempo de trabalho";
+
+    const titulo = perfil === "director" ? "Férias & Ausências — autorizações" : "Férias & Ausências";
+
+    const descricao =
+        perfil === "colaborador"
+            ? "Peça férias, justifique faltas e acompanhe as aprovações — sem papel, sem idas ao Capital Humano. Tudo conforme a Lei Geral do Trabalho."
+            : perfil === "director"
+                ? "Autoriza aqui os pedidos de férias da sua equipa. A decisão notifica o colaborador e o Capital Humano, e alimenta o mapa de férias."
+                : "Pedidos de férias e faltas justificadas, aprovação pela chefia e mapa anual da empresa.";
 
     return (
         <div>
-            <Cabecalho
-                eyebrow={perfil === "colaborador" ? `O seu tempo · ${user?.company_name || "KAMBA"}` : "Gestão de tempo de trabalho"}
-                titulo="Férias & Ausências"
-                descricao={perfil === "colaborador"
-                    ? "Peça férias, justifique faltas e acompanhe as aprovações — sem papel, sem idas ao Capital Humano. Tudo conforme a Lei Geral do Trabalho."
-                    : "Pedidos de férias e faltas justificadas, aprovação pela chefia e mapa anual da empresa."}
-            />
+            <Cabecalho eyebrow={eyebrow} titulo={titulo} descricao={descricao} />
             {eCH ? <VistaCH /> : eDirector ? <VistaDirector /> : <VistaColaborador />}
         </div>
     );
@@ -253,6 +268,12 @@ const ROTULO_ESTADO_DETALHE: Record<string, string> = {
 };
 
 // ---------------- Director ----------------
+const ROTULO_TIPO_PEDIDO: Record<string, string> = {
+    ferias: "Férias",
+    falta: "Falta",
+    maternidade: "Licença de maternidade",
+};
+
 function VistaDirector() {
     const [pedidos, setPedidos] = useState<PedidoAusencia[]>([]);
     const [aCarregar, setACarregar] = useState(true);
@@ -260,6 +281,7 @@ function VistaDirector() {
     const [erroAcao, setErroAcao] = useState("");
     const [aRejeitarId, setARejeitarId] = useState<number | null>(null);
     const [motivoRejeicao, setMotivoRejeicao] = useState("");
+    const [detalheDe, setDetalheDe] = useState<PedidoAusencia | null>(null);
 
     const carregar = () => {
         setACarregar(true);
@@ -303,40 +325,89 @@ function VistaDirector() {
     return (
         <div>
             {erroAcao && <p className="text-bad text-sm mb-3">{erroAcao}</p>}
-            <h3 className="text-[14.5px] mb-3">Pedidos pendentes da sua equipa</h3>
-            <TabelaAusencias
-                pedidos={pendentes}
-                mostrarColaborador
-                vazio="Não há pedidos pendentes de aprovação."
-                acoes={(p) => (
-                    <div className="flex gap-3 justify-end">
-                        <button onClick={() => aprovar(p.id)} className="text-[11.5px] text-ok font-semibold hover:underline">Aprovar</button>
-                        <button onClick={() => { setARejeitarId(p.id); setMotivoRejeicao(""); }} className="text-[11.5px] text-bad font-semibold hover:underline">Rejeitar</button>
+
+            <Cartao className="mb-5">
+                <h3 className="text-[14.5px] mb-3">
+                    Pedidos a aguardar a sua autorização{pendentes.length ? ` (${pendentes.length})` : ""}
+                </h3>
+
+                {pendentes.length === 0 ? (
+                    <p className="text-dim text-sm py-3 text-center">
+                        Sem pedidos pendentes. Quando um colaborador seu pedir férias, aparece aqui com uma notificação.
+                    </p>
+                ) : (
+                    <div className="space-y-2.5">
+                        {pendentes.map((p) => (
+                            <div key={p.id} className="border border-line rounded-lg px-3.5 py-3">
+                                <div className="flex items-start gap-3">
+                                    <span className="w-9 h-9 rounded-full bg-pri-bg text-pri-dark flex items-center justify-center flex-shrink-0 text-[15px]">
+                                        {p.type === "ferias" ? "☼" : "!"}
+                                    </span>
+                                    <div className="flex-1">
+                                        <b className="text-strong text-[12.8px]">{p.collaborator_name || `#${p.collaborator_id}`} — {ROTULO_TIPO_PEDIDO[p.type]}</b>
+                                        <div className="text-[11.5px] text-dim">
+                                            {p.start_date} a {p.end_date} · {p.days} dias úteis
+                                        </div>
+                                        <div className="text-[12.3px] text-ink mt-1">{p.reason}</div>
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-2 mt-3">
+                                    <Botao onClick={() => aprovar(p.id)} className="!px-3 !py-1.5 !text-[11.5px]">Autorizar</Botao>
+                                    <Botao variante="ghost" onClick={() => { setARejeitarId(p.id); setMotivoRejeicao(""); }} className="!px-3 !py-1.5 !text-[11.5px]">Recusar</Botao>
+                                </div>
+
+                                {aRejeitarId === p.id && (
+                                    <div className="mt-3 border-t border-line pt-3">
+                                        <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Motivo da rejeição</label>
+                                        <textarea
+                                            value={motivoRejeicao}
+                                            onChange={(e) => setMotivoRejeicao(e.target.value)}
+                                            rows={2}
+                                            placeholder="Explique por que motivo o pedido está a ser recusado…"
+                                            className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-3 focus:outline-none focus:border-pri"
+                                        />
+                                        <div className="flex gap-2.5">
+                                            <Botao variante="ghost" onClick={() => setARejeitarId(null)} className="!px-3 !py-1.5 !text-[11.5px]">Cancelar</Botao>
+                                            <Botao variante="perigo" onClick={() => confirmarRejeicao(p.id)} disabled={motivoRejeicao.length < 3} className="!px-3 !py-1.5 !text-[11.5px]">
+                                                Confirmar rejeição
+                                            </Botao>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
                     </div>
+                )}
+            </Cartao>
+
+            <h3 className="text-[14.5px] mb-3">Histórico da equipa</h3>
+            <TabelaAusencias
+                pedidos={resolvidos}
+                mostrarColaborador
+                mostrarDocumento
+                vazio="Ainda não há histórico."
+                acoes={(p) => (
+                    <button onClick={() => setDetalheDe(p)} className="text-[11.5px] font-semibold cursor-pointer hover:underline text-pri">
+                        detalhe
+                    </button>
                 )}
             />
 
-            {aRejeitarId != null && (
-                <Cartao className="mt-3 mb-3">
-                    <h3 className="text-[14.5px] mb-2">Motivo da rejeição</h3>
-                    <textarea
-                        value={motivoRejeicao}
-                        onChange={(e) => setMotivoRejeicao(e.target.value)}
-                        rows={2}
-                        placeholder="Explique por que motivo o pedido está a ser rejeitado…"
-                        className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-3 focus:outline-none focus:border-pri"
-                    />
-                    <div className="flex gap-2.5">
-                        <Botao variante="ghost" onClick={() => setARejeitarId(null)}>Cancelar</Botao>
-                        <Botao variante="perigo" onClick={() => confirmarRejeicao(aRejeitarId)} disabled={motivoRejeicao.length < 3}>
-                            Confirmar rejeição
-                        </Botao>
+            {detalheDe && (
+                <Modal aberto={true} aoFechar={() => setDetalheDe(null)} titulo="Detalhe do pedido" subtitulo="Tramitação registada">
+                    <div className="text-[12.8px] space-y-1.5">
+                        <p><b className="text-strong">Colaborador:</b> {detalheDe.collaborator_name || `#${detalheDe.collaborator_id}`}</p>
+                        <p><b className="text-strong">Período:</b> {detalheDe.start_date} → {detalheDe.end_date} ({detalheDe.days} dias)</p>
+                        <p><b className="text-strong">Motivo:</b> {detalheDe.reason}</p>
+                        <p><b className="text-strong">Documento:</b> {detalheDe.document_name || "—"}</p>
+                        <p><b className="text-strong">Estado:</b> {ROTULO_ESTADO_DETALHE[detalheDe.status]}</p>
                     </div>
-                </Cartao>
+                    <div className="flex gap-2.5 mt-4">
+                        <button onClick={() => setDetalheDe(null)} className="bg-paper border border-line rounded-lg px-4 py-2 text-sm text-ink hover:border-pri hover:text-pri transition-colors">Fechar</button>
+                    </div>
+                </Modal>
             )}
-
-            <h3 className="text-[14.5px] mb-3 mt-5">Histórico da equipa</h3>
-            <TabelaAusencias pedidos={resolvidos} mostrarColaborador vazio="Ainda não há histórico." />
         </div>
     );
 }
