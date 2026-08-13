@@ -300,8 +300,7 @@ function ModalCadastro({ aoFechar, aoCriar }: { aoFechar: () => void; aoCriar: (
             setDocumentos((prev) => [...prev, resp.data]);
             setFicheiro(null);
         } catch (err: any) {
-            // Endpoint ainda pendente de implementação no backend — ver docs/pending-backend-endpoints.md.
-            setErroDoc(err.response?.data?.detail || "Não foi possível enviar o documento (endpoint pendente no backend).");
+            setErroDoc(err.response?.data?.detail || "Não foi possível enviar o documento.");
         } finally {
             setAEnviarDoc(false);
         }

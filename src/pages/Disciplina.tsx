@@ -20,6 +20,7 @@ interface Processo {
     phase: string;
     imputed_facts: string;
     charge_note: string | null;
+    defense_deadline: string | null;
 }
 
 interface Colaborador { id: number; full_name: string; }
@@ -176,6 +177,13 @@ function AcoesProcesso({ processo, eInstrutor, euId, aoAgir }: {
                     <Notice className="mb-2">
                         Foi-lhe notificada uma nota de culpa. Tome conhecimento e apresente a sua defesa.
                     </Notice>
+                    {processo.defense_deadline && (
+                        <p className="text-[12.3px] text-warn bg-warn-bg border-l-[3px] border-warn rounded-r-lg px-3.5 py-2.5 mb-2">
+                            <b>Prazo de defesa:</b> até{" "}
+                            {new Date(processo.defense_deadline).toLocaleDateString("pt-PT", { day: "2-digit", month: "long", year: "numeric" })}{" "}
+                            (10 dias úteis, Lei Geral do Trabalho).
+                        </p>
+                    )}
                     <button onClick={() => acao("acknowledge-charge")}
                         className="bg-pri text-white rounded-lg px-4 py-2 text-[12.3px] font-semibold hover:bg-pri-dark transition-colors mb-2">
                         Tomar conhecimento
@@ -186,6 +194,12 @@ function AcoesProcesso({ processo, eInstrutor, euId, aoAgir }: {
             {/* Fase defesa -> arguido escreve defesa */}
             {processo.phase === "defesa" && eArguido && (
                 <div>
+                    {processo.defense_deadline && (
+                        <p className="text-[12.3px] text-warn bg-warn-bg border-l-[3px] border-warn rounded-r-lg px-3.5 py-2.5 mb-2">
+                            <b>Prazo de defesa:</b> até{" "}
+                            {new Date(processo.defense_deadline).toLocaleDateString("pt-PT", { day: "2-digit", month: "long", year: "numeric" })}.
+                        </p>
+                    )}
                     <textarea value={texto} onChange={(e) => setTexto(e.target.value)} rows={2}
                         placeholder="Apresente a sua defesa por escrito…"
                         className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-2 focus:outline-none focus:border-pri" />

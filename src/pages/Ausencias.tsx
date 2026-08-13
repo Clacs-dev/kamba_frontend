@@ -9,11 +9,10 @@ import Notice from "../components/ui/Notice";
 import TabelaAusencias, { type PedidoAusencia } from "../components/ausencias/TabelaAusencias";
 
 // ---------------------------------------------------------------------------
-// Módulo "Férias & Ausências" — não existe ainda no backend (sem endpoints
-// /leave/*). A página está implementada de forma completa contra o contrato
-// provisório documentado em docs/pending-backend-endpoints.md; até o backend
-// implementar os endpoints, os pedidos falham de forma controlada (mensagem
-// de erro amigável) em vez de partir a página.
+// Módulo "Férias & Ausências" — usa os endpoints /leave/* do backend
+// (app/api/routes/leave.py). O contrato está documentado em
+// docs/pending-backend-endpoints.md. Se um endpoint falhar, a página mostra
+// uma mensagem de erro amigável em vez de partir.
 // ---------------------------------------------------------------------------
 
 interface Saldo {
@@ -67,7 +66,7 @@ function VistaColaborador() {
         Promise.all([
             api.get("/leave/me/balance").then((r) => setSaldo(r.data)).catch(() => setSaldo(null)),
             api.get("/leave/requests").then((r) => setPedidos(r.data)).catch(() =>
-                setErroCarga("Módulo ainda não disponível: o backend não implementa /leave/requests (ver docs/pending-backend-endpoints.md).")
+                setErroCarga("Não foi possível carregar os pedidos de ausência.")
             ),
         ]).finally(() => setACarregar(false));
     };
@@ -89,7 +88,7 @@ function VistaColaborador() {
             setInicio(""); setFim(""); setMotivo(""); setDocumento(null);
             carregar();
         } catch (err: any) {
-            setErro(err.response?.data?.detail || "Não foi possível submeter o pedido (endpoint pendente no backend).");
+            setErro(err.response?.data?.detail || "Não foi possível submeter o pedido.");
         } finally {
             setAEnviar(false);
         }
@@ -175,7 +174,7 @@ function VistaDirector() {
         setErroCarga("");
         api.get("/leave/requests")
             .then((r) => setPedidos(r.data))
-            .catch(() => setErroCarga("Módulo ainda não disponível: o backend não implementa /leave/requests (ver docs/pending-backend-endpoints.md)."))
+            .catch(() => setErroCarga("Não foi possível carregar os pedidos de ausência."))
             .finally(() => setACarregar(false));
     };
 
@@ -187,7 +186,7 @@ function VistaDirector() {
             await api.post(`/leave/requests/${id}/approve`);
             carregar();
         } catch (err: any) {
-            setErroAcao(err.response?.data?.detail || "Não foi possível registar a decisão (endpoint pendente no backend).");
+            setErroAcao(err.response?.data?.detail || "Não foi possível registar a decisão.");
         }
     };
 
@@ -199,7 +198,7 @@ function VistaDirector() {
             setMotivoRejeicao("");
             carregar();
         } catch (err: any) {
-            setErroAcao(err.response?.data?.detail || "Não foi possível registar a decisão (endpoint pendente no backend).");
+            setErroAcao(err.response?.data?.detail || "Não foi possível registar a decisão.");
         }
     };
 
@@ -272,7 +271,7 @@ function VistaCH() {
         setErroCarga("");
         Promise.all([
             api.get("/leave/requests").then((r) => setPedidos(r.data)).catch(() =>
-                setErroCarga("Módulo ainda não disponível: o backend não implementa /leave/requests (ver docs/pending-backend-endpoints.md).")
+                setErroCarga("Não foi possível carregar os pedidos de ausência.")
             ),
             api.get("/collaborators").then((r) => setColaboradores(r.data)).catch(() => { }),
         ]).finally(() => setACarregar(false));
@@ -286,7 +285,7 @@ function VistaCH() {
             await api.post(`/leave/requests/${id}/register`);
             carregar();
         } catch (err: any) {
-            setErroAcao(err.response?.data?.detail || "Não foi possível averbar o pedido (endpoint pendente no backend).");
+            setErroAcao(err.response?.data?.detail || "Não foi possível averbar o pedido.");
         }
     };
 
@@ -305,7 +304,7 @@ function VistaCH() {
             setInicio(""); setFim(""); setDocumento(null);
             carregar();
         } catch (err: any) {
-            setMsg(err.response?.data?.detail || "Não foi possível registar (endpoint pendente no backend).");
+            setMsg(err.response?.data?.detail || "Não foi possível registar.");
         } finally {
             setARegistar(false);
         }

@@ -1,15 +1,19 @@
-# Contrato de API — endpoints pendentes no backend
+# Contrato de API — endpoints do backend
 
-Este documento é o contrato de referência para os endpoints que o frontend já chama mas que o
-backend **ainda não implementa**. Foi escrito durante a reconstrução visual do frontend a partir
-do mock `KAMBA 1_0 Demo 3Empresas.html`, para cobrir funcionalidades que o mock demonstra (com
-dados estáticos de exemplo) mas que ainda não existem como sistema real com persistência.
+Este documento é o contrato de referência entre o frontend e o backend. Foi escrito durante a
+reconstrução visual do frontend a partir do mock `KAMBA 1_0 Demo 3Empresas.html`, para cobrir
+funcionalidades que o mock demonstra (com dados estáticos de exemplo) e que precisavam de existir
+como sistema real com persistência.
+
+> **Estado (2026-08-13):** as secções 1 e 2 estão **implementadas e verificadas** no backend
+> (`app/api/routes/leave.py` e `app/api/routes/collaborators.py`, respetivamente). Os contratos
+> abaixo mantêm-se como referência do formato esperado pelo frontend. Resta apenas a secção 3
+> (gap de abas, sem ação) e a vista de calendário do mapa anual (secção 1.8) que o frontend ainda
+> não consome.
 
 Regra seguida em todo o frontend: nenhum destes endpoints foi simulado com dados inventados.
-Cada ecrã que depende de um endpoint desta lista trata a falha de rede (404/não implementado)
-como um estado de erro/vazio normal — mostra uma mensagem clara e não bloqueia o resto da
-página. Assim que o backend implementar um endpoint com o contrato abaixo, o ecrã correspondente
-passa a funcionar sem precisar de nenhuma alteração no frontend.
+Cada ecrã que depende de um endpoint trata a falha de rede (404/não implementado) como um estado
+de erro/vazio normal — mostra uma mensagem clara e não bloqueia o resto da página.
 
 Convenções usadas nas tabelas: `obrigatório` = campo tem de vir preenchido; tipos `date` usam
 `YYYY-MM-DD`. Todos os endpoints exigem o cabeçalho `Authorization: Bearer <token>` já enviado
@@ -17,11 +21,11 @@ automaticamente pelo interceptor em `src/lib/api.ts` — não repetido em cada e
 
 ---
 
-## 1. Módulo "Férias & Ausências"
+## 1. Módulo "Férias & Ausências" — ✅ implementado
 
-Ficheiro: `src/pages/Ausencias.tsx`, rota `/ausencias`. Nenhum endpoint `/leave/*` existe hoje no
-backend. Cobre o fluxo do mock: pedido do colaborador → aprovação do director → averbamento pelo
-Capital Humano no mapa oficial, mais o registo directo de licença de maternidade pelo CH.
+Ficheiro backend: `app/api/routes/leave.py`. Ficheiro frontend: `src/pages/Ausencias.tsx`, rota
+`/ausencias`. Cobre o fluxo do mock: pedido do colaborador → aprovação do director → averbamento
+pelo Capital Humano no mapa oficial, mais o registo directo de licença de maternidade pelo CH.
 
 ### 1.1 `GET /leave/me/balance`
 Saldo de férias do utilizador autenticado (equivalente a `saldoFerias()` no mock, 22 dias/ano).
@@ -136,14 +140,13 @@ vista de calendário; incluído aqui apenas para o contrato ficar completo face 
 
 ---
 
-## 2. Documentos do colaborador — upload de ficheiros
+## 2. Documentos do colaborador — upload de ficheiros — ✅ implementado
 
-Ficheiro: `src/pages/Colaboradores.tsx`, modal "Cadastrar colaborador" (secção "3. Documentos do
-colaborador"). Pedido explícito do utilizador do sistema: o cadastro completo de colaborador
-deve permitir anexar documentos (BI, contrato assinado, certificados de habilitações) — isto não
-existe no mock (que só demonstra uma biblioteca de documentos de **texto integral**, sem upload
-de ficheiros) nem no backend actual (`/documents` só aceita `title`/`doc_type`/`content` em
-texto simples).
+Ficheiro backend: `app/api/routes/collaborators.py`. Ficheiro frontend: `src/pages/Colaboradores.tsx`,
+modal "Cadastrar colaborador" (secção "3. Documentos do colaborador"). O cadastro completo de
+colaborador permite anexar documentos (BI, contrato assinado, certificados de habilitações) — isto
+não existe no mock (que só demonstra uma biblioteca de documentos de **texto integral**, sem upload
+de ficheiros).
 
 ### 2.1 `POST /collaborators/{id}/documents`
 **Enviado como `multipart/form-data`. Quem chama:** Capital Humano.
@@ -168,12 +171,14 @@ oferecido no momento do cadastro inicial).
 Remove um documento anexado. **Quem chama:** Capital Humano. Ainda não consumido no frontend,
 incluído para completar o CRUD.
 
-Sugestão de armazenamento: qualquer solução de object storage (S3, Azure Blob, etc.) com o
-registo (nome, tipo, caminho/URL, data, colaborador) numa tabela própria.
+O armazenamento é feito via Cloudinary (`app/services/cloudinary_upload.py`), com o registo
+(nome, tipo, URL, data, colaborador) na tabela `collaborator_documents`.
 
 ---
 
 ## 3. Gap identificado (sem ação): abas "Documentos" vs "Políticas" do Portal
+
+> Estado (2026-08-13): continua sem ação — é uma decisão de produto, não um endpoint em falta.
 
 O mock separa `docs` (documentos do vínculo) de `politicas` (políticas gerais) como duas abas
 distintas no Portal do Colaborador. O endpoint atual `/documents` devolve um único `doc_type`

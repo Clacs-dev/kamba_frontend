@@ -3,6 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import FormularioAvaliacao from "../components/avaliacao/FormularioAvaliacao";
 import BlocoValidacao from "../components/avaliacao/BlocoValidacao";
 import BlocoConcordancia from "../components/avaliacao/BlocoConcordancia";
+import DecisaoComissao from "../components/DecisaoComissao";
 import api from "../lib/api";
 import FaixaKpis from "../components/FaixaKpis";
 import Cabecalho from "../components/Cabecalho";
@@ -138,6 +139,11 @@ export default function Avaliacoes() {
                                 <div className="mt-3 text-[12.3px] text-warn bg-warn-bg border-l-[3px] border-warn rounded-r-lg px-3.5 py-2.5">
                                     <b>Recurso em análise pela Comissão.</b> Prazo para decisão (8 dias úteis):{" "}
                                     {new Date(av.appeal_deadline).toLocaleDateString("pt-PT", { day: "2-digit", month: "long", year: "numeric" })}.
+                                </div>
+                            )}
+                            {av.phase === "comissao" && user?.role === "comissao" && (
+                                <div className="mt-4 pt-4 border-t border-line">
+                                    <DecisaoComissao evaluationId={av.id} aoDecidir={carregar} />
                                 </div>
                             )}
                             {av.phase === "autoavaliacao" && av.collaborator_id === user?.id && (
