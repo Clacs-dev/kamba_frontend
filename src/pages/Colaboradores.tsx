@@ -18,6 +18,15 @@ interface Colaborador {
     is_active: boolean;
 }
 
+interface PedidoFicha {
+    id: number;
+    collaborator_id: number;
+    message: string;
+    status: string;
+    created_at: string;
+    resolved_at: string | null;
+}
+
 function traduzPerfil(role: string): string {
     const mapa: Record<string, string> = {
         colaborador: "Colaborador",
@@ -43,8 +52,10 @@ export default function Colaboradores() {
 
     // Estado do modal de cadastro.
     const [modalAberto, setModalAberto] = useState(false);
+    const [modalCorrecoes, setModalCorrecoes] = useState(false);
 
     const podeCadastrar = user?.role === "capital_humano";
+    const eGestao = user?.role === "capital_humano" || user?.role === "administracao";
 
     const carregar = () => {
         setACarregar(true);
@@ -99,6 +110,14 @@ export default function Colaboradores() {
                         className="bg-pri text-white rounded-lg px-4 py-2 text-[12.3px] font-semibold hover:bg-pri-dark transition-colors"
                     >
                         + Cadastrar colaborador
+                    </button>
+                )}
+                {eGestao && (
+                    <button
+                        onClick={() => setModalCorrecoes(true)}
+                        className="bg-paper border border-line rounded-lg px-4 py-2 text-[12.3px] font-semibold text-ink hover:border-pri hover:text-pri transition-colors"
+                    >
+                        Pedidos de ficha
                     </button>
                 )}
             </div>
@@ -213,6 +232,10 @@ export default function Colaboradores() {
                     aoFechar={() => setMudarPerfilDe(null)}
                     aoMudar={() => { setMudarPerfilDe(null); carregar(); }}
                 />
+            )}
+
+            {modalCorrecoes && (
+                <ModalCorrecoesFicha aoFechar={() => setModalCorrecoes(false)} />
             )}
         </div>
     );
@@ -833,6 +856,82 @@ function ModalMudarPerfil({ colaborador, aoFechar, aoMudar }: { colaborador: Col
                     {aGuardar ? "A guardar..." : "Mudar perfil"}
                 </button>
             </div>
+        </Modal>
+    );
+}
+
+// ---- Modal de pedidos de correção de ficha (CH / Administração) ----
+function ModalCorrecoesFicha({ aoFechar }: { aoFechar: () => void }) {
+    const [pedidos, setPedidos] = useState<PedidoFicha[]>([]);
+    const [nomes, setNomes] = useState<Record<number, string>>({});
+    const [aCarregar, setACarregar] = useState(true);
+    const [erro, setErro] = useState("");
+
+    const carregar = () => {
+        setACarregar(true);
+        setErro("");
+        Promise.all([
+            api.get("/ficha-corrections").then((r) => setPedidos(r.data)),
+            api.get("/collaborators").then((r) => {
+                const mapa: Record<number, string> = {};
+                r.data.forEach((c: Colaborador) => { mapa[c.id] = c.full_name; });
+                setNomes(mapa);
+            }),
+        ]).catch((err) => setErro(err.response?.data?.detail || "Erro ao carregar os pedidos."))
+            .finally(() => setACarregar(false));
+    };
+
+    useEffect(() => { carregar(); }, []);
+
+    const resolver = async (id: number) => {
+        try {
+            await api.post(`/ficha-corrections/${id}/resolve`);
+            carregar();
+        } catch (err: any) {
+            alert(err.response?.data?.detail || "Não foi possível resolver o pedido.");
+        }
+    };
+
+    const pendentes = pedidos.filter((p) => p.status === "pendente").length;
+
+    return (
+        <Modal aberto={true} aoFechar={aoFechar} titulo="Pedidos de correção de ficha" subtitulo="Os colaboradores requerem correções à ficha; resolva depois de corrigir o dado.">
+            {erro && <Notice variante="alert" className="mb-3">{erro}</Notice>}
+            {aCarregar ? (
+                <p className="text-dim text-sm">A carregar...</p>
+            ) : pedidos.length === 0 ? (
+                <p className="text-dim text-sm py-4 text-center">Sem pedidos de correção neste momento.</p>
+            ) : (
+                <>
+                    <div className="text-[11.5px] text-dim mb-3">{pendentes} pendente(s) · {pedidos.length} no total</div>
+                    <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
+                        {pedidos.map((p) => (
+                            <div key={p.id} className="border border-line rounded-lg px-3 py-2.5">
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="flex-1">
+                                        <div className="text-[12.6px] font-semibold text-strong">{nomes[p.collaborator_id] || `Colaborador #${p.collaborator_id}`}</div>
+                                        <div className="text-[12.3px] text-ink mt-0.5">{p.message}</div>
+                                        <div className="text-[10.8px] text-dim mt-1">
+                                            {new Date(p.created_at).toLocaleDateString("pt-PT", { day: "2-digit", month: "2-digit", year: "numeric" })}
+                                            {p.resolved_at && ` · tratado em ${new Date(p.resolved_at).toLocaleDateString("pt-PT", { day: "2-digit", month: "2-digit", year: "numeric" })}`}
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                        {p.status === "resolvido"
+                                            ? <Tag variante="ok">Resolvido</Tag>
+                                            : <Tag variante="warn">Pendente</Tag>}
+                                        {p.status === "pendente" && (
+                                            <button onClick={() => resolver(p.id)} className="text-[11.5px] font-semibold cursor-pointer hover:underline text-pri">
+                                                Marcar resolvido
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </>
+            )}
         </Modal>
     );
 }

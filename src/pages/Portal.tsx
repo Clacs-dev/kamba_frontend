@@ -10,6 +10,7 @@ import PercursoTab from "../components/portal/PercursoTab";
 import AvaliacaoTab from "../components/portal/AvaliacaoTab";
 import DisciplinaTab from "../components/portal/DisciplinaTab";
 import PoliticasTab from "../components/portal/PoliticasTab";
+import CorrecoesFicha from "../components/portal/CorrecoesFicha";
 import Cartao from "../components/Cartao";
 import Tabs from "../components/Tabs";
 import Tag from "../components/ui/Tag";
@@ -137,6 +138,8 @@ export default function Portal() {
                             </div>
                         )}
                     </Cartao>
+
+                    <CorrecoesFicha />
                 </>
 
             )}
