@@ -9,6 +9,7 @@ import RemuneracaoTab from "../components/portal/RemuneracaoTab";
 import PercursoTab from "../components/portal/PercursoTab";
 import AvaliacaoTab from "../components/portal/AvaliacaoTab";
 import DisciplinaTab from "../components/portal/DisciplinaTab";
+import PoliticasTab from "../components/portal/PoliticasTab";
 import Cartao from "../components/Cartao";
 import Tabs from "../components/Tabs";
 import Tag from "../components/ui/Tag";
@@ -16,13 +17,14 @@ import Spark from "../components/ui/Spark";
 
 const TABS = [
     { chave: "ficha", label: "Ficha" },
-    { chave: "acolhimento", label: "Acolhimento" },
+    { chave: "acolhimento", label: "Boas-vindas & Assinaturas" },
     { chave: "percurso", label: "Percurso" },
     { chave: "documentos", label: "Documentos" },
-    { chave: "avaliacao", label: "Avaliação" },
-    { chave: "disciplina", label: "Disciplina" },
+    { chave: "avaliacao", label: "Minhas Avaliações" },
+    { chave: "disciplina", label: "Disciplina & Notificações" },
     { chave: "saude", label: "Saúde Ocupacional" },
     { chave: "remuneracao", label: "Remuneração & Assiduidade" },
+    { chave: "politicas", label: "Políticas" },
 ];
 
 interface Perfil {
@@ -145,6 +147,7 @@ export default function Portal() {
             {tab === "disciplina" && <DisciplinaTab />}
             {tab === "saude" && <SaudeTab />}
             {tab === "remuneracao" && <RemuneracaoTab />}
+            {tab === "politicas" && <PoliticasTab />}
         </div>
     );
 }

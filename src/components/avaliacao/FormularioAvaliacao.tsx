@@ -3,6 +3,7 @@ import api from "../../lib/api";
 import Cartao from "../Cartao";
 import { Chip, ChipGroup } from "../ui/Chip";
 import ScoreBox from "../ui/ScoreBox";
+import { normalizarLado, type LadoComparacao } from "../../lib/comparison";
 
 // As cinco competências e três valores, com os nomes que o backend espera.
 const COMPETENCIAS = [
@@ -27,21 +28,6 @@ const ESCALA = [
     { v: 5, l: "Sempre" },
 ];
 
-interface Objetivo {
-    description: string;
-    weight: number;
-    execution: number;
-}
-
-interface AutoLado {
-    objectives: Objetivo[];
-    competencies: Record<string, number>;
-    values: Record<string, boolean>;
-    scores: { objectives: number; competencies: number; values: number };
-    final: number | null;
-    classification: string | null;
-}
-
 interface Props {
     evaluationId: number;
     modo: "auto" | "director"; // autoavaliação ou avaliação do director
@@ -56,13 +42,13 @@ export default function FormularioAvaliacao({ evaluationId, modo, aoSubmeter }: 
     const [vals, setVals] = useState<Record<string, boolean>>({});
     const [erro, setErro] = useState("");
     const [aCarregar, setACarregar] = useState(false);
-    const [auto, setAuto] = useState<AutoLado | null>(null);
+    const [auto, setAuto] = useState<LadoComparacao | null>(null);
 
     // No modo director, mostra a autoavaliação do colaborador lado a lado.
     useEffect(() => {
         if (modo !== "director") return;
         api.get(`/evaluations/${evaluationId}/comparison`)
-            .then((r) => setAuto(r.data?.auto ?? null))
+            .then((r) => setAuto(normalizarLado(r.data?.auto) ?? null))
             .catch(() => setAuto(null));
     }, [evaluationId, modo]);
 

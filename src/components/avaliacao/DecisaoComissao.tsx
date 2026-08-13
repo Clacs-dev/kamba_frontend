@@ -1,38 +1,11 @@
 import { useEffect, useState } from "react";
 import api from "../../lib/api";
 import Notice from "../ui/Notice";
+import { normalizarComparacao, type Comparacao } from "../../lib/comparison";
 
 interface Props {
     evaluationId: number;
     aoDecidir?: () => void;
-}
-
-interface Objetivo {
-    description: string;
-    weight: number;
-    execution: number;
-}
-
-interface Lado {
-    objectives: Objetivo[];
-    competencies: Record<string, number>;
-    values: Record<string, boolean>;
-    scores: { objectives: number; competencies: number; values: number };
-    final: number | null;
-    classification: string | null;
-}
-
-interface Comparacao {
-    collaborator_name: string | null;
-    director_name: string | null;
-    weights: { objectives: number; competencies: number; values: number };
-    auto: Lado | null;
-    director: Lado | null;
-    final_score: number | null;
-    classification: string | null;
-    appeal_reason: string | null;
-    appeal_deadline: string | null;
-    commission_decision: string | null;
 }
 
 const OPCOES = [
@@ -51,7 +24,7 @@ export default function DecisaoComissao({ evaluationId, aoDecidir }: Props) {
 
     useEffect(() => {
         api.get(`/evaluations/${evaluationId}/comparison`)
-            .then((r) => setComp(r.data))
+            .then((r) => setComp(normalizarComparacao(r.data)))
             .catch((e: any) =>
                 setErro(e.response?.data?.detail || "Não foi possível carregar a comparação.")
             );
