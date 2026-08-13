@@ -12,6 +12,7 @@ export interface PedidoAusencia {
     reason: string;
     status: "pendente_dir" | "pendente_ch" | "aprovada" | "justificada" | "recusada";
     document_name?: string | null;
+    document_url?: string | null;
 }
 
 const ROTULO_TIPO: Record<PedidoAusencia["type"], string> = {
@@ -80,7 +81,18 @@ export default function TabelaAusencias({ pedidos, mostrarColaborador, mostrarDo
                                     <td className="px-3 py-2.5 border-b border-line2 text-ink">{p.days}</td>
                                     {mostrarDocumento && (
                                         <td className="px-3 py-2.5 border-b border-line2 text-ink">
-                                            {p.document_name || <span className="text-dim">—</span>}
+                                            {p.document_url ? (
+                                                <a
+                                                    href={p.document_url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-pri font-semibold hover:underline cursor-pointer"
+                                                >
+                                                    {p.document_name || "Abrir ficheiro"}
+                                                </a>
+                                            ) : (
+                                                p.document_name || <span className="text-dim">—</span>
+                                            )}
                                         </td>
                                     )}
                                     <td className="px-3 py-2.5 border-b border-line2">

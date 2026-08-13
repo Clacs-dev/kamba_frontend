@@ -250,6 +250,14 @@ function VistaColaborador() {
                         <p><b className="text-strong">Documento:</b> {detalheDe.document_name || "—"}</p>
                         <p><b className="text-strong">Estado:</b> {ROTULO_ESTADO_DETALHE[detalheDe.status]}</p>
                     </div>
+                    {detalheDe.document_url && (
+                        <div className="mt-3">
+                            <a href={detalheDe.document_url} target="_blank" rel="noopener noreferrer"
+                                className="bg-pri text-white rounded-lg px-4 py-2 text-[12.3px] font-semibold hover:bg-pri-dark transition-colors inline-block">
+                                Abrir ficheiro
+                            </a>
+                        </div>
+                    )}
                     <div className="flex gap-2.5 mt-4">
                         <button onClick={() => setDetalheDe(null)} className="bg-paper border border-line rounded-lg px-4 py-2 text-sm text-ink hover:border-pri hover:text-pri transition-colors">Fechar</button>
                     </div>
@@ -403,6 +411,14 @@ function VistaDirector() {
                         <p><b className="text-strong">Documento:</b> {detalheDe.document_name || "—"}</p>
                         <p><b className="text-strong">Estado:</b> {ROTULO_ESTADO_DETALHE[detalheDe.status]}</p>
                     </div>
+                    {detalheDe.document_url && (
+                        <div className="mt-3">
+                            <a href={detalheDe.document_url} target="_blank" rel="noopener noreferrer"
+                                className="bg-pri text-white rounded-lg px-4 py-2 text-[12.3px] font-semibold hover:bg-pri-dark transition-colors inline-block">
+                                Abrir ficheiro
+                            </a>
+                        </div>
+                    )}
                     <div className="flex gap-2.5 mt-4">
                         <button onClick={() => setDetalheDe(null)} className="bg-paper border border-line rounded-lg px-4 py-2 text-sm text-ink hover:border-pri hover:text-pri transition-colors">Fechar</button>
                     </div>
@@ -535,6 +551,7 @@ function VistaCH() {
                     <TabelaAusencias
                         pedidos={aAverbar}
                         mostrarColaborador
+                        mostrarDocumento
                         vazio="Não há pedidos por averbar."
                         acoes={(p) => (
                             <button onClick={() => averbar(p.id)} className="text-[11.5px] text-pri font-semibold hover:underline">
@@ -544,7 +561,7 @@ function VistaCH() {
                     />
 
                     <h3 className="text-[14.5px] mb-3 mt-5">Mapa completo da empresa</h3>
-                    <TabelaAusencias pedidos={pedidos} mostrarColaborador vazio="Ainda não há pedidos registados." />
+                    <TabelaAusencias pedidos={pedidos} mostrarColaborador mostrarDocumento vazio="Ainda não há pedidos registados." />
                 </>
             )}
         </div>
