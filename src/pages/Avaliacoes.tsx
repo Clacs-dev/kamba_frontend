@@ -3,7 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import FormularioAvaliacao from "../components/avaliacao/FormularioAvaliacao";
 import BlocoValidacao from "../components/avaliacao/BlocoValidacao";
 import BlocoConcordancia from "../components/avaliacao/BlocoConcordancia";
-import DecisaoComissao from "../components/DecisaoComissao";
+import DecisaoComissao from "../components/avaliacao/DecisaoComissao";
 import api from "../lib/api";
 import FaixaKpis from "../components/FaixaKpis";
 import Cabecalho from "../components/Cabecalho";
