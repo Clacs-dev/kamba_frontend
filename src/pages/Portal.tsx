@@ -34,9 +34,9 @@ interface Perfil {
     employee_number?: string | null;
     admission_date?: string | null;
     contract_type?: string | null;
-    category?: string | null;
+    job_category?: string | null;
     department?: string | null;
-    work_location?: string | null;
+    workplace?: string | null;
 }
 
 export default function Portal() {
@@ -102,9 +102,9 @@ export default function Portal() {
                                     <LinhaFicha rotulo="N.º de colaborador" valor={perfil?.employee_number} />
                                     <LinhaFicha rotulo="Admissão" valor={perfil?.admission_date} />
                                     <LinhaFicha rotulo="Vínculo" valor={perfil?.contract_type} />
-                                    <LinhaFicha rotulo="Categoria" valor={perfil?.category} />
+                                    <LinhaFicha rotulo="Categoria" valor={perfil?.job_category} />
                                     <LinhaFicha rotulo="Direção" valor={perfil?.department} />
-                                    <LinhaFicha rotulo="Local" valor={perfil?.work_location} />
+                                    <LinhaFicha rotulo="Local" valor={perfil?.workplace} />
                                 </tbody>
                             </table>
                         )}
