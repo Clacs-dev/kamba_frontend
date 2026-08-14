@@ -151,6 +151,7 @@ export default function Avaliacoes() {
                                     <FormularioAvaliacao
                                         evaluationId={av.id}
                                         modo="auto"
+                                        categoria={av.category}
                                         aoSubmeter={carregar}
                                     />
                                 </div>
@@ -164,6 +165,7 @@ export default function Avaliacoes() {
                                     <FormularioAvaliacao
                                         evaluationId={av.id}
                                         modo="director"
+                                        categoria={av.category}
                                         aoSubmeter={carregar}
                                     />
                                 </div>

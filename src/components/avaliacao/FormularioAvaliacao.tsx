@@ -5,7 +5,6 @@ import { Chip, ChipGroup } from "../ui/Chip";
 import ScoreBox from "../ui/ScoreBox";
 import { normalizarLado, type LadoComparacao } from "../../lib/comparison";
 
-// As cinco competências e três valores, com os nomes que o backend espera.
 const COMPETENCIAS = [
     { chave: "orientacao_resultados", label: "Orientação para resultados" },
     { chave: "trabalho_equipa", label: "Trabalho em equipa e colaboração" },
@@ -28,21 +27,33 @@ const ESCALA = [
     { v: 5, l: "Sempre" },
 ];
 
+const PESOS = {
+    tecnico: { objectives: 0.5, competencies: 0.35, values: 0.15 },
+    dirigente: { objectives: 0.6, competencies: 0.25, values: 0.15 },
+};
+
+interface ObjetivoLinha {
+    description: string;
+    weight: string;
+    execution: string;
+}
+
 interface Props {
     evaluationId: number;
     modo: "auto" | "director"; // autoavaliação ou avaliação do director
+    categoria?: string; // "tecnico" | "dirigente" — define as ponderações
     aoSubmeter: () => void;
 }
 
-export default function FormularioAvaliacao({ evaluationId, modo, aoSubmeter }: Props) {
-    // Um objetivo simples para começar (o colaborador descreve e indica execução).
-    const [objDescricao, setObjDescricao] = useState("");
-    const [objExecucao, setObjExecucao] = useState<number | "">("");
+export default function FormularioAvaliacao({ evaluationId, modo, categoria = "tecnico", aoSubmeter }: Props) {
+    const [objs, setObjs] = useState<ObjetivoLinha[]>([{ description: "", weight: "100", execution: "" }]);
     const [comps, setComps] = useState<Record<string, number>>({});
     const [vals, setVals] = useState<Record<string, boolean>>({});
     const [erro, setErro] = useState("");
     const [aCarregar, setACarregar] = useState(false);
     const [auto, setAuto] = useState<LadoComparacao | null>(null);
+
+    const pesos = PESOS[categoria as keyof typeof PESOS] ?? PESOS.tecnico;
 
     // No modo director, mostra a autoavaliação do colaborador lado a lado.
     useEffect(() => {
@@ -52,23 +63,51 @@ export default function FormularioAvaliacao({ evaluationId, modo, aoSubmeter }: 
             .catch(() => setAuto(null));
     }, [evaluationId, modo]);
 
-    // Cálculo da pontuação em direto (aproximado, para feedback visual).
+    const pct = (s: string): number | null => {
+        const n = Number(s);
+        return s !== "" && Number.isFinite(n) ? n : null;
+    };
+
+    const objNums = objs.map((o) => ({
+        description: o.description.trim(),
+        weight: pct(o.weight),
+        execution: pct(o.execution),
+    }));
+
+    const objsPreenchidos = objNums.length > 0 && objNums.every(
+        (o) => o.description !== "" && o.weight != null && o.execution != null
+    );
+    const totalPeso = objNums.reduce((acc, o) => acc + (o.weight ?? 0), 0);
+    const pesosOk = objsPreenchidos && Math.round(totalPeso * 10) / 10 === 100;
+
+    const objScore = pesosOk
+        ? objNums.reduce((acc, o) => acc + (o.execution! * o.weight!), 0) / 100 * 5
+        : null;
+
     const compVals = Object.values(comps);
     const compMedia = compVals.length === COMPETENCIAS.length
         ? compVals.reduce((a, b) => a + b, 0) / compVals.length : null;
     const valVals = Object.values(vals);
-    const objScore = objExecucao !== "" ? Math.min(5, (Number(objExecucao) / 100) * 5) : null;
     const valScore = valVals.length === VALORES.length
         ? valVals.reduce((a, b) => a + (b ? 5 : 2.5), 0) / valVals.length : null;
 
-    const tudoPreenchido =
-        objExecucao !== "" &&
-        compVals.length === COMPETENCIAS.length &&
-        valVals.length === VALORES.length;
+    const tudoPreenchido = pesosOk && compMedia != null && valScore != null;
 
     const notaFinal = tudoPreenchido && objScore != null && compMedia != null && valScore != null
-        ? Math.round((objScore * 0.5 + compMedia * 0.35 + valScore * 0.15) * 10) / 10
+        ? Math.round((objScore * pesos.objectives + compMedia * pesos.competencies + valScore * pesos.values) * 10) / 10
         : null;
+
+    const alterarObjetivo = (i: number, campo: keyof ObjetivoLinha, valor: string) => {
+        setObjs((prev) => prev.map((o, idx) => (idx === i ? { ...o, [campo]: valor } : o)));
+    };
+
+    const adicionarObjetivo = () => {
+        setObjs((prev) => [...prev, { description: "", weight: "", execution: "" }]);
+    };
+
+    const removerObjetivo = (i: number) => {
+        setObjs((prev) => (prev.length === 1 ? prev : prev.filter((_, idx) => idx !== i)));
+    };
 
     const submeter = async () => {
         setErro("");
@@ -76,7 +115,11 @@ export default function FormularioAvaliacao({ evaluationId, modo, aoSubmeter }: 
         const endpoint = modo === "auto" ? "self-assessment" : "director-assessment";
         try {
             await api.post(`/evaluations/${evaluationId}/${endpoint}`, {
-                objectives: [{ description: objDescricao, weight: 100, execution: Number(objExecucao) }],
+                objectives: objNums.map((o) => ({
+                    description: o.description,
+                    weight: o.weight,
+                    execution: o.execution,
+                })),
                 competencies: comps,
                 values: vals,
             });
@@ -89,6 +132,7 @@ export default function FormularioAvaliacao({ evaluationId, modo, aoSubmeter }: 
     };
 
     const nota = (n: number | null | undefined) => (n != null ? n.toFixed(1) : "—");
+    const pesoLabel = Math.round(pesos.objectives * 100);
 
     return (
         <div className="space-y-3">
@@ -106,7 +150,7 @@ export default function FormularioAvaliacao({ evaluationId, modo, aoSubmeter }: 
                                     <div className="text-dim text-[10.5px] uppercase tracking-wide mb-1">Objetivos</div>
                                     {auto.objectives.map((o, i) => (
                                         <div key={i} className="text-[12.8px] py-1 border-b border-line2 last:border-0">
-                                            {o.description || "—"} <span className="text-dim">· execução {o.execution}%</span>
+                                            {o.description || "—"} <span className="text-dim">· peso {o.weight}% · execução {o.execution}%</span>
                                         </div>
                                     ))}
                                 </div>
@@ -144,31 +188,68 @@ export default function FormularioAvaliacao({ evaluationId, modo, aoSubmeter }: 
                 <div className="space-y-3">
                     {/* Objetivos */}
                     <Cartao>
-                        <h3 className="text-[14.5px] mb-2">
-                            Objetivos <span className="text-dim text-[11px]">(peso 50% — indique a execução)</span>
-                        </h3>
-                        <input
-                            value={objDescricao}
-                            onChange={(e) => setObjDescricao(e.target.value)}
-                            placeholder="Descreva o seu principal objetivo do ciclo…"
-                            className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-2 focus:outline-none focus:border-pri"
-                        />
-                        <div className="flex items-center gap-2.5">
-                            <input
-                                type="number" min={0} max={120}
-                                value={objExecucao}
-                                onChange={(e) => setObjExecucao(e.target.value === "" ? "" : Number(e.target.value))}
-                                placeholder="%"
-                                className="w-24 text-center font-semibold bg-panel border border-line rounded-lg px-2 py-2 text-[13px] focus:outline-none focus:border-pri"
-                            />
-                            <span className="text-dim text-[11px]">% de execução (0–120)</span>
+                        <div className="flex items-center justify-between mb-2">
+                            <h3 className="text-[14.5px]">
+                                Objetivos <span className="text-dim text-[11px]">(peso {pesoLabel}% — peso próprio por objetivo)</span>
+                            </h3>
+                            <button
+                                onClick={adicionarObjetivo}
+                                className="text-[11.5px] font-semibold text-pri hover:text-pri-dark transition-colors"
+                            >
+                                + Adicionar objetivo
+                            </button>
                         </div>
+                        {objs.map((o, i) => (
+                            <div key={i} className="py-2.5 border-b border-line2 last:border-0">
+                                <input
+                                    value={o.description}
+                                    onChange={(e) => alterarObjetivo(i, "description", e.target.value)}
+                                    placeholder={`Descreva o objetivo ${i + 1} do ciclo…`}
+                                    className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-2 focus:outline-none focus:border-pri"
+                                />
+                                <div className="flex items-center gap-2.5">
+                                    <input
+                                        type="number" min={0} max={100}
+                                        value={o.weight}
+                                        onChange={(e) => alterarObjetivo(i, "weight", e.target.value)}
+                                        placeholder="Peso"
+                                        className="w-20 text-center font-semibold bg-panel border border-line rounded-lg px-2 py-2 text-[13px] focus:outline-none focus:border-pri"
+                                    />
+                                    <span className="text-dim text-[11px]">% peso</span>
+                                    <input
+                                        type="number" min={0} max={100}
+                                        value={o.execution}
+                                        onChange={(e) => alterarObjetivo(i, "execution", e.target.value)}
+                                        placeholder="Execução"
+                                        className="w-20 text-center font-semibold bg-panel border border-line rounded-lg px-2 py-2 text-[13px] focus:outline-none focus:border-pri"
+                                    />
+                                    <span className="text-dim text-[11px]">% execução (0–100)</span>
+                                    {objs.length > 1 && (
+                                        <button
+                                            onClick={() => removerObjetivo(i)}
+                                            title="Remover objetivo"
+                                            className="text-bad text-[18px] leading-none hover:opacity-70 transition-opacity ml-1"
+                                        >
+                                            ×
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                        {objsPreenchidos && !pesosOk && (
+                            <p className="text-warn text-[12.3px] mt-2">
+                                Os pesos somam {Math.round(totalPeso * 10) / 10}% — têm de somar 100%.
+                            </p>
+                        )}
+                        {pesosOk && (
+                            <p className="text-ok text-[12.3px] mt-2">Pesos: 100%.</p>
+                        )}
                     </Cartao>
 
                     {/* Competências */}
                     <Cartao>
                         <h3 className="text-[14.5px] mb-2">
-                            Competências <span className="text-dim text-[11px]">(peso 35% — escala 1 a 5)</span>
+                            Competências <span className="text-dim text-[11px]">(peso {Math.round(pesos.competencies * 100)}% — escala 1 a 5)</span>
                         </h3>
                         {COMPETENCIAS.map((c) => (
                             <div key={c.chave} className="py-2 border-b border-line2 last:border-0">
@@ -191,7 +272,7 @@ export default function FormularioAvaliacao({ evaluationId, modo, aoSubmeter }: 
                     {/* Valores */}
                     <Cartao>
                         <h3 className="text-[14.5px] mb-2">
-                            Valores e conduta <span className="text-dim text-[11px]">(peso 15% — Sim / Não)</span>
+                            Valores e conduta <span className="text-dim text-[11px]">(peso {Math.round(pesos.values * 100)}% — Sim / Não)</span>
                         </h3>
                         {VALORES.map((v) => (
                             <div key={v.chave} className="py-2 border-b border-line2 last:border-0">
@@ -232,6 +313,9 @@ export default function FormularioAvaliacao({ evaluationId, modo, aoSubmeter }: 
                             <tr><td className="text-dim py-0.5">Objetivos</td><td className="text-right">{objScore != null ? objScore.toFixed(1) : "—"}</td></tr>
                             <tr><td className="text-dim py-0.5">Competências</td><td className="text-right">{compMedia != null ? compMedia.toFixed(1) : "—"}</td></tr>
                             <tr><td className="text-dim py-0.5">Valores</td><td className="text-right">{valScore != null ? valScore.toFixed(1) : "—"}</td></tr>
+                            <tr><td className="text-dim py-0.5">Ponderações</td><td className="text-right">
+                                {categoria === "dirigente" ? "60/25/15" : "50/35/15"}
+                            </td></tr>
                         </tbody>
                     </table>
                 </ScoreBox>
