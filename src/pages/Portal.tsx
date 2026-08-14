@@ -9,6 +9,7 @@ import RemuneracaoTab from "../components/portal/RemuneracaoTab";
 import PercursoTab from "../components/portal/PercursoTab";
 import AvaliacaoTab from "../components/portal/AvaliacaoTab";
 import DisciplinaTab from "../components/portal/DisciplinaTab";
+import FormacaoTab from "../components/portal/FormacaoTab";
 import PoliticasTab from "../components/portal/PoliticasTab";
 import CorrecoesFicha from "../components/portal/CorrecoesFicha";
 import Cartao from "../components/Cartao";
@@ -22,6 +23,7 @@ const TABS = [
     { chave: "percurso", label: "Percurso" },
     { chave: "documentos", label: "Documentos" },
     { chave: "avaliacao", label: "Minhas Avaliações" },
+    { chave: "formacao", label: "Minha Formação" },
     { chave: "disciplina", label: "Disciplina & Notificações" },
     { chave: "saude", label: "Saúde Ocupacional" },
     { chave: "remuneracao", label: "Remuneração & Assiduidade" },
@@ -147,6 +149,7 @@ export default function Portal() {
             {tab === "percurso" && <PercursoTab />}
             {tab === "documentos" && <DocumentosTab />}
             {tab === "avaliacao" && <AvaliacaoTab />}
+            {tab === "formacao" && <FormacaoTab />}
             {tab === "disciplina" && <DisciplinaTab />}
             {tab === "saude" && <SaudeTab />}
             {tab === "remuneracao" && <RemuneracaoTab />}
