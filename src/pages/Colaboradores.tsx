@@ -262,8 +262,11 @@ function ModalCadastro({ aoFechar, aoCriar }: { aoFechar: () => void; aoCriar: (
     const [admission, setAdmission] = useState("");
     const [contractType, setContractType] = useState("");
     const [jobCategory, setJobCategory] = useState("");
+    const [jobTitle, setJobTitle] = useState("");
     const [department, setDepartment] = useState("");
     const [workplace, setWorkplace] = useState("");
+    const [workSchedule, setWorkSchedule] = useState("");
+    const [situationTags, setSituationTags] = useState("");
     const [fichaGuardada, setFichaGuardada] = useState(false);
     const [erroFicha, setErroFicha] = useState("");
     const [aGuardarFicha, setAGuardarFicha] = useState(false);
@@ -290,8 +293,8 @@ function ModalCadastro({ aoFechar, aoCriar }: { aoFechar: () => void; aoCriar: (
         }
     };
 
-    const guardarFicha = async () => {
-        if (!novoId) return;
+    const guardarFicha = async (): Promise<boolean> => {
+        if (!novoId) return false;
         setErroFicha("");
         setAGuardarFicha(true);
         try {
@@ -300,15 +303,29 @@ function ModalCadastro({ aoFechar, aoCriar }: { aoFechar: () => void; aoCriar: (
                 admission_date: admission || null,
                 contract_type: contractType || null,
                 job_category: jobCategory || null,
+                job_title: jobTitle || null,
                 department: department || null,
                 workplace: workplace || null,
+                work_schedule: workSchedule || null,
+                situation_tags: situationTags || null,
             });
             setFichaGuardada(true);
+            return true;
         } catch (err: any) {
             setErroFicha(err.response?.data?.detail || "Erro ao guardar a ficha.");
+            return false;
         } finally {
             setAGuardarFicha(false);
         }
+    };
+
+    const concluir = async () => {
+        if (!novoId) return;
+        if (!fichaGuardada) {
+            const ok = await guardarFicha();
+            if (!ok) return; // mantém o modal aberto para corrigir o erro
+        }
+        aoCriar();
     };
 
     const enviarDocumento = async () => {
@@ -403,12 +420,24 @@ function ModalCadastro({ aoFechar, aoCriar }: { aoFechar: () => void; aoCriar: (
                         <input value={jobCategory} onChange={(e) => setJobCategory(e.target.value)} className={campoCls} />
                     </div>
                     <div>
+                        <label className={rotuloCampo}>Cargo específico</label>
+                        <input value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} placeholder="Ex.: Chefe de Vendas" className={campoCls} />
+                    </div>
+                    <div>
                         <label className={rotuloCampo}>Direção/Departamento</label>
                         <input value={department} onChange={(e) => setDepartment(e.target.value)} className={campoCls} />
                     </div>
                     <div>
                         <label className={rotuloCampo}>Local de trabalho</label>
                         <input value={workplace} onChange={(e) => setWorkplace(e.target.value)} className={campoCls} />
+                    </div>
+                    <div>
+                        <label className={rotuloCampo}>Horário de trabalho</label>
+                        <input value={workSchedule} onChange={(e) => setWorkSchedule(e.target.value)} placeholder="Ex.: 2.ª a 6.ª · 08h00-16h30" className={campoCls} />
+                    </div>
+                    <div>
+                        <label className={rotuloCampo}>Etiquetas de situação (separadas por vírgula)</label>
+                        <input value={situationTags} onChange={(e) => setSituationTags(e.target.value)} placeholder="Ex.: promovido 2025, Chefia" className={campoCls} />
                     </div>
                 </div>
                 {erroFicha && <p className="text-bad text-sm mb-3">{erroFicha}</p>}
@@ -454,7 +483,9 @@ function ModalCadastro({ aoFechar, aoCriar }: { aoFechar: () => void; aoCriar: (
 
             <div className="flex gap-2.5 mt-5 pt-4 border-t border-line">
                 <Botao variante="ghost" onClick={aoFechar}>Cancelar</Botao>
-                <Botao onClick={aoCriar} disabled={!novoId}>Concluir cadastro</Botao>
+                <Botao onClick={concluir} disabled={!novoId || aGuardarFicha}>
+                    {aGuardarFicha ? "A guardar ficha..." : "Concluir cadastro"}
+                </Botao>
             </div>
         </Modal>
     );
