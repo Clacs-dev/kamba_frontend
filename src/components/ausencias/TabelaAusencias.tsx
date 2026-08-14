@@ -5,7 +5,7 @@ export interface PedidoAusencia {
     id: number;
     collaborator_id: number;
     collaborator_name?: string;
-    type: "ferias" | "falta" | "maternidade";
+    type: "ferias" | "falta" | "maternidade" | "doenca";
     start_date: string;
     end_date: string;
     days: number;
@@ -19,6 +19,7 @@ const ROTULO_TIPO: Record<PedidoAusencia["type"], string> = {
     ferias: "Férias",
     falta: "Falta",
     maternidade: "Licença de maternidade",
+    doenca: "Doença prolongada",
 };
 
 const ROTULO_ESTADO: Record<PedidoAusencia["status"], { texto: string; variante: "ok" | "warn" | "bad" | "info" }> = {

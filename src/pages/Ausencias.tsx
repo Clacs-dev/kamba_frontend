@@ -280,6 +280,7 @@ const ROTULO_TIPO_PEDIDO: Record<string, string> = {
     ferias: "Férias",
     falta: "Falta",
     maternidade: "Licença de maternidade",
+    doenca: "Doença prolongada",
 };
 
 function VistaDirector() {
@@ -445,6 +446,15 @@ function VistaCH() {
     const [aRegistar, setARegistar] = useState(false);
     const [msg, setMsg] = useState("");
 
+    // Formulário de licença por doença prolongada.
+    const [dEmpId, setDEmpId] = useState(0);
+    const [dInicio, setDInicio] = useState("");
+    const [dFim, setDFim] = useState("");
+    const [dMotivo, setDMotivo] = useState("");
+    const [dDocumento, setDDocumento] = useState<File | null>(null);
+    const [aRegistarDoenca, setARegistarDoenca] = useState(false);
+    const [msgDoenca, setMsgDoenca] = useState("");
+
     const carregar = () => {
         setACarregar(true);
         setErroCarga("");
@@ -489,6 +499,27 @@ function VistaCH() {
         }
     };
 
+    const registarDoenca = async () => {
+        setMsgDoenca("");
+        setARegistarDoenca(true);
+        try {
+            const dados = new FormData();
+            dados.append("collaborator_id", String(dEmpId));
+            dados.append("inicio", dInicio);
+            dados.append("fim", dFim);
+            dados.append("motivo", dMotivo.trim() || "Licença por doença prolongada.");
+            if (dDocumento) dados.append("documento", dDocumento);
+            await api.post("/leave/prolonged-illness", dados);
+            setMsgDoenca("Licença por doença prolongada registada. Ajusta o ciclo de avaliação do colaborador.");
+            setDInicio(""); setDFim(""); setDMotivo(""); setDDocumento(null);
+            carregar();
+        } catch (err: any) {
+            setMsgDoenca(err.response?.data?.detail || "Não foi possível registar.");
+        } finally {
+            setARegistarDoenca(false);
+        }
+    };
+
     const aAverbar = pedidos.filter((p) => p.status === "pendente_ch" || p.status === "aprovada");
 
     return (
@@ -497,47 +528,90 @@ function VistaCH() {
                 { valor: pedidos.length, label: "Total de pedidos" },
                 { valor: pedidos.filter((p) => p.status === "pendente_dir" || p.status === "pendente_ch").length, label: "Pendentes", cor: "warn" },
                 { valor: pedidos.filter((p) => p.status === "aprovada" || p.status === "justificada").length, label: "Aprovados/Justificados", cor: "ok" },
-                { valor: pedidos.filter((p) => p.type === "maternidade").length, label: "Licenças de maternidade" },
+                { valor: pedidos.filter((p) => p.type === "maternidade" || p.type === "doenca").length, label: "Licenças médicas" },
             ]} />
 
-            <Cartao className="mb-4">
-                <h3 className="text-[14.5px] mb-3">Registar licença de maternidade</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-3">
-                    <div>
-                        <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Colaboradora</label>
-                        <select value={empId} onChange={(e) => setEmpId(Number(e.target.value))}
-                            className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-3 focus:outline-none focus:border-pri">
-                            <option value={0}>— escolher —</option>
-                            {colaboradores.map((c) => <option key={c.id} value={c.id}>{c.full_name}</option>)}
-                        </select>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+                <Cartao>
+                    <h3 className="text-[14.5px] mb-3">Registar licença de maternidade</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-3">
+                        <div>
+                            <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Colaboradora</label>
+                            <select value={empId} onChange={(e) => setEmpId(Number(e.target.value))}
+                                className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-3 focus:outline-none focus:border-pri">
+                                <option value={0}>— escolher —</option>
+                                {colaboradores.map((c) => <option key={c.id} value={c.id}>{c.full_name}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Início</label>
+                            <input type="date" value={inicio} onChange={(e) => setInicio(e.target.value)}
+                                className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-3 focus:outline-none focus:border-pri" />
+                        </div>
+                        <div>
+                            <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Fim</label>
+                            <input type="date" value={fim} onChange={(e) => setFim(e.target.value)}
+                                className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-3 focus:outline-none focus:border-pri" />
+                        </div>
                     </div>
-                    <div>
-                        <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Início</label>
-                        <input type="date" value={inicio} onChange={(e) => setInicio(e.target.value)}
-                            className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-3 focus:outline-none focus:border-pri" />
+                    <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Motivo</label>
+                    <textarea value={motivo} onChange={(e) => setMotivo(e.target.value)} rows={2}
+                        className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-3 focus:outline-none focus:border-pri" />
+                    <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">
+                        Documento comprovativo (atestado médico + declaração de nascimento)
+                    </label>
+                    <input
+                        type="file"
+                        onChange={(e) => setDocumento(e.target.files?.[0] || null)}
+                        className="w-full bg-panel border border-line rounded-lg px-3 py-[7px] text-[12.5px] mb-3 focus:outline-none focus:border-pri"
+                    />
+                    {msg && <p className="text-[12.3px] text-pri-dark mb-3">{msg}</p>}
+                    <Botao onClick={registarMaternidade} disabled={aRegistar || !empId || !inicio || !fim}>
+                        {aRegistar ? "A registar..." : "Registar licença"}
+                    </Botao>
+                </Cartao>
+
+                <Cartao>
+                    <h3 className="text-[14.5px] mb-3">Registar licença por doença prolongada</h3>
+                    <Notice className="mb-3">
+                        <b>Secção 3.1 / 8:</b> a licença por doença prolongada entra aprovada e <b>ajusta o ciclo de avaliação</b> do colaborador (o ciclo corrente é contado com ajuste).
+                    </Notice>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-3">
+                        <div>
+                            <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Colaborador</label>
+                            <select value={dEmpId} onChange={(e) => setDEmpId(Number(e.target.value))}
+                                className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-3 focus:outline-none focus:border-pri">
+                                <option value={0}>— escolher —</option>
+                                {colaboradores.map((c) => <option key={c.id} value={c.id}>{c.full_name}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Início</label>
+                            <input type="date" value={dInicio} onChange={(e) => setDInicio(e.target.value)}
+                                className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-3 focus:outline-none focus:border-pri" />
+                        </div>
+                        <div>
+                            <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Fim</label>
+                            <input type="date" value={dFim} onChange={(e) => setDFim(e.target.value)}
+                                className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-3 focus:outline-none focus:border-pri" />
+                        </div>
                     </div>
-                    <div>
-                        <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Fim</label>
-                        <input type="date" value={fim} onChange={(e) => setFim(e.target.value)}
-                            className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-3 focus:outline-none focus:border-pri" />
-                    </div>
-                </div>
-                <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Motivo</label>
-                <textarea value={motivo} onChange={(e) => setMotivo(e.target.value)} rows={2}
-                    className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-3 focus:outline-none focus:border-pri" />
-                <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">
-                    Documento comprovativo (atestado médico + declaração de nascimento)
-                </label>
-                <input
-                    type="file"
-                    onChange={(e) => setDocumento(e.target.files?.[0] || null)}
-                    className="w-full bg-panel border border-line rounded-lg px-3 py-[7px] text-[12.5px] mb-3 focus:outline-none focus:border-pri"
-                />
-                {msg && <p className="text-[12.3px] text-pri-dark mb-3">{msg}</p>}
-                <Botao onClick={registarMaternidade} disabled={aRegistar || !empId || !inicio || !fim}>
-                    {aRegistar ? "A registar..." : "Registar licença"}
-                </Botao>
-            </Cartao>
+                    <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Motivo</label>
+                    <textarea value={dMotivo} onChange={(e) => setDMotivo(e.target.value)} rows={2}
+                        placeholder="Ex.: doença prolongada conforme atestado médico (art. 162.º LGT)"
+                        className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-3 focus:outline-none focus:border-pri" />
+                    <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Documento comprovativo (atestado médico)</label>
+                    <input
+                        type="file"
+                        onChange={(e) => setDDocumento(e.target.files?.[0] || null)}
+                        className="w-full bg-panel border border-line rounded-lg px-3 py-[7px] text-[12.5px] mb-3 focus:outline-none focus:border-pri"
+                    />
+                    {msgDoenca && <p className="text-[12.3px] text-pri-dark mb-3">{msgDoenca}</p>}
+                    <Botao onClick={registarDoenca} disabled={aRegistarDoenca || !dEmpId || !dInicio || !dFim}>
+                        {aRegistarDoenca ? "A registar..." : "Registar licença"}
+                    </Botao>
+                </Cartao>
+            </div>
 
             {erroAcao && <p className="text-bad text-sm mb-3">{erroAcao}</p>}
 
