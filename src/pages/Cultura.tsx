@@ -16,6 +16,17 @@ interface Inquerito {
     status: string;
 }
 
+interface ResultadosInquerito {
+    survey_id: number;
+    response_count: number;
+    released: boolean;
+    results: Record<string, number>;
+    note: string;
+    participation_count: number;
+    universe: number;
+    participation_rate: number | null;
+}
+
 interface DimRow {
     name: string;
     y2023: number | null;
@@ -49,6 +60,7 @@ function KpiCard({ valor, label, nota }: { valor: string; label: string; nota?: 
 export default function Cultura() {
     const { user } = useAuth();
     const [inqueritos, setInqueritos] = useState<Inquerito[]>([]);
+    const [resultados, setResultados] = useState<Record<number, ResultadosInquerito>>({});
     const [relatorio, setRelatorio] = useState<RelatorioCultura | null>(null);
     const [aCarregar, setACarregar] = useState(true);
     const [msg, setMsg] = useState("");
@@ -70,6 +82,23 @@ export default function Cultura() {
     };
 
     useEffect(() => { carregar(); }, []);
+
+    // Resultados e participação por pulse (só CH / Administração).
+    useEffect(() => {
+        if (!eGestor || inqueritos.length === 0) return;
+        let vivo = true;
+        Promise.all(inqueritos.map((inq) =>
+            api.get(`/surveys/${inq.id}/results`).then((r) => r.data).catch(() => null)
+        )).then((todos) => {
+            if (!vivo) return;
+            const mapa: Record<number, ResultadosInquerito> = {};
+            todos.forEach((res, i) => {
+                if (res) mapa[inqueritos[i].id] = res;
+            });
+            setResultados(mapa);
+        });
+        return () => { vivo = false; };
+    }, [eGestor, inqueritos]);
 
     const definirResposta = (inqId: number, dim: string, valor: number) => {
         setRespostas((prev) => ({ ...prev, [inqId]: { ...(prev[inqId] || {}), [dim]: valor } }));
@@ -181,7 +210,50 @@ export default function Cultura() {
                         <div className="space-y-4">
                             {inqueritos.map((inq) => (
                                 <Cartao key={inq.id}>
-                                    <h3 className="text-[15px] m-0 mb-3">{inq.title} — anónimo, 60 segundos</h3>
+                                    <div className="flex items-start justify-between gap-3 mb-3">
+                                        <h3 className="text-[15px] m-0">{inq.title} — anónimo, 60 segundos</h3>
+                                        <Tag variante={inq.status === "aberto" ? "ok" : "info"}>
+                                            {inq.status === "aberto" ? "Aberto" : "Fechado"}
+                                        </Tag>
+                                    </div>
+
+                                    {eGestor && resultados[inq.id] && (() => {
+                                        const r = resultados[inq.id];
+                                        return (
+                                            <div className="border border-line rounded-lg p-3 mb-3 bg-panel/40">
+                                                <div className="flex items-center gap-2 mb-2.5 flex-wrap">
+                                                    <Tag variante="pri">
+                                                        {r.participation_count} de {r.universe} responderam
+                                                    </Tag>
+                                                    {r.participation_rate != null && (
+                                                        <Tag variante="info">Taxa de participação: {r.participation_rate}%</Tag>
+                                                    )}
+                                                </div>
+                                                {r.released ? (
+                                                    <>
+                                                        {Object.entries(r.results).map(([dim, media]) => (
+                                                            <div key={dim} className="py-1.5 border-b border-line2 last:border-0">
+                                                                <div className="flex justify-between items-baseline mb-1">
+                                                                    <span className="text-[12.3px] text-strong">{dim}</span>
+                                                                    <span className="text-[12.3px]">
+                                                                        <b className="text-pri-dark">{media}</b> / 5
+                                                                    </span>
+                                                                </div>
+                                                                <div className="h-2 bg-line2 rounded-full overflow-hidden">
+                                                                    <div className="h-full bg-pri rounded-full transition-all"
+                                                                        style={{ width: `${(media / 5) * 100}%` }} />
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                        <p className="text-dim text-[11px] mt-2">{r.note}</p>
+                                                    </>
+                                                ) : (
+                                                    <Notice variante="alert">{r.note}</Notice>
+                                                )}
+                                            </div>
+                                        );
+                                    })()}
+
                                     {respondido[inq.id] ? (
                                         <Notice variante="soft">
                                             <b>Resposta registada.</b> A sua identidade nunca é associada às respostas.
