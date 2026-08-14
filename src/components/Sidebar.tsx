@@ -13,7 +13,7 @@ const ITENS: ItemMenu[] = [
     { caminho: "/portal", icone: "▣", label: "Portal do Colaborador", perfis: ["colaborador", "director", "capital_humano", "comissao", "administracao"] },
     { caminho: "/colaboradores", icone: "☰", label: "Colaboradores", perfis: ["capital_humano", "administracao", "director", "comissao"] },
     { caminho: "/avaliacoes", icone: "✎", label: "Avaliação", perfis: ["colaborador", "director", "capital_humano", "comissao", "administracao"] },
-    { caminho: "/disciplina", icone: "§", label: "Processos Disciplinares", perfis: ["capital_humano", "administracao", "comissao"] },
+    { caminho: "/disciplina", icone: "§", label: "Processos Disciplinares", perfis: ["colaborador", "director", "capital_humano", "comissao", "administracao"] },
     { caminho: "/ausencias", icone: "⧗", label: "Férias & Ausências", perfis: ["colaborador", "director", "capital_humano", "comissao", "administracao"] },
     { caminho: "/formacao", icone: "▸", label: "Plano de Formação", perfis: ["capital_humano", "administracao", "director"] },
     { caminho: "/cultura", icone: "◉", label: "Cultura", perfis: ["colaborador", "director", "capital_humano", "comissao", "administracao"] },

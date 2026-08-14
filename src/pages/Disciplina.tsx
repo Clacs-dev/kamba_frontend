@@ -33,8 +33,9 @@ export default function Disciplina() {
     const [erro, setErro] = useState("");
     const [modalCriar, setModalCriar] = useState(false);
 
-    const eInstrutor = user?.role === "capital_humano" || user?.role === "administracao" || user?.role === "comissao";
-    const eCH = user?.role === "capital_humano";
+    // Todos os perfis podem instruir por enquanto.
+    const eInstrutor = true;
+    const eCH = true;
 
     const carregar = () => {
         setACarregar(true);

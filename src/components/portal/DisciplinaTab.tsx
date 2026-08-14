@@ -17,6 +17,10 @@ interface Processo {
     reference: string;
     phase: string;
     imputed_facts: string;
+    charge_note: string | null;
+    preventive_suspension: boolean;
+    defense_deadline: string | null;
+    decision_text: string | null;
 }
 
 // Aba "Disciplina" do Portal — o próprio processo disciplinar do colaborador, se existir
@@ -68,6 +72,33 @@ export default function DisciplinaTab() {
                     <div className="mt-3 text-[12.3px] text-ink bg-panel border border-line rounded-lg p-3">
                         <b className="text-strong">Factos imputados:</b> {p.imputed_facts}
                     </div>
+
+                    {p.charge_note && (
+                        <div className="mt-2 text-[12.3px] text-ink bg-panel border border-line rounded-lg p-3">
+                            <b className="text-strong">Nota de culpa:</b>
+                            <div className="whitespace-pre-wrap">{p.charge_note}</div>
+                            {p.preventive_suspension && (
+                                <p className="text-[11.5px] text-warn mt-1.5">
+                                    Comunicação de suspensão preventiva (com remuneração) emitida em paralelo.
+                                </p>
+                            )}
+                        </div>
+                    )}
+
+                    {p.decision_text && (
+                        <div className="mt-2 text-[12.3px] text-ink bg-panel border border-line rounded-lg p-3">
+                            <b className="text-strong">Decisão:</b>
+                            <div className="whitespace-pre-wrap">{p.decision_text}</div>
+                        </div>
+                    )}
+
+                    {(p.phase === "nota_culpa" || p.phase === "defesa") && p.defense_deadline && (
+                        <p className="mt-2 text-[12.3px] text-warn bg-warn-bg border-l-[3px] border-warn rounded-r-lg px-3.5 py-2.5">
+                            <b>Prazo de defesa:</b> até{" "}
+                            {new Date(p.defense_deadline).toLocaleDateString("pt-PT", { day: "2-digit", month: "long", year: "numeric" })}{" "}
+                            (10 dias úteis, Lei Geral do Trabalho).
+                        </p>
+                    )}
 
                     {erro && <p className="text-bad text-sm mt-2">{erro}</p>}
 
