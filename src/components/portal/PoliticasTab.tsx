@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useAuth } from "../../context/AuthContext";
 import api from "../../lib/api";
 import Cartao from "../Cartao";
 import Modal from "../Modal";
@@ -15,7 +16,7 @@ interface DocumentoCompleto extends Documento {
     content: string;
 }
 
-// Tipos de documento que constituem políticas/regulamentos (protótipo: aba "Políticas").
+// Tipos de documento que constituem políticas/regulamentos (aba "Políticas").
 const TIPOS_POLITICA = [
     "regulamento_interno",
     "regulamento_avaliacao",
@@ -24,18 +25,33 @@ const TIPOS_POLITICA = [
     "codigo_etica",
 ];
 
+const TIPOS_DOC = [
+    { valor: "regulamento_interno", label: "Regulamento interno" },
+    { valor: "codigo_etica", label: "Código de ética" },
+    { valor: "politica_assiduidade", label: "Política de assiduidade" },
+    { valor: "politica_remuneracao", label: "Política de remuneração" },
+    { valor: "regulamento_avaliacao", label: "Regulamento de avaliação" },
+];
+
 export default function PoliticasTab() {
+    const { user } = useAuth();
     const [docs, setDocs] = useState<Documento[]>([]);
     const [aCarregar, setACarregar] = useState(true);
     const [erro, setErro] = useState("");
     const [aberto, setAberto] = useState<DocumentoCompleto | null>(null);
+    const [modalCriar, setModalCriar] = useState(false);
 
-    useEffect(() => {
+    const eCH = user?.role === "capital_humano";
+
+    const carregar = () => {
+        setACarregar(true);
         api.get("/documents")
             .then((resp) => setDocs(resp.data.filter((d: Documento) => TIPOS_POLITICA.includes(d.doc_type || ""))))
             .catch((err) => setErro(err.response?.data?.detail || "Erro ao carregar as políticas."))
             .finally(() => setACarregar(false));
-    }, []);
+    };
+
+    useEffect(() => { carregar(); }, []);
 
     const abrir = async (id: number) => {
         try {
@@ -50,7 +66,17 @@ export default function PoliticasTab() {
 
     return (
         <Cartao>
-            <h3 className="text-[14.5px] mb-1">Políticas e regulamentos — leitura registada</h3>
+            <div className="flex items-center justify-between mb-1">
+                <h3 className="text-[14.5px]">Políticas e regulamentos — leitura registada</h3>
+                {eCH && (
+                    <button
+                        onClick={() => setModalCriar(true)}
+                        className="bg-pri text-white rounded-lg px-3 py-1.5 text-[11.5px] font-semibold hover:bg-pri-dark transition-colors"
+                    >
+                        + Publicar documento
+                    </button>
+                )}
+            </div>
             <p className="text-dim text-[11.5px] mb-3">
                 As normas da empresa em texto integral. Ler um documento fica registado — a prova de comunicação exigida em sede disciplinar.
             </p>
@@ -59,7 +85,7 @@ export default function PoliticasTab() {
 
             {docs.length === 0 && (
                 <p className="text-dim text-sm py-4 text-center">
-                    Ainda não há políticas publicadas.
+                    Ainda não há políticas publicadas.{eCH && " Publique a primeira acima."}
                 </p>
             )}
 
@@ -93,6 +119,55 @@ export default function PoliticasTab() {
                     </button>
                 </div>
             </Modal>
+
+            {modalCriar && (
+                <ModalPublicarDocumento aoFechar={() => setModalCriar(false)} aoCriar={() => { setModalCriar(false); carregar(); }} />
+            )}
         </Cartao>
+    );
+}
+
+function ModalPublicarDocumento({ aoFechar, aoCriar }: { aoFechar: () => void; aoCriar: () => void }) {
+    const [title, setTitle] = useState("");
+    const [docType, setDocType] = useState("regulamento_interno");
+    const [content, setContent] = useState("");
+    const [erro, setErro] = useState("");
+
+    const submeter = async () => {
+        setErro("");
+        try {
+            await api.post("/documents", { title, doc_type: docType, content });
+            aoCriar();
+        } catch (err: any) {
+            setErro(err.response?.data?.detail || "Erro ao publicar.");
+        }
+    };
+
+    return (
+        <Modal aberto={true} aoFechar={aoFechar} titulo="Publicar documento" subtitulo="Fica disponível para leitura por todos os colaboradores">
+            <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Título</label>
+            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex.: Regulamento Interno 2026"
+                className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-3 focus:outline-none focus:border-pri" />
+
+            <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Tipo</label>
+            <select value={docType} onChange={(e) => setDocType(e.target.value)}
+                className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-3 focus:outline-none focus:border-pri">
+                {TIPOS_DOC.map((t) => <option key={t.valor} value={t.valor}>{t.label}</option>)}
+            </select>
+
+            <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Conteúdo (texto integral)</label>
+            <textarea value={content} onChange={(e) => setContent(e.target.value)} rows={8}
+                placeholder="Cole aqui o texto completo do documento…"
+                className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-4 focus:outline-none focus:border-pri" />
+
+            {erro && <p className="text-bad text-sm mb-3">{erro}</p>}
+            <div className="flex gap-2.5">
+                <button onClick={aoFechar} className="bg-paper border border-line rounded-lg px-4 py-2 text-sm text-ink hover:border-pri hover:text-pri transition-colors">Cancelar</button>
+                <button onClick={submeter} disabled={!title || !content}
+                    className="bg-pri text-white rounded-lg px-4 py-2 text-[12.3px] font-semibold hover:bg-pri-dark transition-colors disabled:opacity-40">
+                    Publicar
+                </button>
+            </div>
+        </Modal>
     );
 }

@@ -11,15 +11,15 @@ interface ItemMenu {
 const ITENS: ItemMenu[] = [
     { caminho: "/", icone: "◈", label: "Início", perfis: ["colaborador", "director", "capital_humano", "comissao", "administracao"] },
     { caminho: "/portal", icone: "▣", label: "Portal do Colaborador", perfis: ["colaborador", "director", "capital_humano", "comissao", "administracao"] },
-    { caminho: "/colaboradores", icone: "☰", label: "Colaboradores", perfis: ["capital_humano", "administracao", "director", "comissao"] },
+    { caminho: "/colaboradores", icone: "☰", label: "Colaboradores", perfis: ["capital_humano", "administracao"] },
     { caminho: "/avaliacoes", icone: "✎", label: "Avaliação", perfis: ["colaborador", "director", "capital_humano", "comissao", "administracao"] },
-    { caminho: "/disciplina", icone: "§", label: "Processos Disciplinares", perfis: ["colaborador", "director", "capital_humano", "comissao", "administracao"] },
-    { caminho: "/ausencias", icone: "⧗", label: "Férias & Ausências", perfis: ["colaborador", "director", "capital_humano", "comissao", "administracao"] },
-    { caminho: "/formacao", icone: "▸", label: "Plano de Formação", perfis: ["capital_humano", "administracao", "director"] },
-    { caminho: "/cultura", icone: "◉", label: "Cultura", perfis: ["colaborador", "director", "capital_humano", "comissao", "administracao"] },
-    { caminho: "/relatorios", icone: "▤", label: "Relatórios", perfis: ["capital_humano", "administracao", "director", "comissao"] },
+    { caminho: "/disciplina", icone: "§", label: "Processos Disciplinares", perfis: ["director", "capital_humano", "administracao"] },
+    { caminho: "/ausencias", icone: "⧗", label: "Férias & Ausências", perfis: ["colaborador", "director", "capital_humano", "administracao"] },
+    { caminho: "/formacao", icone: "▸", label: "Plano de Formação", perfis: ["director", "capital_humano", "administracao"] },
+    { caminho: "/cultura", icone: "◉", label: "Cultura", perfis: ["colaborador", "director", "capital_humano", "administracao"] },
+    { caminho: "/relatorios", icone: "▤", label: "Relatórios", perfis: ["capital_humano", "administracao"] },
     { caminho: "/dashboard", icone: "◇", label: "Dashboard", perfis: ["capital_humano", "administracao"] },
-    { caminho: "/historico", icone: "↗", label: "Histórico (3 anos)", perfis: ["colaborador", "director", "capital_humano", "comissao", "administracao"] },
+    { caminho: "/historico", icone: "↗", label: "Histórico (3 anos)", perfis: ["director", "capital_humano", "administracao"] },
     { caminho: "/auditoria", icone: "§", label: "Auditoria", perfis: ["capital_humano", "administracao"] },
     { caminho: "/administracao", icone: "⚙", label: "Administração", perfis: ["capital_humano", "administracao"] },
 ];
@@ -44,8 +44,10 @@ export default function Sidebar({ aberto, aoFechar }: SidebarProps) {
             <nav
                 className={`
           bg-paper border-r border-line py-3 flex-shrink-0
-          w-[238px] min-h-screen
-          fixed md:static top-0 left-0 z-50 md:z-auto
+          w-[238px]
+          fixed md:sticky md:top-[53px] top-0 left-0 z-50 md:z-auto
+          h-screen md:h-[calc(100vh-53px)]
+          overflow-y-auto
           transition-transform duration-200
           ${aberto ? "translate-x-0" : "-translate-x-full"} md:translate-x-0
         `}

@@ -127,8 +127,8 @@ export default function Colaboradores() {
             ) : erro ? (
                 <p className="text-bad text-sm">{erro}</p>
             ) : (
-                <Cartao className="p-0 overflow-hidden">
-                    <div className="overflow-x-auto">
+                <Cartao className="p-0">
+                    <div className="overflow-x-auto md:overflow-visible">
                         <table className="w-full text-[12.8px] min-w-[600px]">
                             <thead>
                                 <tr>
@@ -154,43 +154,21 @@ export default function Colaboradores() {
                                         </td>
 
                                         <td className="px-3 py-2.5 border-b border-line2 text-right whitespace-nowrap">
-                                            {podeCadastrar && (
-                                                <button
-                                                    onClick={() => setAcolhimentoDe(c)}
-                                                    className="text-[11.5px] font-semibold cursor-pointer hover:underline text-pri mr-3"
-                                                >
-                                                    Acolhimento
-                                                </button>
-                                            )}
-
-                                            {podeCadastrar && (
-                                                <button
-                                                    onClick={() => setDadosRhDe(c)}
-                                                    className="text-[11.5px] font-semibold cursor-pointer hover:underline text-pri mr-3"
-                                                >
-                                                    Dados RH
-                                                </button>
-                                            )}
-
-                                            {podeCadastrar && c.id !== user?.id && (
-                                                <button
-                                                    onClick={() => setMudarPerfilDe(c)}
-                                                    className="text-[11.5px] font-semibold cursor-pointer hover:underline text-pri mr-3"
-                                                >
-                                                    Mudar perfil
-                                                </button>
-                                            )}
-                                            {podeCadastrar && c.id !== user?.id && (
-                                                <button
-                                                    onClick={() => alternarEstado(c)}
-                                                    className={`text-[11.5px] font-semibold cursor-pointer hover:underline ${c.is_active ? "text-bad" : "text-ok"
-                                                        }`}
-                                                >
-                                                    {c.is_active ? "Desativar" : "Reativar"}
-                                                </button>
-                                            )}
-
-
+                                            {podeCadastrar && (() => {
+                                                const opcoes: { label: string; onClick: () => void; perigo?: boolean; ok?: boolean }[] = [];
+                                                opcoes.push({ label: "Acolhimento", onClick: () => setAcolhimentoDe(c) });
+                                                opcoes.push({ label: "Dados RH", onClick: () => setDadosRhDe(c) });
+                                                if (c.id !== user?.id) {
+                                                    opcoes.push({ label: "Mudar perfil", onClick: () => setMudarPerfilDe(c) });
+                                                    opcoes.push({
+                                                        label: c.is_active ? "Desativar" : "Reativar",
+                                                        onClick: () => alternarEstado(c),
+                                                        perigo: c.is_active,
+                                                        ok: !c.is_active,
+                                                    });
+                                                }
+                                                return <MenuAcoes opcoes={opcoes} />;
+                                            })()}
                                         </td>
                                     </tr>
                                 ))}
@@ -577,9 +555,12 @@ function ModalAcolhimento({ colaborador, aoFechar }: { colaborador: Colaborador;
 
 // ---- Modal de lançamento de dados de RH ----
 function ModalDadosRh({ colaborador, aoFechar }: { colaborador: Colaborador; aoFechar: () => void }) {
-    const [sub, setSub] = useState<"ficha" | "exame" | "salario" | "assiduidade" | "percurso">("ficha");
+    const [sub, setSub] = useState<"ficha" | "exame" | "salario" | "assiduidade" | "percurso" | "documentos">("ficha");
     const [msg, setMsg] = useState("");
     const [erro, setErro] = useState("");
+
+    const feito = (t: string) => { setMsg(t); setErro(""); };
+    const falhou = (e: any) => { setErro(e.response?.data?.detail || "Erro."); setMsg(""); };
 
     // Exame
     const [fitness, setFitness] = useState("apto");
@@ -610,6 +591,44 @@ function ModalDadosRh({ colaborador, aoFechar }: { colaborador: Colaborador; aoF
     const [jobTitle, setJobTitle] = useState("");
     const [workSchedule, setWorkSchedule] = useState("");
     const [situationTags, setSituationTags] = useState("");
+
+    // Documentos do colaborador
+    const [documentos, setDocumentos] = useState<{ id: number; filename: string; doc_type?: string | null; file_url?: string | null }[]>([]);
+    const [tipoDoc, setTipoDoc] = useState("bi");
+    const [ficheiroDoc, setFicheiroDoc] = useState<File | null>(null);
+    const [aEnviarDoc, setAEnviarDoc] = useState(false);
+
+    const carregarDocumentos = () => {
+        api.get(`/collaborators/${colaborador.id}/documents`)
+            .then((r) => setDocumentos(r.data))
+            .catch(() => setDocumentos([]));
+    };
+
+    useEffect(() => { carregarDocumentos(); }, [colaborador.id]);
+
+    const enviarDoc = async () => {
+        if (!ficheiroDoc) return;
+        setAEnviarDoc(true);
+        try {
+            const dados = new FormData();
+            dados.append("file", ficheiroDoc);
+            dados.append("doc_type", tipoDoc);
+            await api.post(`/collaborators/${colaborador.id}/documents`, dados);
+            setFicheiroDoc(null);
+            carregarDocumentos();
+            feito("Documento carregado.");
+        } catch (e) { falhou(e); }
+        finally { setAEnviarDoc(false); }
+    };
+
+    const apagarDoc = async (docId: number) => {
+        if (!confirm("Apagar este documento?")) return;
+        try {
+            await api.delete(`/collaborators/${colaborador.id}/documents/${docId}`);
+            carregarDocumentos();
+            feito("Documento removido.");
+        } catch (e) { falhou(e); }
+    };
 
     // Evento de percurso
     const [eventType, setEventType] = useState("promocao");
@@ -667,8 +686,6 @@ function ModalDadosRh({ colaborador, aoFechar }: { colaborador: Colaborador; aoF
         } catch (e) { falhou(e); }
     };
 
-    const feito = (t: string) => { setMsg(t); setErro(""); };
-    const falhou = (e: any) => { setErro(e.response?.data?.detail || "Erro."); setMsg(""); };
 
     const gravarExame = async () => {
         try {
@@ -719,6 +736,7 @@ function ModalDadosRh({ colaborador, aoFechar }: { colaborador: Colaborador; aoF
                 {btnSub("salario", "Salário")}
                 {btnSub("assiduidade", "Assiduidade")}
                 {btnSub("percurso", "Percurso")}
+                {btnSub("documentos", "Documentos")}
             </div>
 
             {msg && <div className="border-l-[3px] border-ok bg-ok-bg rounded-r-lg px-3 py-2 text-[12px] mb-3">{msg}</div>}
@@ -845,9 +863,60 @@ function ModalDadosRh({ colaborador, aoFechar }: { colaborador: Colaborador; aoF
                     </button>
                 </div>
             )}
+            {sub === "documentos" && (
+                <div>
+                    <p className="text-dim text-[11.5px] mb-3">
+                        Documentos do vínculo (BI, contrato, certificados). Para substituir, apague o antigo e carregue o novo.
+                    </p>
+
+                    {documentos.length === 0 ? (
+                        <p className="text-dim text-sm py-3 text-center">Ainda não há documentos carregados.</p>
+                    ) : (
+                        <div className="space-y-2 mb-4">
+                            {documentos.map((d) => (
+                                <div key={d.id} className="flex items-center gap-3 px-3 py-2.5 border border-line rounded-lg">
+                                    <div className="w-8 h-8 rounded-lg bg-pri-bg text-pri-dark flex items-center justify-center text-[12px] font-semibold flex-shrink-0">
+                                        {(d.doc_type || d.filename).slice(0, 2).toUpperCase()}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <b className="block text-[12.5px] text-strong truncate">{d.filename}</b>
+                                        <span className="text-[10.5px] text-dim">{d.doc_type}</span>
+                                    </div>
+                                    {d.file_url && (
+                                        <a href={d.file_url} target="_blank" rel="noopener noreferrer" className="text-[11px] text-pri font-semibold hover:underline">Abrir</a>
+                                    )}
+                                    <button onClick={() => apagarDoc(d.id)} className="text-[11px] text-bad font-semibold hover:underline">Apagar</button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    <div className="border-t border-line pt-3">
+                        <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Tipo de documento</label>
+                        <select value={tipoDoc} onChange={(e) => setTipoDoc(e.target.value)} className={inputCls}>
+                            <option value="bi">Bilhete de Identidade</option>
+                            <option value="contrato_assinado">Contrato assinado</option>
+                            <option value="certificado_habilitacoes">Certificado de habilitações</option>
+                            <option value="outro">Outro</option>
+                        </select>
+                        <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Ficheiro</label>
+                        <input type="file" onChange={(e) => setFicheiroDoc(e.target.files?.[0] || null)}
+                            className="w-full bg-panel border border-line rounded-lg px-3 py-[7px] text-[12.5px] mb-3 focus:outline-none focus:border-pri" />
+                        <button onClick={enviarDoc} disabled={!ficheiroDoc || aEnviarDoc}
+                            className="bg-pri text-white rounded-lg px-4 py-2 text-[12.3px] font-semibold hover:bg-pri-dark transition-colors disabled:opacity-40">
+                            {aEnviarDoc ? "A carregar..." : "Carregar documento"}
+                        </button>
+                    </div>
+                </div>
+            )}
+
         </Modal>
     );
 }
+
+
+
+
 
 // ---- Modal de mudança de perfil ----
 function ModalMudarPerfil({ colaborador, aoFechar, aoMudar }: { colaborador: Colaborador; aoFechar: () => void; aoMudar: () => void }) {
@@ -964,5 +1033,73 @@ function ModalCorrecoesFicha({ aoFechar }: { aoFechar: () => void }) {
                 </>
             )}
         </Modal>
+    );
+}
+
+
+// ---- Menu de ações (três pontos) ----
+import { useRef, useEffect as useEffectMenu } from "react";
+
+function MenuAcoes({ opcoes }: { opcoes: { label: string; onClick: () => void; perigo?: boolean; ok?: boolean }[] }) {
+    const [aberto, setAberto] = useState(false);
+    const [pos, setPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+    const botaoRef = useRef<HTMLButtonElement>(null);
+    const menuRef = useRef<HTMLDivElement>(null);
+
+    // Fecha ao clicar fora.
+    useEffectMenu(() => {
+        const fechar = (e: MouseEvent) => {
+            if (
+                menuRef.current && !menuRef.current.contains(e.target as Node) &&
+                botaoRef.current && !botaoRef.current.contains(e.target as Node)
+            ) setAberto(false);
+        };
+        document.addEventListener("mousedown", fechar);
+        return () => document.removeEventListener("mousedown", fechar);
+    }, []);
+
+    const abrir = () => {
+        if (botaoRef.current) {
+            const r = botaoRef.current.getBoundingClientRect();
+            const alturaMenu = opcoes.length * 38 + 8; // altura estimada do menu
+            const espacoAbaixo = window.innerHeight - r.bottom;
+            // Se não há espaço em baixo, abre para cima.
+            const top = espacoAbaixo < alturaMenu + 20
+                ? r.top - alturaMenu - 4   // abre por cima do botão
+                : r.bottom + 4;            // abre por baixo do botão
+            setPos({ top, left: r.right - 176 }); // 176 = largura do menu (w-44)
+        }
+        setAberto((a) => !a);
+    };
+
+    return (
+        <>
+            <button
+                ref={botaoRef}
+                onClick={abrir}
+                className="w-8 h-8 rounded-lg hover:bg-panel flex items-center justify-center text-dim hover:text-strong transition-colors text-lg leading-none"
+                aria-label="Ações"
+            >
+                ⋮
+            </button>
+            {aberto && (
+                <div
+                    ref={menuRef}
+                    style={{ position: "fixed", top: pos.top, left: pos.left, zIndex: 100 }}
+                    className="w-44 bg-paper border border-line rounded-xl shadow-lg py-1 flex flex-col"
+                >
+                    {opcoes.map((o, i) => (
+                        <button
+                            key={i}
+                            onClick={() => { o.onClick(); setAberto(false); }}
+                            className={`block w-full text-left px-3.5 py-2 text-[12.5px] hover:bg-panel transition-colors ${o.perigo ? "text-bad" : o.ok ? "text-ok" : "text-ink"
+                                }`}
+                        >
+                            {o.label}
+                        </button>
+                    ))}
+                </div>
+            )}
+        </>
     );
 }
