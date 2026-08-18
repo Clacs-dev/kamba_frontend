@@ -41,6 +41,22 @@ export default function PoliticasTab() {
     const [aberto, setAberto] = useState<DocumentoCompleto | null>(null);
     const [modalCriar, setModalCriar] = useState(false);
 
+    const [aRegistar, setARegistar] = useState(false);
+    const [leituraRegistada, setLeituraRegistada] = useState(false);
+
+    const registarLeitura = async () => {
+        if (!aberto) return;
+        setARegistar(true);
+        try {
+            await api.post(`/documents/${aberto.id}/register-read`);
+            setLeituraRegistada(true);
+        } catch {
+            setErro("Não foi possível registar a leitura.");
+        } finally {
+            setARegistar(false);
+        }
+    };
+
     const eCH = user?.role === "capital_humano";
 
     const carregar = () => {
@@ -54,6 +70,7 @@ export default function PoliticasTab() {
     useEffect(() => { carregar(); }, []);
 
     const abrir = async (id: number) => {
+        setLeituraRegistada(false);
         try {
             const resp = await api.get(`/documents/${id}`);
             setAberto(resp.data);
@@ -117,6 +134,16 @@ export default function PoliticasTab() {
                     <button onClick={() => setAberto(null)} className="bg-paper border border-line rounded-lg px-4 py-2 text-sm text-ink hover:border-pri hover:text-pri transition-colors">
                         Fechar
                     </button>
+                    {leituraRegistada ? (
+                        <span className="bg-ok-bg text-ok rounded-lg px-4 py-2 text-sm font-semibold flex items-center gap-1.5">
+                            ✓ Leitura registada
+                        </span>
+                    ) : (
+                        <button onClick={registarLeitura} disabled={aRegistar}
+                            className="bg-pri text-white rounded-lg px-4 py-2 text-[12.3px] font-semibold hover:bg-pri-dark transition-colors disabled:opacity-40">
+                            {aRegistar ? "A registar..." : "Registar leitura"}
+                        </button>
+                    )}
                 </div>
             </Modal>
 

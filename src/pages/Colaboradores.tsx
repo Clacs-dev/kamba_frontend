@@ -40,7 +40,6 @@ function traduzPerfil(role: string): string {
 
 export default function Colaboradores() {
 
-
     const { user } = useAuth();
     const [acolhimentoDe, setAcolhimentoDe] = useState<Colaborador | null>(null);
     const [colaboradores, setColaboradores] = useState<Colaborador[]>([]);
@@ -95,7 +94,6 @@ export default function Colaboradores() {
                 { valor: colaboradores.filter(c => !c.is_active).length, label: "Inativos", cor: colaboradores.filter(c => !c.is_active).length > 0 ? "warn" : "normal" },
                 { valor: new Set(colaboradores.map(c => c.role)).size, label: "Perfis distintos" },
             ]} />
-
 
             <div className="flex gap-2.5 mb-3">
                 <input
@@ -555,7 +553,7 @@ function ModalAcolhimento({ colaborador, aoFechar }: { colaborador: Colaborador;
 
 // ---- Modal de lançamento de dados de RH ----
 function ModalDadosRh({ colaborador, aoFechar }: { colaborador: Colaborador; aoFechar: () => void }) {
-    const [sub, setSub] = useState<"ficha" | "exame" | "salario" | "assiduidade" | "percurso" | "documentos">("ficha");
+    const [sub, setSub] = useState<"ficha" | "exame" | "salario" | "assiduidade" | "percurso" | "documentos" | "assinaturas" | "leituras">("ficha");
     const [msg, setMsg] = useState("");
     const [erro, setErro] = useState("");
 
@@ -597,6 +595,15 @@ function ModalDadosRh({ colaborador, aoFechar }: { colaborador: Colaborador; aoF
     const [tipoDoc, setTipoDoc] = useState("bi");
     const [ficheiroDoc, setFicheiroDoc] = useState<File | null>(null);
     const [aEnviarDoc, setAEnviarDoc] = useState(false);
+
+    // Assinaturas e leituras do colaborador
+    const [assinaturas, setAssinaturas] = useState<{ signature_type: string; signed_at: string }[]>([]);
+    const [leituras, setLeituras] = useState<{ title: string; read_at: string }[]>([]);
+
+    useEffect(() => {
+        api.get(`/collaborators/${colaborador.id}/signatures`).then((r) => setAssinaturas(r.data)).catch(() => setAssinaturas([]));
+        api.get(`/collaborators/${colaborador.id}/document-reads`).then((r) => setLeituras(r.data)).catch(() => setLeituras([]));
+    }, [colaborador.id]);
 
     const carregarDocumentos = () => {
         api.get(`/collaborators/${colaborador.id}/documents`)
@@ -686,7 +693,6 @@ function ModalDadosRh({ colaborador, aoFechar }: { colaborador: Colaborador; aoF
         } catch (e) { falhou(e); }
     };
 
-
     const gravarExame = async () => {
         try {
             await api.post("/occupational-health/exams", {
@@ -737,6 +743,9 @@ function ModalDadosRh({ colaborador, aoFechar }: { colaborador: Colaborador; aoF
                 {btnSub("assiduidade", "Assiduidade")}
                 {btnSub("percurso", "Percurso")}
                 {btnSub("documentos", "Documentos")}
+
+                {btnSub("assinaturas", "Assinaturas")}
+                {btnSub("leituras", "Leituras")}
             </div>
 
             {msg && <div className="border-l-[3px] border-ok bg-ok-bg rounded-r-lg px-3 py-2 text-[12px] mb-3">{msg}</div>}
@@ -774,7 +783,6 @@ function ModalDadosRh({ colaborador, aoFechar }: { colaborador: Colaborador; aoF
                     </button>
                 </div>
             )}
-
 
             {sub === "exame" && (
 
@@ -910,10 +918,67 @@ function ModalDadosRh({ colaborador, aoFechar }: { colaborador: Colaborador; aoF
                 </div>
             )}
 
+
+            {sub === "assinaturas" && (
+                <div>
+                    <p className="text-dim text-[11.5px] mb-3">
+                        As três declarações de adesão e a data em que foram assinadas (carimbo temporal).
+                    </p>
+                    {(() => {
+                        const LABELS: Record<string, string> = {
+                            regulamento_politicas: "Adesão ao Regulamento e Políticas",
+                            termos_portal: "Termos de Utilização do Portal",
+                            consentimento_dados: "Consentimento de Dados (Lei 22/11)",
+                        };
+                        const tipos = ["regulamento_politicas", "termos_portal", "consentimento_dados"];
+                        return (
+                            <div className="space-y-2">
+                                {tipos.map((t) => {
+                                    const a = assinaturas.find((x) => x.signature_type === t);
+                                    return (
+                                        <div key={t} className="flex items-center justify-between gap-3 px-3 py-2.5 border border-line rounded-lg">
+                                            <span className="text-[12.5px] text-ink">{LABELS[t]}</span>
+                                            {a ? (
+                                                <span className="text-[11px] text-ok font-semibold whitespace-nowrap">
+                                                    ✓ {new Date(a.signed_at).toLocaleDateString("pt-PT", { day: "2-digit", month: "2-digit", year: "numeric" })}
+                                                </span>
+                                            ) : (
+                                                <span className="text-[11px] text-warn font-semibold whitespace-nowrap">Pendente</span>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        );
+                    })()}
+                </div>
+            )}
+
+            {sub === "leituras" && (
+                <div>
+                    <p className="text-dim text-[11.5px] mb-3">
+                        Documentos que o colaborador leu e registou (prova de comunicação das normas).
+                    </p>
+                    {leituras.length === 0 ? (
+                        <p className="text-dim text-sm py-3 text-center">Ainda não registou nenhuma leitura.</p>
+                    ) : (
+                        <div className="space-y-2">
+                            {leituras.map((l, i) => (
+                                <div key={i} className="flex items-center justify-between gap-3 px-3 py-2.5 border border-line rounded-lg">
+                                    <span className="text-[12.5px] text-ink">{l.title}</span>
+                                    <span className="text-[11px] text-dim whitespace-nowrap">
+                                        {new Date(l.read_at).toLocaleDateString("pt-PT", { day: "2-digit", month: "2-digit", year: "numeric" })}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
         </Modal>
     );
 }
-
 
 
 
@@ -1036,7 +1101,6 @@ function ModalCorrecoesFicha({ aoFechar }: { aoFechar: () => void }) {
     );
 }
 
-
 // ---- Menu de ações (três pontos) ----
 import { useRef, useEffect as useEffectMenu } from "react";
 
@@ -1065,8 +1129,8 @@ function MenuAcoes({ opcoes }: { opcoes: { label: string; onClick: () => void; p
             const espacoAbaixo = window.innerHeight - r.bottom;
             // Se não há espaço em baixo, abre para cima.
             const top = espacoAbaixo < alturaMenu + 20
-                ? r.top - alturaMenu - 4   // abre por cima do botão
-                : r.bottom + 4;            // abre por baixo do botão
+                ? r.top - alturaMenu - 4   // abre por cima do botão
+                : r.bottom + 4;            // abre por baixo do botão
             setPos({ top, left: r.right - 176 }); // 176 = largura do menu (w-44)
         }
         setAberto((a) => !a);
