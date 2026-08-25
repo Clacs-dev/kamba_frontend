@@ -35,8 +35,24 @@ interface Perfil {
     admission_date?: string | null;
     contract_type?: string | null;
     job_category?: string | null;
+    job_title?: string | null;
     department?: string | null;
     workplace?: string | null;
+    work_schedule?: string | null;
+    situation_tags?: string | null;
+}
+
+// Rótulo legível do tipo de vínculo.
+function rotuloVinculo(v?: string | null): string | null | undefined {
+    if (!v) return v;
+    const mapa: Record<string, string> = {
+        termo_incerto: "A termo incerto",
+        termo_certo: "A termo certo",
+        efetivo: "Por tempo indeterminado",
+        estagio: "Estágio",
+        prestacao_servicos: "Prestação de serviços",
+    };
+    return mapa[v] || v;
 }
 
 export default function Portal() {
@@ -50,7 +66,6 @@ export default function Portal() {
             .then((resp) => setPerfil(resp.data))
             .catch(() => setPerfil(null))
             .finally(() => setACarregar(false));
-        // Histórico de notas para a evolução (secção 2.1).
         api.get("/evaluations/me/score-history")
             .then((resp) => setHistorico(resp.data))
             .catch(() => setHistorico([]));
@@ -70,80 +85,100 @@ export default function Portal() {
 
             {tab === "ficha" && (
                 <>
-                    {/* Cartão de cabeçalho do colaborador */}
+                    {/* Cabeçalho do colaborador — foto, cargo, tags e nota em destaque */}
                     <Cartao className="mb-3">
-                        <div className="flex gap-4 items-center">
+                        <div className="flex gap-4 items-start">
                             <div className="w-14 h-14 rounded-full bg-pri-bg text-pri-dark flex items-center justify-center font-serif text-xl font-semibold flex-shrink-0">
                                 {iniciais}
                             </div>
-                            <div className="flex-1">
-                                <h3 className="m-0">{user?.full_name}</h3>
-                                <div className="text-[10.8px] text-dim">
+                            <div className="flex-1 min-w-0">
+                                <h3 className="m-0 text-[17px] text-strong">{user?.full_name}</h3>
+                                <div className="text-[11.5px] text-dim mt-0.5">
                                     {traduzPerfil(user?.role || "")}
+                                    {perfil?.job_category && ` · ${perfil.job_category}`}
                                     {perfil?.department && ` · ${perfil.department}`}
                                 </div>
-                                <div className="mt-1.5">
+                                <div className="mt-2 flex flex-wrap gap-1.5">
+                                    {(perfil?.situation_tags || "").split(",").map((t) => t.trim()).filter(Boolean).map((t, i) => (
+                                        <span key={i} className="text-[10.5px] bg-warn-bg text-warn rounded-full px-2 py-0.5 font-medium">{t}</span>
+                                    ))}
                                     <Tag variante="ok">Ativo</Tag>
                                 </div>
                             </div>
+                            {historico.length > 0 && historico[historico.length - 1]?.final_score != null && (
+                                <div className="text-right flex-shrink-0">
+                                    <div className="text-[28px] font-serif font-semibold text-pri-dark leading-none">
+                                        {historico[historico.length - 1].final_score}
+                                    </div>
+                                    <div className="text-[10.5px] text-dim mt-1">
+                                        avaliação {historico[historico.length - 1].cycle_name}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </Cartao>
 
-                    {/* Identificação e vínculo */}
-                    <Cartao>
-                        <h3 className="text-[14.5px] mb-2">Identificação e vínculo</h3>
-                        {aCarregar ? (
-                            <p className="text-dim text-sm">A carregar ficha...</p>
-                        ) : (
-                            <table className="w-full text-[12.8px]">
-                                <tbody>
-                                    <LinhaFicha rotulo="Nome" valor={user?.full_name} />
-                                    <LinhaFicha rotulo="Email" valor={user?.email} />
-                                    <LinhaFicha rotulo="N.º de colaborador" valor={perfil?.employee_number} />
-                                    <LinhaFicha rotulo="Admissão" valor={perfil?.admission_date} />
-                                    <LinhaFicha rotulo="Vínculo" valor={perfil?.contract_type} />
-                                    <LinhaFicha rotulo="Categoria" valor={perfil?.job_category} />
-                                    <LinhaFicha rotulo="Direção" valor={perfil?.department} />
-                                    <LinhaFicha rotulo="Local" valor={perfil?.workplace} />
-                                </tbody>
-                            </table>
-                        )}
-                    </Cartao>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                        {/* Identificação e vínculo */}
+                        <Cartao>
+                            <h3 className="text-[14.5px] mb-2">Identificação e vínculo</h3>
+                            {aCarregar ? (
+                                <p className="text-dim text-sm">A carregar ficha...</p>
+                            ) : (
+                                <table className="w-full text-[12.8px]">
+                                    <tbody>
+                                        <LinhaFicha rotulo="N.º de colaborador" valor={perfil?.employee_number} />
+                                        <LinhaFicha rotulo="Admissão" valor={perfil?.admission_date} />
+                                        <LinhaFicha rotulo="Vínculo" valor={rotuloVinculo(perfil?.contract_type)} />
+                                        <LinhaFicha rotulo="Categoria" valor={perfil?.job_category} />
+                                        <LinhaFicha rotulo="Cargo" valor={perfil?.job_title} />
+                                        <LinhaFicha rotulo="Direção" valor={perfil?.department} />
+                                        <LinhaFicha rotulo="Horário" valor={perfil?.work_schedule} />
+                                        <LinhaFicha rotulo="Local" valor={perfil?.workplace} />
+                                    </tbody>
+                                </table>
+                            )}
+                        </Cartao>
 
-                    {/* Evolução das notas (secção 2.1) */}
-                    <Cartao className="mt-3">
-                        <h3 className="text-[14.5px] mb-3">Evolução das avaliações</h3>
-                        {historico.length === 0 ? (
-                            <p className="text-dim text-sm">
-                                Ainda não há avaliações validadas. À medida que concluir ciclos, a evolução aparece aqui.
-                            </p>
-                        ) : (
-                            <div className="space-y-3">
-                                <Spark valores={historico.map((h) => h.final_score)} />
-                                {historico.map((h, i) => (
-                                    <div key={i}>
-                                        <div className="flex justify-between items-baseline mb-1">
-                                            <span className="text-[12.8px] text-strong">{h.cycle_name}</span>
-                                            <span className="text-[12.8px]">
-                                                <b className="text-pri-dark">{h.final_score ?? "—"}</b>
-                                                {h.classification && <span className="text-dim ml-1.5">{h.classification}</span>}
-                                            </span>
-                                        </div>
-                                        <div className="h-2 bg-line2 rounded-full overflow-hidden">
-                                            <div
-                                                className="h-full bg-pri rounded-full transition-all"
-                                                style={{ width: `${((h.final_score ?? 0) / 5) * 100}%` }}
-                                            />
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </Cartao>
+                        {/* Evolução do desempenho — gráfico + tabela de ciclos */}
+                        <Cartao>
+                            <h3 className="text-[14.5px] mb-3">Evolução do desempenho</h3>
+                            {historico.length === 0 ? (
+                                <p className="text-dim text-sm">
+                                    Ainda não há avaliações validadas. À medida que concluir ciclos, a evolução aparece aqui.
+                                </p>
+                            ) : (
+                                <>
+                                    <Spark valores={historico.map((h) => h.final_score)} />
+                                    <table className="w-full text-[12.5px] mt-3">
+                                        <thead>
+                                            <tr className="text-dim text-[10px] uppercase tracking-wide">
+                                                <td className="py-1.5 text-left">Ciclo</td>
+                                                <td className="py-1.5 text-left">Nota</td>
+                                                <td className="py-1.5 text-left">Nível</td>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {historico.map((h, i) => (
+                                                <tr key={i} className="border-t border-line">
+                                                    <td className="py-2 text-ink">{h.cycle_name}</td>
+                                                    <td className="py-2"><b className="text-pri-dark">{h.final_score ?? "—"}</b></td>
+                                                    <td className="py-2">
+                                                        {h.classification ? <Tag variante="ok">{h.classification}</Tag> : <span className="text-dim">—</span>}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </>
+                            )}
+                        </Cartao>
+                    </div>
 
-                    <CorrecoesFicha />
+                    <div className="mt-3">
+                        <CorrecoesFicha />
+                    </div>
                 </>
-
             )}
             {tab === "acolhimento" && <AcolhimentoTab />}
             {tab === "percurso" && <PercursoTab />}

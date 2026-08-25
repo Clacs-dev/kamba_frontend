@@ -71,6 +71,8 @@ export default function Cultura() {
 
     const eCH = user?.role === "capital_humano";
     const eGestor = eCH || user?.role === "administracao";
+    // CH, Administração e Director podem criar pulses.
+    const podeCriarPulse = eGestor || user?.role === "director";
     const empresa = user?.company_name || "a sua empresa";
 
     const carregar = () => {
@@ -128,7 +130,7 @@ export default function Cultura() {
             {msg && <Notice className="mb-4">{msg}</Notice>}
 
             <div className="flex gap-2.5 mb-4">
-                {eCH && (
+                {podeCriarPulse && (
                     <button onClick={() => setModalCriar(true)}
                         className="bg-pri text-white rounded-lg px-4 py-2 text-[12.3px] font-semibold hover:bg-pri-dark transition-colors">
                         + Criar inquérito (pulse)
@@ -204,7 +206,7 @@ export default function Cultura() {
                     {/* Pulses para responder */}
                     {inqueritos.length === 0 ? (
                         <Cartao><p className="text-dim text-center py-3">
-                            {eCH ? "Ainda não há pulses — crie o primeiro acima." : "Sem pulses ativos de momento."}
+                            {podeCriarPulse ? "Ainda não há pulses — crie o primeiro acima." : "Sem pulses ativos de momento."}
                         </p></Cartao>
                     ) : (
                         <div className="space-y-4">

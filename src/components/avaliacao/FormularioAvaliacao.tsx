@@ -42,11 +42,17 @@ interface Props {
     evaluationId: number;
     modo: "auto" | "director"; // autoavaliação ou avaliação do director
     categoria?: string; // "tecnico" | "dirigente" — define as ponderações
+    objetivosDefinidos?: { description: string; weight: number }[] | null; // objetivos pactuados definidos pelo Capital Humano na criação
     aoSubmeter: () => void;
 }
 
-export default function FormularioAvaliacao({ evaluationId, modo, categoria = "tecnico", aoSubmeter }: Props) {
-    const [objs, setObjs] = useState<ObjetivoLinha[]>([{ description: "", weight: "100", execution: "" }]);
+export default function FormularioAvaliacao({ evaluationId, modo, categoria = "tecnico", objetivosDefinidos = null, aoSubmeter }: Props) {
+    const pactuados = !!objetivosDefinidos && objetivosDefinidos.length > 0;
+    const [objs, setObjs] = useState<ObjetivoLinha[]>(() =>
+        pactuados
+            ? objetivosDefinidos!.map((o) => ({ description: o.description, weight: String(o.weight), execution: "" }))
+            : [{ description: "", weight: "100", execution: "" }]
+    );
     const [comps, setComps] = useState<Record<string, number>>({});
     const [vals, setVals] = useState<Record<string, boolean>>({});
     const [erro, setErro] = useState("");
@@ -190,30 +196,39 @@ export default function FormularioAvaliacao({ evaluationId, modo, categoria = "t
                     <Cartao>
                         <div className="flex items-center justify-between mb-2">
                             <h3 className="text-[14.5px]">
-                                Objetivos <span className="text-dim text-[11px]">(peso {pesoLabel}% — peso próprio por objetivo)</span>
+                                Objetivos{" "}
+                                <span className="text-dim text-[11px]">
+                                    {pactuados
+                                        ? "(definidos pelo Capital Humano — indique apenas a execução)"
+                                        : `(peso ${pesoLabel}% — peso próprio por objetivo)`}
+                                </span>
                             </h3>
-                            <button
-                                onClick={adicionarObjetivo}
-                                className="text-[11.5px] font-semibold text-pri hover:text-pri-dark transition-colors"
-                            >
-                                + Adicionar objetivo
-                            </button>
+                            {!pactuados && (
+                                <button
+                                    onClick={adicionarObjetivo}
+                                    className="text-[11.5px] font-semibold text-pri hover:text-pri-dark transition-colors"
+                                >
+                                    + Adicionar objetivo
+                                </button>
+                            )}
                         </div>
                         {objs.map((o, i) => (
                             <div key={i} className="py-2.5 border-b border-line2 last:border-0">
                                 <input
                                     value={o.description}
                                     onChange={(e) => alterarObjetivo(i, "description", e.target.value)}
+                                    disabled={pactuados}
                                     placeholder={`Descreva o objetivo ${i + 1} do ciclo…`}
-                                    className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-2 focus:outline-none focus:border-pri"
+                                    className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-2 focus:outline-none focus:border-pri disabled:opacity-70 disabled:cursor-not-allowed"
                                 />
                                 <div className="flex items-center gap-2.5">
                                     <input
                                         type="number" min={0} max={100}
                                         value={o.weight}
                                         onChange={(e) => alterarObjetivo(i, "weight", e.target.value)}
+                                        disabled={pactuados}
                                         placeholder="Peso"
-                                        className="w-20 text-center font-semibold bg-panel border border-line rounded-lg px-2 py-2 text-[13px] focus:outline-none focus:border-pri"
+                                        className="w-20 text-center font-semibold bg-panel border border-line rounded-lg px-2 py-2 text-[13px] focus:outline-none focus:border-pri disabled:opacity-70 disabled:cursor-not-allowed"
                                     />
                                     <span className="text-dim text-[11px]">% peso</span>
                                     <input
@@ -224,7 +239,7 @@ export default function FormularioAvaliacao({ evaluationId, modo, categoria = "t
                                         className="w-20 text-center font-semibold bg-panel border border-line rounded-lg px-2 py-2 text-[13px] focus:outline-none focus:border-pri"
                                     />
                                     <span className="text-dim text-[11px]">% execução (0–100)</span>
-                                    {objs.length > 1 && (
+                                    {!pactuados && objs.length > 1 && (
                                         <button
                                             onClick={() => removerObjetivo(i)}
                                             title="Remover objetivo"

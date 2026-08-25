@@ -40,13 +40,6 @@ interface Overview {
     audit: EventoAuditoria[];
 }
 
-const NOME_PLANOS: Record<string, string> = {
-    essencial: "Essencial",
-    empresarial: "Empresarial",
-    corporativo: "Corporativo",
-    institucional: "Institucional",
-};
-
 const campoCls = "w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-3 focus:outline-none focus:border-pri";
 
 function traduzPerfil(role: string): string {
@@ -95,12 +88,6 @@ export default function Administracao() {
     const [erroParam, setErroParam] = useState("");
     const [aGuardarParam, setAGuardarParam] = useState(false);
 
-    // Plano de subscrição.
-    const [plano, setPlano] = useState("essencial");
-    const [msgPlano, setMsgPlano] = useState("");
-    const [erroPlano, setErroPlano] = useState("");
-    const [aAlterarPlano, setAAlterarPlano] = useState(false);
-
     const carregar = () => {
         setACarregar(true);
         api.get("/admin/overview")
@@ -111,7 +98,6 @@ export default function Administracao() {
                 setDirO(s.dir_objectives); setDirC(s.dir_competencies); setDirV(s.dir_values);
                 setPrazo(s.appeal_deadline_days);
                 setCalendario(s.cycle_calendar || "");
-                setPlano(r.data.company.plan);
             })
             .catch((e) => setErro(e.response?.data?.detail || "Erro ao carregar a administração."))
             .finally(() => setACarregar(false));
@@ -141,19 +127,6 @@ export default function Administracao() {
             setErroParam(err.response?.data?.detail || "Não foi possível guardar os parâmetros.");
         } finally {
             setAGuardarParam(false);
-        }
-    };
-
-    const alterarPlano = async () => {
-        setErroPlano(""); setMsgPlano(""); setAAlterarPlano(true);
-        try {
-            const r = await api.put("/admin/company/plan", { plan: plano });
-            setMsgPlano(`Plano alterado: ${NOME_PLANOS[r.data.anterior] || r.data.anterior} → ${NOME_PLANOS[r.data.plan] || r.data.plan}.`);
-            carregar();
-        } catch (err: any) {
-            setErroPlano(err.response?.data?.detail || "Não foi possível alterar o plano.");
-        } finally {
-            setAAlterarPlano(false);
         }
     };
 
@@ -194,19 +167,12 @@ export default function Administracao() {
 
     const { company: emp, audit } = dados;
 
-    const linha = (label: string, valor: React.ReactNode) => (
-        <tr>
-            <td className="text-[10.5px] uppercase tracking-wide text-dim py-2 pr-3 align-top whitespace-nowrap">{label}</td>
-            <td className="py-2 text-[12.8px] text-ink">{valor}</td>
-        </tr>
-    );
-
     return (
         <div>
             <Cabecalho
                 eyebrow="Parametrização & conformidade"
                 titulo={`Administração — ${emp.name}`}
-                descricao="Parâmetros do ciclo, plano SaaS e trilha de auditoria imutável."
+                descricao="Parâmetros do ciclo e trilha de auditoria imutável."
             />
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
@@ -247,37 +213,6 @@ export default function Administracao() {
                         <Botao onClick={guardarParametros}
                             disabled={aGuardarParam || tecSoma !== 100 || dirSoma !== 100 || prazo < 1}>
                             {aGuardarParam ? "A guardar..." : "Guardar parâmetros"}
-                        </Botao>
-                    </div>
-                </Cartao>
-
-                {/* Plano SaaS (editável) */}
-                <Cartao>
-                    <h3 className="text-[14.5px] mb-2">Plano SaaS</h3>
-                    <table className="w-full mb-3">
-                        <tbody>
-                            {linha("Empresa", <b className="text-strong">{emp.name}</b>)}
-                            {linha("NIF", emp.nif || "—")}
-                            {linha("Colaboradores", emp.user_count)}
-                            {linha("Estado", emp.is_active ? "ativo" : "inativo")}
-                            {linha("Módulos", "Portal · Avaliação · Disciplina · Formação · Cultura · Relatórios")}
-                            {linha("Alojamento", "dados em território nacional · cópias diárias")}
-                            {linha("Multi-empresa", "cada cliente num espaço isolado")}
-                        </tbody>
-                    </table>
-
-                    <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Plano de subscrição</label>
-                    <select value={plano} onChange={(e) => setPlano(e.target.value)} className={campoCls}>
-                        {Object.entries(NOME_PLANOS).map(([valor, rotulo]) => (
-                            <option key={valor} value={valor}>{rotulo}</option>
-                        ))}
-                    </select>
-
-                    <div>
-                        {msgPlano && <Notice variante="soft" className="mb-3">{msgPlano}</Notice>}
-                        {erroPlano && <Notice variante="alert" className="mb-3">{erroPlano}</Notice>}
-                        <Botao onClick={alterarPlano} variante="ghost" disabled={aAlterarPlano || plano === emp.plan}>
-                            {aAlterarPlano ? "A alterar..." : "Alterar plano"}
                         </Botao>
                     </div>
                 </Cartao>

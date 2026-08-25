@@ -23,6 +23,11 @@ const FASE_INDICE: Record<string, number> = {
     validada: 5,
 };
 
+interface ObjetivoPactuado {
+    description: string;
+    weight: number;
+}
+
 interface Avaliacao {
     id: number;
     collaborator_id: number;
@@ -32,6 +37,7 @@ interface Avaliacao {
     final_score?: number | null;
     classification?: string | null;
     appeal_deadline?: string | null;
+    objectives?: ObjetivoPactuado[] | null;
 }
 
 interface Ciclo {
@@ -152,6 +158,7 @@ export default function Avaliacoes() {
                                         evaluationId={av.id}
                                         modo="auto"
                                         categoria={av.category}
+                                        objetivosDefinidos={av.objectives ?? null}
                                         aoSubmeter={carregar}
                                     />
                                 </div>
@@ -166,6 +173,7 @@ export default function Avaliacoes() {
                                         evaluationId={av.id}
                                         modo="director"
                                         categoria={av.category}
+                                        objetivosDefinidos={av.objectives ?? null}
                                         aoSubmeter={carregar}
                                     />
                                 </div>
@@ -261,14 +269,29 @@ function ModalAvaliacao({ ciclos, colaboradores, aoFechar, aoCriar }: {
     const [collaboratorId, setCollaboratorId] = useState(0);
     const [directorId, setDirectorId] = useState(0);
     const [category, setCategory] = useState("tecnico");
+    const [objs, setObjs] = useState<{ description: string; weight: string }[]>([{ description: "", weight: "" }]);
     const [erro, setErro] = useState("");
     const [aCarregar, setACarregar] = useState(false);
-
+    const { user } = useAuth();
     // Diretores disponíveis (para escolher quem avalia).
     const diretores = colaboradores.filter((c) => c.role === "director");
 
+    const alterarObjetivo = (i: number, campo: "description" | "weight", valor: string) => {
+        setObjs((prev) => prev.map((o, idx) => (idx === i ? { ...o, [campo]: valor } : o)));
+    };
+    const adicionarObjetivo = () => setObjs((prev) => [...prev, { description: "", weight: "" }]);
+    const removerObjetivo = (i: number) =>
+        setObjs((prev) => (prev.length === 1 ? prev : prev.filter((_, idx) => idx !== i)));
+
+    // Objetivos pactuados: descrições preenchidas, pesos válidos e a somar 100%.
+    const totalPeso = objs.reduce((acc, o) => acc + (Number(o.weight) || 0), 0);
+    const objetivosOk =
+        objs.every((o) => o.description.trim().length >= 2 && Number(o.weight) > 0) &&
+        Math.round(totalPeso * 10) / 10 === 100;
+
     const submeter = async () => {
         setErro("");
+
         setACarregar(true);
         try {
             await api.post("/evaluations", {
@@ -276,6 +299,7 @@ function ModalAvaliacao({ ciclos, colaboradores, aoFechar, aoCriar }: {
                 collaborator_id: collaboratorId,
                 director_id: directorId,
                 category,
+                objectives: objs.map((o) => ({ description: o.description.trim(), weight: Number(o.weight) })),
             });
             aoCriar();
         } catch (err: any) {
@@ -287,7 +311,7 @@ function ModalAvaliacao({ ciclos, colaboradores, aoFechar, aoCriar }: {
 
     return (
         <Modal aberto={true} aoFechar={aoFechar} titulo="Criar avaliação"
-            subtitulo="Inicia o fluxo de avaliação para um colaborador">
+            subtitulo="Inicia o fluxo de avaliação de um colaborador com os objetivos pactuados definidos pelo Capital Humano">
             <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Ciclo</label>
             <select value={cycleId} onChange={(e) => setCycleId(Number(e.target.value))}
                 className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-3 focus:outline-none focus:border-pri">
@@ -298,7 +322,7 @@ function ModalAvaliacao({ ciclos, colaboradores, aoFechar, aoCriar }: {
             <select value={collaboratorId} onChange={(e) => setCollaboratorId(Number(e.target.value))}
                 className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-3 focus:outline-none focus:border-pri">
                 <option value={0}>— escolher —</option>
-                {colaboradores.map((c) => <option key={c.id} value={c.id}>{c.full_name}</option>)}
+                {colaboradores.filter((c) => c.id !== user?.id).map((c) => <option key={c.id} value={c.id}>{c.full_name}</option>)}
             </select>
 
             <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Director avaliador</label>
@@ -310,10 +334,49 @@ function ModalAvaliacao({ ciclos, colaboradores, aoFechar, aoCriar }: {
 
             <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Categoria</label>
             <select value={category} onChange={(e) => setCategory(e.target.value)}
-                className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-4 focus:outline-none focus:border-pri">
+                className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-3 focus:outline-none focus:border-pri">
                 <option value="tecnico">Técnico</option>
                 <option value="dirigente">Dirigente</option>
             </select>
+
+            <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">
+                Objetivos pactuados <span className="normal-case">(definidos por si — os pesos têm de somar 100%)</span>
+            </label>
+            <div className="border border-line rounded-xl p-3 mb-4 space-y-2">
+                {objs.map((o, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                        <input
+                            value={o.description}
+                            onChange={(e) => alterarObjetivo(i, "description", e.target.value)}
+                            placeholder={`Objetivo ${i + 1}…`}
+                            className="flex-1 bg-panel border border-line rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-pri"
+                        />
+                        <input
+                            type="number" min={0} max={100}
+                            value={o.weight}
+                            onChange={(e) => alterarObjetivo(i, "weight", e.target.value)}
+                            placeholder="Peso"
+                            className="w-20 text-center font-semibold bg-panel border border-line rounded-lg px-2 py-2 text-[13px] focus:outline-none focus:border-pri"
+                        />
+                        <span className="text-dim text-[11px]">%</span>
+                        {objs.length > 1 && (
+                            <button onClick={() => removerObjetivo(i)} title="Remover objetivo"
+                                className="text-bad text-[18px] leading-none hover:opacity-70 transition-opacity">
+                                ×
+                            </button>
+                        )}
+                    </div>
+                ))}
+                <div className="flex items-center justify-between pt-1">
+                    <button type="button" onClick={adicionarObjetivo}
+                        className="text-[11.5px] font-semibold text-pri hover:text-pri-dark transition-colors">
+                        + Adicionar objetivo
+                    </button>
+                    <span className={`text-[11.5px] font-semibold ${objetivosOk ? "text-ok" : "text-warn"}`}>
+                        Pesos: {Math.round(totalPeso * 10) / 10}%
+                    </span>
+                </div>
+            </div>
 
             {erro && <p className="text-bad text-sm mb-3">{erro}</p>}
             <div className="flex gap-2.5">
@@ -321,7 +384,7 @@ function ModalAvaliacao({ ciclos, colaboradores, aoFechar, aoCriar }: {
                     className="bg-paper border border-line rounded-lg px-4 py-2 text-sm text-ink hover:border-pri hover:text-pri transition-colors">
                     Cancelar
                 </button>
-                <button onClick={submeter} disabled={aCarregar || !collaboratorId || !directorId}
+                <button onClick={submeter} disabled={aCarregar || !collaboratorId || !directorId || !objetivosOk}
                     className="bg-pri text-white rounded-lg px-4 py-2 text-[12.3px] font-semibold hover:bg-pri-dark transition-colors disabled:opacity-40">
                     {aCarregar ? "A criar..." : "Criar avaliação"}
                 </button>

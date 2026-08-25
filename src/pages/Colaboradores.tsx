@@ -8,7 +8,7 @@ import Modal from "../components/Modal";
 import Tag from "../components/ui/Tag";
 import Notice from "../components/ui/Notice";
 import Botao from "../components/ui/Botao";
-import DocRow from "../components/ui/DocRow";
+import DossierColaborador from "../components/DossierColaborador";
 
 interface Colaborador {
     id: number;
@@ -52,6 +52,7 @@ export default function Colaboradores() {
     // Estado do modal de cadastro.
     const [modalAberto, setModalAberto] = useState(false);
     const [modalCorrecoes, setModalCorrecoes] = useState(false);
+    const [dossierDe, setDossierDe] = useState<Colaborador | null>(null);
 
     const podeCadastrar = user?.role === "capital_humano";
     const eGestao = user?.role === "capital_humano" || user?.role === "administracao";
@@ -60,7 +61,7 @@ export default function Colaboradores() {
         setACarregar(true);
         api.get("/collaborators")
             .then((resp) => setColaboradores(resp.data))
-            .catch((err) => setErro(err.response?.data?.detail || "Erro ao carregar."))
+            .catch((err) => setErro(msgErro(err, "Erro ao carregar.")))
             .finally(() => setACarregar(false));
     };
 
@@ -70,7 +71,7 @@ export default function Colaboradores() {
             await api.post(`/collaborators/${c.id}/${acao}`);
             carregar(); // recarrega a lista para refletir a mudança
         } catch (err: any) {
-            alert(err.response?.data?.detail || "Não foi possível alterar o estado.");
+            alert(msgErro(err, "Não foi possível alterar o estado."));
         }
     };
 
@@ -139,7 +140,12 @@ export default function Colaboradores() {
                             </thead>
                             <tbody>
                                 {filtrados.map((c) => (
-                                    <tr key={c.id} className="hover:bg-panel transition-colors">
+                                    <tr
+                                        key={c.id}
+                                        className="hover:bg-panel transition-colors cursor-pointer"
+                                        title="Abrir dossier do colaborador"
+                                        onClick={() => setDossierDe(c)}
+                                    >
                                         <td className="px-3 py-2.5 border-b border-line2">
                                             <b className="text-strong">{c.full_name}</b>
                                         </td>
@@ -151,7 +157,10 @@ export default function Colaboradores() {
                                                 : <Tag variante="bad">Inativo</Tag>}
                                         </td>
 
-                                        <td className="px-3 py-2.5 border-b border-line2 text-right whitespace-nowrap">
+                                        <td
+                                            className="px-3 py-2.5 border-b border-line2 text-right whitespace-nowrap"
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
                                             {podeCadastrar && (() => {
                                                 const opcoes: { label: string; onClick: () => void; perigo?: boolean; ok?: boolean }[] = [];
                                                 opcoes.push({ label: "Acolhimento", onClick: () => setAcolhimentoDe(c) });
@@ -213,17 +222,25 @@ export default function Colaboradores() {
             {modalCorrecoes && (
                 <ModalCorrecoesFicha aoFechar={() => setModalCorrecoes(false)} />
             )}
+
+            {dossierDe && (
+                <DossierColaborador
+                    colaborador={dossierDe}
+                    aoFechar={() => setDossierDe(null)}
+                />
+            )}
         </div>
     );
 }
 
 // ---- Modal de cadastro completo de colaborador (conta + ficha profissional + documentos) ----
-const rotuloCampo = "block text-[10.5px] uppercase tracking-wide text-dim mb-1";
-const campoCls = "w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-3 focus:outline-none focus:border-pri";
 
 interface DocumentoColaborador { id: number; filename: string; doc_type?: string | null; }
 
 function ModalCadastro({ aoFechar, aoCriar }: { aoFechar: () => void; aoCriar: () => void }) {
+    // Passo atual (1 a 4).
+    const [passo, setPasso] = useState(1);
+
     // Passo 1 — dados de acesso.
     const [fullName, setFullName] = useState("");
     const [email, setEmail] = useState("");
@@ -233,7 +250,7 @@ function ModalCadastro({ aoFechar, aoCriar }: { aoFechar: () => void; aoCriar: (
     const [passwordTemp, setPasswordTemp] = useState<string | null>(null);
     const [novoId, setNovoId] = useState<number | null>(null);
 
-    // Passo 2 — ficha profissional (opcional, mas recomendada no cadastro completo).
+    // Passo 2 — ficha profissional.
     const [empNumber, setEmpNumber] = useState("");
     const [admission, setAdmission] = useState("");
     const [contractType, setContractType] = useState("");
@@ -243,32 +260,41 @@ function ModalCadastro({ aoFechar, aoCriar }: { aoFechar: () => void; aoCriar: (
     const [workplace, setWorkplace] = useState("");
     const [workSchedule, setWorkSchedule] = useState("");
     const [situationTags, setSituationTags] = useState("");
-    const [fichaGuardada, setFichaGuardada] = useState(false);
     const [erroFicha, setErroFicha] = useState("");
     const [aGuardarFicha, setAGuardarFicha] = useState(false);
 
-    // Passo 3 — documentos do colaborador (upload de ficheiros: BI, contrato assinado, certificados…).
+    // Passo 3 — documentos.
     const [tipoDocumento, setTipoDocumento] = useState("bi");
     const [ficheiro, setFicheiro] = useState<File | null>(null);
     const [documentos, setDocumentos] = useState<DocumentoColaborador[]>([]);
     const [aEnviarDoc, setAEnviarDoc] = useState(false);
     const [erroDoc, setErroDoc] = useState("");
 
+    // Passo 4 — acolhimento (checklist do primeiro dia).
+    const [itensAcolhimento, setItensAcolhimento] = useState<{ id: number; description: string; done: boolean }[]>([]);
+    const [novoItem, setNovoItem] = useState("");
+    const [erroAcolhimento, setErroAcolhimento] = useState("");
+
+    const inputCls = "w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-3 focus:outline-none focus:border-pri";
+
+    // ---- Passo 1: criar a conta ----
     const criarConta = async () => {
         setErro("");
         setACarregar(true);
         try {
             const resp = await api.post("/collaborators", { full_name: fullName, email, role });
-            // O backend devolve a password temporária — mostramo-la para o CH copiar.
             setPasswordTemp(resp.data.temporary_password);
             setNovoId(resp.data.id);
+            // Não avança automaticamente: mostra a senha temporária no passo 1.
+            // O utilizador clica em "Continuar" depois de a copiar.
         } catch (err: any) {
-            setErro(err.response?.data?.detail || "Erro ao cadastrar.");
+            setErro(msgErro(err, "Erro ao cadastrar."));
         } finally {
             setACarregar(false);
         }
     };
 
+    // ---- Passo 2: guardar a ficha ----
     const guardarFicha = async (): Promise<boolean> => {
         if (!novoId) return false;
         setErroFicha("");
@@ -285,25 +311,22 @@ function ModalCadastro({ aoFechar, aoCriar }: { aoFechar: () => void; aoCriar: (
                 work_schedule: workSchedule || null,
                 situation_tags: situationTags || null,
             });
-            setFichaGuardada(true);
             return true;
         } catch (err: any) {
-            setErroFicha(err.response?.data?.detail || "Erro ao guardar a ficha.");
+            setErroFicha(msgErro(err, "Erro ao guardar a ficha."));
             return false;
         } finally {
             setAGuardarFicha(false);
         }
     };
 
-    const concluir = async () => {
-        if (!novoId) return;
-        if (!fichaGuardada) {
-            const ok = await guardarFicha();
-            if (!ok) return; // mantém o modal aberto para corrigir o erro
-        }
-        aoCriar();
+    // Guarda a ficha e avança para o passo 3.
+    const guardarEavancar = async () => {
+        const ok = await guardarFicha();
+        if (ok) setPasso(3);
     };
 
+    // ---- Passo 3: documentos ----
     const enviarDocumento = async () => {
         if (!novoId || !ficheiro) return;
         setErroDoc("");
@@ -316,158 +339,204 @@ function ModalCadastro({ aoFechar, aoCriar }: { aoFechar: () => void; aoCriar: (
             setDocumentos((prev) => [...prev, resp.data]);
             setFicheiro(null);
         } catch (err: any) {
-            setErroDoc(err.response?.data?.detail || "Não foi possível enviar o documento.");
+            setErroDoc(msgErro(err, "Não foi possível enviar o documento."));
         } finally {
             setAEnviarDoc(false);
         }
     };
 
+    // ---- Passo 4: acolhimento ----
+    const adicionarAcolhimento = async () => {
+        if (!novoId || !novoItem.trim()) return;
+        setErroAcolhimento("");
+        try {
+            const resp = await api.post("/onboarding", { collaborator_id: novoId, description: novoItem });
+            setItensAcolhimento((prev) => [...prev, resp.data]);
+            setNovoItem("");
+        } catch (err: any) {
+            setErroAcolhimento(msgErro(err, "Não foi possível adicionar o item."));
+        }
+    };
+
+    const concluir = () => {
+        aoCriar();
+    };
+
+    const PASSOS = ["Conta", "Ficha", "Documentos", "Acolhimento"];
+
     return (
-        <Modal
-            aberto={true}
-            aoFechar={aoFechar}
+        <Modal aberto={true} aoFechar={aoFechar}
             titulo="Cadastrar colaborador"
-            subtitulo="Cadastro completo: conta de acesso, ficha profissional e documentos do vínculo"
-        >
-            {/* Passo 1 — Conta de acesso */}
-            <h3 className="text-[14.5px] mb-2">1. Dados de acesso</h3>
-            {passwordTemp ? (
-                <Notice variante="soft" className="mb-4">
-                    <b>Colaborador criado com sucesso!</b>
-                    <div className="mt-2">Password temporária de primeiro acesso:</div>
-                    <div className="font-mono text-[15px] text-strong bg-paper border border-line rounded-lg px-3 py-2 mt-1.5 select-all">
-                        {passwordTemp}
-                    </div>
-                    <div className="text-dim text-[11px] mt-2">
-                        Entregue esta password ao colaborador. Ele deve alterá-la no primeiro acesso.
-                    </div>
-                </Notice>
-            ) : (
-                <div className="mb-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3">
-                        <div>
-                            <label className={rotuloCampo}>Nome completo</label>
-                            <input value={fullName} onChange={(e) => setFullName(e.target.value)} className={campoCls} />
+            subtitulo={`Passo ${passo} de 4 — ${PASSOS[passo - 1]}`}>
+
+            {/* Barra de progresso dos passos */}
+            <div className="flex items-center gap-1.5 mb-5">
+                {PASSOS.map((nome, i) => {
+                    const n = i + 1;
+                    const ativo = n === passo;
+                    const feito = n < passo;
+                    return (
+                        <div key={nome} className="flex-1 flex flex-col items-center gap-1">
+                            <div className={`w-full h-1.5 rounded-full ${ativo || feito ? "bg-pri" : "bg-line2"}`} />
+                            <span className={`text-[9.5px] ${ativo ? "text-pri font-semibold" : "text-dim"}`}>{nome}</span>
                         </div>
-                        <div>
-                            <label className={rotuloCampo}>Email</label>
-                            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={campoCls} />
-                        </div>
+                    );
+                })}
+            </div>
+
+            {/* ===== PASSO 1 — CONTA ===== */}
+            {passo === 1 && (
+                <div>
+                    {passwordTemp ? (
+                        <Notice variante="soft" className="mb-4">
+                            <b>Conta criada!</b>
+                            <div className="mt-2">Password temporária de primeiro acesso:</div>
+                            <div className="font-mono text-[15px] text-strong bg-paper border border-line rounded-lg px-3 py-2 mt-1.5 select-all">
+                                {passwordTemp}
+                            </div>
+                        </Notice>
+                    ) : (
+                        <>
+                            <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Nome completo</label>
+                            <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Ex.: Nelma Cassule" className={inputCls} />
+                            <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Email</label>
+                            <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="nome@empresa.ao" className={inputCls} />
+                            <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Perfil</label>
+                            <select value={role} onChange={(e) => setRole(e.target.value)} className={inputCls}>
+                                <option value="colaborador">Colaborador</option>
+                                <option value="director">Director</option>
+                                <option value="capital_humano">Capital Humano</option>
+                                <option value="comissao">Comissão de Avaliação</option>
+                                <option value="administracao">Administração</option>
+                            </select>
+                            {erro && <p className="text-bad text-sm mb-3">{erro}</p>}
+                        </>
+                    )}
+                    <div className="flex gap-2.5 mt-5 pt-4 border-t border-line">
+                        <Botao variante="ghost" onClick={aoFechar}>Cancelar</Botao>
+                        {passwordTemp ? (
+                            <Botao onClick={() => setPasso(2)}>Continuar →</Botao>
+                        ) : (
+                            <Botao onClick={criarConta} disabled={!fullName || !email || aCarregar}>
+                                {aCarregar ? "A criar..." : "Criar conta →"}
+                            </Botao>
+                        )}
                     </div>
-                    <label className={rotuloCampo}>Perfil</label>
-                    <select value={role} onChange={(e) => setRole(e.target.value)} className={campoCls}>
-                        <option value="colaborador">Colaborador</option>
-                        <option value="director">Director</option>
-                        <option value="capital_humano">Capital Humano</option>
-                        <option value="comissao">Comissão de Avaliação</option>
-                        <option value="administracao">Administração</option>
-                    </select>
-                    {erro && <p className="text-bad text-sm mb-3">{erro}</p>}
-                    <Botao onClick={criarConta} disabled={aCarregar || !fullName || !email}>
-                        {aCarregar ? "A criar..." : "Criar conta"}
-                    </Botao>
                 </div>
             )}
 
-            {/* Passo 2 — Ficha profissional */}
-            <div className={novoId ? "" : "opacity-40 pointer-events-none select-none"}>
-                <h3 className="text-[14.5px] mb-2 mt-1">2. Ficha profissional</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3">
-                    <div>
-                        <label className={rotuloCampo}>Nº de colaborador</label>
-                        <input value={empNumber} onChange={(e) => setEmpNumber(e.target.value)} className={campoCls} />
+            {/* ===== PASSO 2 — FICHA ===== */}
+            {passo === 2 && (
+                <div>
+                    <div className="grid grid-cols-2 gap-x-3">
+                        <div><label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">N.º colaborador</label>
+                            <input value={empNumber} onChange={(e) => setEmpNumber(e.target.value)} className={inputCls} /></div>
+                        <div><label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Admissão</label>
+                            <input value={admission} onChange={(e) => setAdmission(e.target.value)} type="date" className={inputCls} /></div>
+                        <div><label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Vínculo</label>
+                            <select value={contractType} onChange={(e) => setContractType(e.target.value)} className={inputCls}>
+                                <option value="">— escolher —</option>
+                                <option value="termo_incerto">A termo incerto</option>
+                                <option value="termo_certo">A termo certo</option>
+                                <option value="efetivo">Por tempo indeterminado</option>
+                            </select></div>
+                        <div><label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Categoria</label>
+                            <input value={jobCategory} onChange={(e) => setJobCategory(e.target.value)} className={inputCls} /></div>
+                        <div><label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Cargo</label>
+                            <input value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} className={inputCls} /></div>
+                        <div><label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Direção</label>
+                            <input value={department} onChange={(e) => setDepartment(e.target.value)} className={inputCls} /></div>
+                        <div><label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Local</label>
+                            <input value={workplace} onChange={(e) => setWorkplace(e.target.value)} className={inputCls} /></div>
+                        <div><label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Horário</label>
+                            <input value={workSchedule} onChange={(e) => setWorkSchedule(e.target.value)} placeholder="Ex.: 08h-16h30" className={inputCls} /></div>
                     </div>
-                    <div>
-                        <label className={rotuloCampo}>Data de admissão</label>
-                        <input type="date" value={admission} onChange={(e) => setAdmission(e.target.value)} className={campoCls} />
-                    </div>
-                    <div>
-                        <label className={rotuloCampo}>Tipo de vínculo</label>
-                        <select value={contractType} onChange={(e) => setContractType(e.target.value)} className={campoCls}>
-                            <option value="">— escolher —</option>
-                            <option value="efetivo">Efetivo</option>
-                            <option value="termo_certo">Termo certo</option>
-                            <option value="termo_incerto">Termo incerto</option>
-                            <option value="estagio">Estágio</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label className={rotuloCampo}>Categoria/Função</label>
-                        <input value={jobCategory} onChange={(e) => setJobCategory(e.target.value)} className={campoCls} />
-                    </div>
-                    <div>
-                        <label className={rotuloCampo}>Cargo específico</label>
-                        <input value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} placeholder="Ex.: Chefe de Vendas" className={campoCls} />
-                    </div>
-                    <div>
-                        <label className={rotuloCampo}>Direção/Departamento</label>
-                        <input value={department} onChange={(e) => setDepartment(e.target.value)} className={campoCls} />
-                    </div>
-                    <div>
-                        <label className={rotuloCampo}>Local de trabalho</label>
-                        <input value={workplace} onChange={(e) => setWorkplace(e.target.value)} className={campoCls} />
-                    </div>
-                    <div>
-                        <label className={rotuloCampo}>Horário de trabalho</label>
-                        <input value={workSchedule} onChange={(e) => setWorkSchedule(e.target.value)} placeholder="Ex.: 2.ª a 6.ª · 08h00-16h30" className={campoCls} />
-                    </div>
-                    <div>
-                        <label className={rotuloCampo}>Etiquetas de situação (separadas por vírgula)</label>
-                        <input value={situationTags} onChange={(e) => setSituationTags(e.target.value)} placeholder="Ex.: promovido 2025, Chefia" className={campoCls} />
+                    <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Tags de situação</label>
+                    <input value={situationTags} onChange={(e) => setSituationTags(e.target.value)} placeholder="separadas por vírgula" className={inputCls} />
+                    {erroFicha && <p className="text-bad text-sm mb-3">{erroFicha}</p>}
+                    <div className="flex gap-2.5 mt-5 pt-4 border-t border-line">
+                        <Botao variante="ghost" onClick={() => setPasso(1)}>← Anterior</Botao>
+                        <Botao onClick={guardarEavancar} disabled={aGuardarFicha}>
+                            {aGuardarFicha ? "A guardar..." : "Guardar e continuar →"}
+                        </Botao>
                     </div>
                 </div>
-                {erroFicha && <p className="text-bad text-sm mb-3">{erroFicha}</p>}
-                {fichaGuardada && <Tag variante="ok" className="mb-3 block w-fit">Ficha guardada</Tag>}
-                <Botao variante="ghost" onClick={guardarFicha} disabled={!novoId || aGuardarFicha}>
-                    {aGuardarFicha ? "A guardar..." : "Guardar ficha"}
-                </Botao>
-            </div>
+            )}
 
-            {/* Passo 3 — Documentos do colaborador */}
-            <div className={novoId ? "mt-5" : "mt-5 opacity-40 pointer-events-none select-none"}>
-                <h3 className="text-[14.5px] mb-2">3. Documentos do colaborador</h3>
-                <p className="text-dim text-[11px] mb-2">
-                    Anexe cópias digitalizadas (BI, contrato assinado, certificados de habilitações, etc.).
-                </p>
-                {documentos.map((d) => (
-                    <DocRow key={d.id} monograma={(d.doc_type || d.filename).slice(0, 2).toUpperCase()} titulo={d.filename} meta={d.doc_type || undefined} />
-                ))}
-                <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-end mt-2">
-                    <div className="flex-1">
-                        <label className={rotuloCampo}>Tipo de documento</label>
-                        <select value={tipoDocumento} onChange={(e) => setTipoDocumento(e.target.value)} className={`${campoCls} mb-0`}>
-                            <option value="bi">Bilhete de Identidade</option>
-                            <option value="contrato_assinado">Contrato assinado</option>
-                            <option value="certificado_habilitacoes">Certificado de habilitações</option>
-                            <option value="outro">Outro</option>
-                        </select>
+            {/* ===== PASSO 3 — DOCUMENTOS ===== */}
+            {passo === 3 && (
+                <div>
+                    <p className="text-dim text-[11.5px] mb-3">Anexe os documentos do vínculo (BI, contrato, certificados). Pode saltar e fazê-lo depois.</p>
+                    {documentos.length > 0 && (
+                        <div className="space-y-1.5 mb-3">
+                            {documentos.map((d) => (
+                                <div key={d.id} className="flex items-center gap-2 px-3 py-2 border border-line rounded-lg text-[12px]">
+                                    <span className="text-ok">✓</span><span className="text-strong">{d.filename}</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                    <div className="flex gap-2 items-end mb-2">
+                        <div className="flex-1">
+                            <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Tipo</label>
+                            <select value={tipoDocumento} onChange={(e) => setTipoDocumento(e.target.value)} className={inputCls}>
+                                <option value="bi">Bilhete de Identidade</option>
+                                <option value="contrato_assinado">Contrato assinado</option>
+                                <option value="certificado_habilitacoes">Certificado de habilitações</option>
+                                <option value="outro">Outro</option>
+                            </select>
+                        </div>
+                        <div className="flex-1">
+                            <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Ficheiro</label>
+                            <input type="file" onChange={(e) => setFicheiro(e.target.files?.[0] || null)}
+                                className="w-full bg-panel border border-line rounded-lg px-3 py-[7px] text-[12.5px] mb-3 focus:outline-none focus:border-pri" />
+                        </div>
+                        <Botao variante="ghost" onClick={enviarDocumento} disabled={!ficheiro || aEnviarDoc}>
+                            {aEnviarDoc ? "..." : "Anexar"}
+                        </Botao>
                     </div>
-                    <div className="flex-1">
-                        <label className={rotuloCampo}>Ficheiro</label>
-                        <input
-                            type="file"
-                            onChange={(e) => setFicheiro(e.target.files?.[0] || null)}
-                            className="w-full bg-panel border border-line rounded-lg px-3 py-[7px] text-[12.5px] focus:outline-none focus:border-pri"
-                        />
+                    {erroDoc && <p className="text-bad text-[11px] mb-2">{erroDoc}</p>}
+                    <div className="flex gap-2.5 mt-5 pt-4 border-t border-line">
+                        <Botao variante="ghost" onClick={() => setPasso(2)}>← Anterior</Botao>
+                        <Botao onClick={() => setPasso(4)}>Continuar →</Botao>
                     </div>
-                    <Botao variante="ghost" onClick={enviarDocumento} disabled={!novoId || !ficheiro || aEnviarDoc}>
-                        {aEnviarDoc ? "A enviar..." : "Anexar"}
-                    </Botao>
                 </div>
-                {erroDoc && <p className="text-bad text-[11px] mt-2">{erroDoc}</p>}
-            </div>
+            )}
 
-            <div className="flex gap-2.5 mt-5 pt-4 border-t border-line">
-                <Botao variante="ghost" onClick={aoFechar}>Cancelar</Botao>
-                <Botao onClick={concluir} disabled={!novoId || aGuardarFicha}>
-                    {aGuardarFicha ? "A guardar ficha..." : "Concluir cadastro"}
-                </Botao>
-            </div>
+            {/* ===== PASSO 4 — ACOLHIMENTO ===== */}
+            {passo === 4 && (
+                <div>
+                    <p className="text-dim text-[11.5px] mb-3">Lista de acolhimento — o que o colaborador deve receber/concluir no primeiro dia.</p>
+                    {itensAcolhimento.length > 0 && (
+                        <div className="space-y-1.5 mb-3">
+                            {itensAcolhimento.map((it) => (
+                                <div key={it.id} className="flex items-center gap-2 px-3 py-2 border border-line rounded-lg text-[12px]">
+                                    <span className="text-dim">○</span><span className="text-ink">{it.description}</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                    <div className="flex gap-2 items-end mb-2">
+                        <div className="flex-1">
+                            <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Novo item</label>
+                            <input value={novoItem} onChange={(e) => setNovoItem(e.target.value)}
+                                placeholder="Ex.: Crachá e credenciais" className={inputCls}
+                                onKeyDown={(e) => { if (e.key === "Enter") adicionarAcolhimento(); }} />
+                        </div>
+                        <Botao variante="ghost" onClick={adicionarAcolhimento} disabled={!novoItem.trim()}>Adicionar</Botao>
+                    </div>
+                    {erroAcolhimento && <p className="text-bad text-[11px] mb-2">{erroAcolhimento}</p>}
+                    <div className="flex gap-2.5 mt-5 pt-4 border-t border-line">
+                        <Botao variante="ghost" onClick={() => setPasso(3)}>← Anterior</Botao>
+                        <Botao onClick={concluir}>Concluir cadastro ✓</Botao>
+                    </div>
+                </div>
+            )}
         </Modal>
     );
 }
 
-// ---- Modal de gestão do acolhimento ----
+
 function ModalAcolhimento({ colaborador, aoFechar }: { colaborador: Colaborador; aoFechar: () => void }) {
     const [itens, setItens] = useState<{ id: number; description: string; done: boolean }[]>([]);
     const [novoItem, setNovoItem] = useState("");
@@ -760,10 +829,9 @@ function ModalDadosRh({ colaborador, aoFechar }: { colaborador: Colaborador; aoF
                     <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Tipo de vínculo</label>
                     <select value={contractType} onChange={(e) => setContractType(e.target.value)} className={inputCls}>
                         <option value="">— escolher —</option>
-                        <option value="efetivo">Efetivo</option>
-                        <option value="termo_certo">Termo certo</option>
-                        <option value="termo_incerto">Termo incerto</option>
-                        <option value="estagio">Estágio</option>
+                        <option value="termo_incerto">A termo incerto</option>
+                        <option value="termo_certo">A termo certo</option>
+                        <option value="efetivo">Por tempo indeterminado</option>
                     </select>
                     <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Categoria/Função</label>
                     <input value={jobCategory} onChange={(e) => setJobCategory(e.target.value)} className={inputCls} />
@@ -996,7 +1064,7 @@ function ModalMudarPerfil({ colaborador, aoFechar, aoMudar }: { colaborador: Col
             await api.patch(`/collaborators/${colaborador.id}/role`, { role: novoRole });
             aoMudar();
         } catch (err: any) {
-            setErro(err.response?.data?.detail || "Não foi possível mudar o perfil.");
+            setErro(msgErro(err, "Não foi possível mudar o perfil."));
         } finally {
             setAGuardar(false);
         }
@@ -1042,7 +1110,7 @@ function ModalCorrecoesFicha({ aoFechar }: { aoFechar: () => void }) {
                 r.data.forEach((c: Colaborador) => { mapa[c.id] = c.full_name; });
                 setNomes(mapa);
             }),
-        ]).catch((err) => setErro(err.response?.data?.detail || "Erro ao carregar os pedidos."))
+        ]).catch((err) => setErro(msgErro(err, "Erro ao carregar os pedidos.")))
             .finally(() => setACarregar(false));
     };
 
@@ -1053,7 +1121,7 @@ function ModalCorrecoesFicha({ aoFechar }: { aoFechar: () => void }) {
             await api.post(`/ficha-corrections/${id}/resolve`);
             carregar();
         } catch (err: any) {
-            alert(err.response?.data?.detail || "Não foi possível resolver o pedido.");
+            alert(msgErro(err, "Não foi possível resolver o pedido."));
         }
     };
 
@@ -1103,6 +1171,19 @@ function ModalCorrecoesFicha({ aoFechar }: { aoFechar: () => void }) {
 
 // ---- Menu de ações (três pontos) ----
 import { useRef, useEffect as useEffectMenu } from "react";
+
+// Extrai sempre uma mensagem de texto de um erro do axios/FastAPI.
+// O FastAPI devolve 422 com detail = lista de objetos; isto evita passar
+// um objeto ao React (que rebentaria a renderização).
+function msgErro(err: any, fallback = "Ocorreu um erro."): string {
+    const d = err?.response?.data?.detail;
+    if (typeof d === "string") return d;
+    if (Array.isArray(d)) return d.map((x: any) => x?.msg || "").filter(Boolean).join("; ") || fallback;
+    if (d && typeof d === "object") return d.msg || fallback;
+    return fallback;
+}
+
+
 
 function MenuAcoes({ opcoes }: { opcoes: { label: string; onClick: () => void; perigo?: boolean; ok?: boolean }[] }) {
     const [aberto, setAberto] = useState(false);
