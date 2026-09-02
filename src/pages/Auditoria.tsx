@@ -25,7 +25,7 @@ function traduzAcao(action: string): string {
 function traduzPerfil(role: string): string {
     const mapa: Record<string, string> = {
         colaborador: "Colaborador", director: "Director", capital_humano: "Capital Humano",
-        comissao: "Comissão", administracao: "Administração",
+        comissao: "Comissão", administracao: "Administração", admin: "Admin",
     };
     return mapa[role] || role;
 }

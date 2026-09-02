@@ -18,17 +18,24 @@ interface Assiduidade {
     vacation_days_taken: number;
 }
 
-export default function RemuneracaoTab() {
+export default function RemuneracaoTab({ colaboradorId }: { colaboradorId?: number }) {
+    const verOutro = typeof colaboradorId === "number";
     const [salarios, setSalarios] = useState<Salario[]>([]);
     const [assiduidade, setAssiduidade] = useState<Assiduidade[]>([]);
     const [aCarregar, setACarregar] = useState(true);
 
     useEffect(() => {
+        const baseSalary = verOutro
+            ? `/compensation/collaborators/${colaboradorId}/salary`
+            : "/compensation/me/salary";
+        const baseAttendance = verOutro
+            ? `/compensation/collaborators/${colaboradorId}/attendance`
+            : "/compensation/me/attendance";
         Promise.all([
-            api.get("/compensation/me/salary").then((r) => setSalarios(r.data)).catch(() => { }),
-            api.get("/compensation/me/attendance").then((r) => setAssiduidade(r.data)).catch(() => { }),
+            api.get(baseSalary).then((r) => setSalarios(r.data)).catch(() => { }),
+            api.get(baseAttendance).then((r) => setAssiduidade(r.data)).catch(() => { }),
         ]).finally(() => setACarregar(false));
-    }, []);
+    }, [verOutro, colaboradorId]);
 
     if (aCarregar) return <p className="text-dim text-sm">A carregar...</p>;
 

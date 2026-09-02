@@ -19,30 +19,44 @@ function formatarData(iso: string): string {
 }
 
 // Aba Ficha do Portal — o colaborador consulta a sua ficha e pode requerer correções (secção 2.1).
-export default function CorrecoesFicha() {
+// Quando `colaboradorId` é fornecido (CH a ver outro), mostra as correções desse colaborador sem
+// permitir requerer novas (o pedido é iniciado pelo próprio no seu portal).
+export default function CorrecoesFicha({ colaboradorId }: { colaboradorId?: number }) {
+    const verOutro = typeof colaboradorId === "number";
     const [pedidos, setPedidos] = useState<Pedido[]>([]);
     const [aCarregar, setACarregar] = useState(true);
     const [modalAberto, setModalAberto] = useState(false);
 
     const carregar = () => {
-        api.get("/ficha-corrections/me")
-            .then((r) => setPedidos(r.data))
-            .catch(() => setPedidos([]))
-            .finally(() => setACarregar(false));
+        if (verOutro) {
+            api.get(`/ficha-corrections?collaborator_id=${colaboradorId}`)
+                .then((r) => setPedidos(r.data))
+                .catch(() => setPedidos([]))
+                .finally(() => setACarregar(false));
+        } else {
+            api.get("/ficha-corrections/me")
+                .then((r) => setPedidos(r.data))
+                .catch(() => setPedidos([]))
+                .finally(() => setACarregar(false));
+        }
     };
 
-    useEffect(() => { carregar(); }, []);
+    useEffect(() => { carregar(); }, [verOutro, colaboradorId]);
 
     return (
         <Cartao className="mt-3">
             <div className="flex items-center justify-between mb-1">
                 <h3 className="text-[14.5px]">Correções à ficha</h3>
-                <Botao onClick={() => setModalAberto(true)} className="!px-3 !py-1.5 !text-[11.5px]">
-                    Requerer correção
-                </Botao>
+                {!verOutro && (
+                    <Botao onClick={() => setModalAberto(true)} className="!px-3 !py-1.5 !text-[11.5px]">
+                        Requerer correção
+                    </Botao>
+                )}
             </div>
             <p className="text-dim text-[11.5px] mb-3">
-                Encontrou um dado incorreto? Peça a correção ao Capital Humano — fica registada e tratada.
+                {verOutro
+                    ? "Pedidos de correção submetidos por este colaborador."
+                    : "Encontrou um dado incorreto? Peça a correção ao Capital Humano — fica registada e tratada."}
             </p>
 
             {aCarregar ? (

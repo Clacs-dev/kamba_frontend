@@ -28,16 +28,20 @@ function varianteAptidao(f: string): "ok" | "warn" | "bad" {
     return "bad";
 }
 
-export default function SaudeTab() {
+export default function SaudeTab({ colaboradorId }: { colaboradorId?: number }) {
+    const verOutro = typeof colaboradorId === "number";
     const [exames, setExames] = useState<Exame[]>([]);
     const [aCarregar, setACarregar] = useState(true);
 
     useEffect(() => {
-        api.get("/occupational-health/me/exams")
+        const url = verOutro
+            ? `/occupational-health/collaborators/${colaboradorId}/exams`
+            : "/occupational-health/me/exams";
+        api.get(url)
             .then((resp) => setExames(resp.data))
             .catch(() => setExames([]))
             .finally(() => setACarregar(false));
-    }, []);
+    }, [verOutro, colaboradorId]);
 
     return (
         <Cartao>

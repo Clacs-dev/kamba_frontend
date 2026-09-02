@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import FaixaKpis from "../components/FaixaKpis";
 import api from "../lib/api";
@@ -8,7 +9,7 @@ import Modal from "../components/Modal";
 import Tag from "../components/ui/Tag";
 import Notice from "../components/ui/Notice";
 import Botao from "../components/ui/Botao";
-import DossierColaborador from "../components/DossierColaborador";
+import AutocompleteIA from "../components/AutocompleteIA";
 
 interface Colaborador {
     id: number;
@@ -16,6 +17,17 @@ interface Colaborador {
     email: string;
     role: string;
     is_active: boolean;
+    // Ficha profissional (linha enriquecida — estrutura KAMBA).
+    job_title?: string | null;
+    job_category?: string | null;
+    department?: string | null;
+    admission_year?: string | null;
+    situation_tags?: string | null;
+    score_years?: number[];
+    scores?: Record<string, number | null>;
+    has_disciplinary?: boolean;
+    has_leave?: boolean;
+    company_short?: string | null;
 }
 
 interface PedidoFicha {
@@ -27,20 +39,101 @@ interface PedidoFicha {
     resolved_at: string | null;
 }
 
-function traduzPerfil(role: string): string {
-    const mapa: Record<string, string> = {
-        colaborador: "Colaborador",
-        director: "Director",
-        capital_humano: "Capital Humano",
-        comissao: "Comissão de Avaliação",
-        administracao: "Administração",
-    };
-    return mapa[role] || role;
+// Tag de situação da tabela (estática por agora — afina-se depois).
+function situacao(c: Colaborador): { texto: string; variante: "bad" | "info" | "gold" | "ok" } {
+    if (c.has_disciplinary) return { texto: "Disciplinar", variante: "bad" };
+    if (c.has_leave) return { texto: "Licença", variante: "info" };
+    if (c.situation_tags && c.situation_tags.trim()) {
+        return { texto: c.situation_tags.split(",")[0].trim().slice(0, 26), variante: "gold" };
+    }
+    return { texto: "Regular", variante: "ok" };
 }
+
+const DIRECOES = [
+    { sigla: "DAF", nome: "DAF — Contabilidade e Finanças" },
+    { sigla: "DCM", nome: "DCM — Comercial" },
+    { sigla: "DOP", nome: "DOP — Operações" },
+    { sigla: "DTI", nome: "DTI — Tecnologias de Informação" },
+    { sigla: "DCH", nome: "DCH — Capital Humano" },
+    { sigla: "DJC", nome: "DJC — Jurídica e Conformidade" },
+];
+
+// Níveis de habilitação literária (dropdown da formação académica).
+const NIVEIS_FORMACAO = [
+    "Ensino primário",
+    "Ensino médio",
+    "Licenciatura",
+    "Mestrado",
+    "Pós-graduação",
+    "Doutoramento",
+    "Outro",
+];
+
+// Itens de acolhimento criados por defeito para cada novo colaborador.
+const ACOLHIMENTO_DEFAULT = [
+    "Crachá e credenciais de acesso",
+    "Conta de correio electrónico corporativo",
+    "Equipamento de trabalho / EPI da função",
+    "Apresentação à equipa e visita às instalações",
+    "Formação de acolhimento (ética, segurança, portal)",
+    "Leitura e assinatura das políticas",
+];
+
+// Campo de direção: dropdown com as direções padrão + entrada livre ("Outro").
+function DirecaoField({ value, onChange, className }: { value: string; onChange: (v: string) => void; className: string }) {
+    const ePadrao = DIRECOES.some((d) => d.nome === value);
+    const eOutro = value && !ePadrao;
+    return (
+        <>
+            <select
+                value={ePadrao ? value : eOutro ? "outro" : ""}
+                onChange={(e) => {
+                    if (e.target.value === "outro") onChange("");
+                    else onChange(e.target.value);
+                }}
+                className={className}
+            >
+                <option value="">— escolher —</option>
+                {DIRECOES.map((d) => (
+                    <option key={d.sigla} value={d.nome}>{d.nome}</option>
+                ))}
+                <option value="outro">Outro (escrever)</option>
+            </select>
+            {eOutro && (
+                <input
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                    placeholder="Escreva a direção/área"
+                    className={className}
+                    autoFocus
+                />
+            )}
+        </>
+    );
+}
+
+const PAISES = [    "Angola", "Moçambique", "Portugal", "Brasil", "Cabo Verde", "Guiné-Bissau",
+    "São Tomé e Príncipe", "Timor-Leste", "África do Sul", "Botsuana", "Namíbia",
+    "Nigéria", "RD Congo", "Egipto", "Etiópia", "Gana", "Quénia", "Marrocos",
+    "Tunísia", "Argélia", "Libéria", "Uganda", "Tanzânia", "Zâmbia", "Zimbabué",
+    "Senegal", "Costa do Marfim", "Camarões", "Gabão", "Guiné Equatorial",
+    "República do Congo", "Benim", "Togo", "Mali", "Níger", "Burkina Faso",
+    "Chade", "República Centro-Africana", "Sudão", "Sudão do Sul", "Somália",
+    "Eritreia", "Djibuti", "Malawi", "Ilhas Maurícias", "Seicheles",
+    "Madagáscar", "Comores", "Suíça", "Espanha", "Reino Unido", "França",
+    "Itália", "Alemanha", "Bélgica", "Países Baixos", "Luxemburgo", "Suécia",
+    "Noruega", "Dinamarca", "Finlândia", "Polónia", "Irlanda", "Áustria",
+    "Estados Unidos", "Canadá", "México", "Cuba", "Argentina", "Colômbia",
+    "Chile", "Peru", "Venezuela", "Uruguai", "Paraguai", "Equador", "China",
+    "Japão", "Coreia do Sul", "Índia", "Rússia", "Emirados Árabes Unidos",
+    "Arábia Saudita", "Israel", "Turquia", "Singapura", "Indonésia",
+    "Malásia", "Filipinas", "Tailândia", "Vietname", "Austrália",
+];
 
 export default function Colaboradores() {
 
     const { user } = useAuth();
+    const navigate = useNavigate();
     const [acolhimentoDe, setAcolhimentoDe] = useState<Colaborador | null>(null);
     const [colaboradores, setColaboradores] = useState<Colaborador[]>([]);
     const [dadosRhDe, setDadosRhDe] = useState<Colaborador | null>(null);
@@ -52,14 +145,14 @@ export default function Colaboradores() {
     // Estado do modal de cadastro.
     const [modalAberto, setModalAberto] = useState(false);
     const [modalCorrecoes, setModalCorrecoes] = useState(false);
-    const [dossierDe, setDossierDe] = useState<Colaborador | null>(null);
 
-    const podeCadastrar = user?.role === "capital_humano";
-    const eGestao = user?.role === "capital_humano" || user?.role === "administracao";
+    const podeCadastrar = user?.role === "capital_humano" || user?.role === "admin";
+    const eGestao = user?.role === "capital_humano" || user?.role === "administracao" || user?.role === "admin";
 
     const carregar = () => {
         setACarregar(true);
-        api.get("/collaborators")
+        const url = user?.role === "director" ? "/collaborators/my-direction" : "/collaborators";
+        api.get(url)
             .then((resp) => setColaboradores(resp.data))
             .catch((err) => setErro(msgErro(err, "Erro ao carregar.")))
             .finally(() => setACarregar(false));
@@ -77,17 +170,26 @@ export default function Colaboradores() {
 
     useEffect(() => { carregar(); }, []);
 
-    const filtrados = colaboradores.filter((c) =>
-        c.full_name.toLowerCase().includes(pesquisa.toLowerCase()) ||
-        c.email.toLowerCase().includes(pesquisa.toLowerCase())
-    );
+    const filtrados = colaboradores.filter((c) => {
+        const q = pesquisa.toLowerCase();
+        return (
+            c.full_name.toLowerCase().includes(q) ||
+            c.email.toLowerCase().includes(q) ||
+            (c.job_title || "").toLowerCase().includes(q) ||
+            (c.department || "").toLowerCase().includes(q)
+        );
+    });
+
+    const anos = colaboradores[0]?.score_years ?? [];
+    const curto = colaboradores.find((c) => c.company_short)?.company_short ?? null;
+    const eDirector = user?.role === "director";
 
     return (
         <div>
             <Cabecalho
-                eyebrow="Gestão de pessoas"
+                eyebrow={eDirector ? "A sua equipa" : "Gestão de pessoas"}
                 titulo="Colaboradores"
-                descricao="A lista de colaboradores da sua empresa."
+                descricao={`${curto ? `Colaboradores — ${curto}.` : "Colaboradores da sua empresa."} Clique num nome para abrir o dossier completo no Portal do Colaborador.`}
             />
             <FaixaKpis kpis={[
                 { valor: colaboradores.length, label: "Total de colaboradores" },
@@ -100,7 +202,7 @@ export default function Colaboradores() {
                 <input
                     value={pesquisa}
                     onChange={(e) => setPesquisa(e.target.value)}
-                    placeholder="Pesquisar por nome ou email…"
+                    placeholder="Pesquisar…"
                     className="max-w-xs bg-panel border border-line rounded-lg px-3 py-2 text-[13px] text-strong focus:outline-none focus:border-pri"
                 />
                 {podeCadastrar && (
@@ -128,57 +230,82 @@ export default function Colaboradores() {
             ) : (
                 <Cartao className="p-0">
                     <div className="overflow-x-auto md:overflow-visible">
-                        <table className="w-full text-[12.8px] min-w-[600px]">
+                        <table className="w-full text-[12.8px] min-w-[640px]">
                             <thead>
                                 <tr>
                                     <th className="text-left text-[10.3px] uppercase tracking-wide text-dim px-3 py-2.5 border-b border-line">Colaborador</th>
-                                    <th className="text-left text-[10.3px] uppercase tracking-wide text-dim px-3 py-2.5 border-b border-line">Email</th>
-                                    <th className="text-left text-[10.3px] uppercase tracking-wide text-dim px-3 py-2.5 border-b border-line">Perfil</th>
+                                    <th className="text-left text-[10.3px] uppercase tracking-wide text-dim px-3 py-2.5 border-b border-line">Cargo</th>
+                                    <th className="text-left text-[10.3px] uppercase tracking-wide text-dim px-3 py-2.5 border-b border-line">Dir.</th>
+                                    <th className="text-left text-[10.3px] uppercase tracking-wide text-dim px-3 py-2.5 border-b border-line">Adm.</th>
+                                    {anos.map((ano) => (
+                                        <th key={ano} className="text-left text-[10.3px] uppercase tracking-wide text-dim px-3 py-2.5 border-b border-line">{ano}</th>
+                                    ))}
                                     <th className="text-left text-[10.3px] uppercase tracking-wide text-dim px-3 py-2.5 border-b border-line">Situação</th>
                                     <th className="text-right text-[10.3px] uppercase tracking-wide text-dim px-3 py-2.5 border-b border-line">Ações</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {filtrados.map((c) => (
-                                    <tr
-                                        key={c.id}
-                                        className="hover:bg-panel transition-colors cursor-pointer"
-                                        title="Abrir dossier do colaborador"
-                                        onClick={() => setDossierDe(c)}
-                                    >
-                                        <td className="px-3 py-2.5 border-b border-line2">
-                                            <b className="text-strong">{c.full_name}</b>
-                                        </td>
-                                        <td className="px-3 py-2.5 border-b border-line2 text-ink">{c.email}</td>
-                                        <td className="px-3 py-2.5 border-b border-line2 text-ink">{traduzPerfil(c.role)}</td>
-                                        <td className="px-3 py-2.5 border-b border-line2">
-                                            {c.is_active
-                                                ? <Tag variante="ok">Ativo</Tag>
-                                                : <Tag variante="bad">Inativo</Tag>}
-                                        </td>
-
-                                        <td
-                                            className="px-3 py-2.5 border-b border-line2 text-right whitespace-nowrap"
-                                            onClick={(e) => e.stopPropagation()}
+                                {filtrados.map((c) => {
+                                    const s = situacao(c);
+                                    const nota = (ano: number) => c.scores?.[String(ano)];
+                                    return (
+                                        <tr
+                                            key={c.id}
+                                            onClick={() => navigate(`/colaboradores/${c.id}/portal`, { state: { nome: c.full_name } })}
+                                            className="hover:bg-panel transition-colors cursor-pointer"
                                         >
-                                            {podeCadastrar && (() => {
-                                                const opcoes: { label: string; onClick: () => void; perigo?: boolean; ok?: boolean }[] = [];
-                                                opcoes.push({ label: "Acolhimento", onClick: () => setAcolhimentoDe(c) });
-                                                opcoes.push({ label: "Dados RH", onClick: () => setDadosRhDe(c) });
-                                                if (c.id !== user?.id) {
-                                                    opcoes.push({ label: "Mudar perfil", onClick: () => setMudarPerfilDe(c) });
-                                                    opcoes.push({
-                                                        label: c.is_active ? "Desativar" : "Reativar",
-                                                        onClick: () => alternarEstado(c),
-                                                        perigo: c.is_active,
-                                                        ok: !c.is_active,
-                                                    });
-                                                }
-                                                return <MenuAcoes opcoes={opcoes} />;
-                                            })()}
-                                        </td>
-                                    </tr>
-                                ))}
+                                            <td className="px-3 py-2.5 border-b border-line2">
+                                                <button type="button" onClick={() => navigate(`/colaboradores/${c.id}/portal`, { state: { nome: c.full_name } })} className="text-strong font-bold hover:text-pri hover:underline text-left">
+                                                    {c.full_name}
+                                                </button>
+                                                <span className="block text-[11px] text-dim">{c.email}</span>
+                                            </td>
+                                            <td className="px-3 py-2.5 border-b border-line2">
+                                                {c.job_title
+                                                    ? <span className="text-[11.3px] text-dim">{c.job_title}</span>
+                                                    : <span className="text-[11.3px] text-dim">—</span>}
+                                            </td>
+                                            <td className="px-3 py-2.5 border-b border-line2 text-ink">{c.department || <span className="text-dim">—</span>}</td>
+                                            <td className="px-3 py-2.5 border-b border-line2">
+                                                {c.admission_year
+                                                    ? <span className="text-[11.3px] text-dim">{c.admission_year}</span>
+                                                    : <span className="text-[11.3px] text-dim">—</span>}
+                                            </td>
+                                            {anos.map((ano) => {
+                                                const n = nota(ano);
+                                                return (
+                                                    <td key={ano} className="px-3 py-2.5 border-b border-line2">
+                                                        {n != null
+                                                            ? <b className="text-strong">{n.toFixed(1)}</b>
+                                                            : <span className="text-dim">—</span>}
+                                                    </td>
+                                                );
+                                            })}
+                                            <td className="px-3 py-2.5 border-b border-line2">
+                                                <Tag variante={s.variante}>{s.texto}</Tag>
+                                            </td>
+                                            <td className="px-3 py-2.5 border-b border-line2 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                                                {podeCadastrar && (() => {
+                                                    const opcoes: { label: string; onClick: () => void; perigo?: boolean; ok?: boolean }[] = [];
+                                                    opcoes.push({ label: "Acolhimento", onClick: () => setAcolhimentoDe(c) });
+                                                    opcoes.push({ label: "Dados RH", onClick: () => setDadosRhDe(c) });
+                                                    if (c.id !== user?.id) {
+                                                        if (user?.role === "admin") {
+                                                            opcoes.push({ label: "Mudar perfil", onClick: () => setMudarPerfilDe(c) });
+                                                        }
+                                                        opcoes.push({
+                                                            label: c.is_active ? "Desativar" : "Reativar",
+                                                            onClick: () => alternarEstado(c),
+                                                            perigo: c.is_active,
+                                                            ok: !c.is_active,
+                                                        });
+                                                    }
+                                                    return <MenuAcoes opcoes={opcoes} />;
+                                                })()}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>
@@ -208,6 +335,7 @@ export default function Colaboradores() {
                 <ModalDadosRh
                     colaborador={dadosRhDe}
                     aoFechar={() => setDadosRhDe(null)}
+                    aoGuardar={() => { setDadosRhDe(null); carregar(); }}
                 />
             )}
 
@@ -222,13 +350,6 @@ export default function Colaboradores() {
             {modalCorrecoes && (
                 <ModalCorrecoesFicha aoFechar={() => setModalCorrecoes(false)} />
             )}
-
-            {dossierDe && (
-                <DossierColaborador
-                    colaborador={dossierDe}
-                    aoFechar={() => setDossierDe(null)}
-                />
-            )}
         </div>
     );
 }
@@ -236,8 +357,12 @@ export default function Colaboradores() {
 // ---- Modal de cadastro completo de colaborador (conta + ficha profissional + documentos) ----
 
 interface DocumentoColaborador { id: number; filename: string; doc_type?: string | null; }
+interface ItemAcolhimento { id: number; description: string; done: boolean; applicable: boolean | null; delivered: boolean | null; }
 
 function ModalCadastro({ aoFechar, aoCriar }: { aoFechar: () => void; aoCriar: () => void }) {
+    const { user } = useAuth();
+    // Só o Admin da empresa pode atribuir perfis privilegiados.
+    const podeAtribuirPerfis = user?.role === "admin";
     // Passo atual (1 a 4).
     const [passo, setPasso] = useState(1);
 
@@ -251,7 +376,6 @@ function ModalCadastro({ aoFechar, aoCriar }: { aoFechar: () => void; aoCriar: (
     const [novoId, setNovoId] = useState<number | null>(null);
 
     // Passo 2 — ficha profissional.
-    const [empNumber, setEmpNumber] = useState("");
     const [admission, setAdmission] = useState("");
     const [contractType, setContractType] = useState("");
     const [jobCategory, setJobCategory] = useState("");
@@ -260,20 +384,111 @@ function ModalCadastro({ aoFechar, aoCriar }: { aoFechar: () => void; aoCriar: (
     const [workplace, setWorkplace] = useState("");
     const [workSchedule, setWorkSchedule] = useState("");
     const [situationTags, setSituationTags] = useState("");
+    const [nationality, setNationality] = useState("");
+    const [university, setUniversity] = useState("");
+    const [course, setCourse] = useState("");
+    const [cv, setCv] = useState("");
     const [erroFicha, setErroFicha] = useState("");
     const [aGuardarFicha, setAGuardarFicha] = useState(false);
 
+    // Formação académica — habilitações literárias repetíveis (licenciatura, mestrado, ...).
+    interface FormacaoLinha { nivel: string; anoInicio: string; anoFim: string; pais: string; }
+    const [formacao, setFormacao] = useState<FormacaoLinha[]>([{ nivel: "", anoInicio: "", anoFim: "", pais: "" }]);
+    const atualizarFormacao = (i: number, campo: keyof FormacaoLinha, valor: string) =>
+        setFormacao(prev => prev.map((f, idx) => idx === i ? { ...f, [campo]: valor } : f));
+    const adicionarFormacao = (i: number) =>
+        setFormacao(prev => [...prev.slice(0, i + 1), { nivel: "", anoInicio: "", anoFim: "", pais: "" }, ...prev.slice(i + 1)]);
+    const removerFormacao = (i: number) =>
+        setFormacao(prev => prev.length > 1 ? prev.filter((_, idx) => idx !== i) : prev);
+
+    // Experiência de trabalho — repetível (onde, anos, função).
+    interface ExperienciaLinha { onde: string; anoInicio: string; anoFim: string; funcao: string; }
+    const [experiencia, setExperiencia] = useState<ExperienciaLinha[]>([{ onde: "", anoInicio: "", anoFim: "", funcao: "" }]);
+    const atualizarExperiencia = (i: number, campo: keyof ExperienciaLinha, valor: string) =>
+        setExperiencia(prev => prev.map((f, idx) => idx === i ? { ...f, [campo]: valor } : f));
+    const adicionarExperiencia = (i: number) =>
+        setExperiencia(prev => [...prev.slice(0, i + 1), { onde: "", anoInicio: "", anoFim: "", funcao: "" }, ...prev.slice(i + 1)]);
+    const removerExperiencia = (i: number) =>
+        setExperiencia(prev => prev.length > 1 ? prev.filter((_, idx) => idx !== i) : prev);
+
+    // O país de formação (última linha com país) é que alimenta as sugestões de universidade/curso.
+    const paisFormacao = [...formacao].reverse().find((f) => f.pais.trim())?.pais ?? "";
+
+    // IA — universidades e cursos
+    const [universities, setUniversities] = useState<string[]>([]);
+    const [courses, setCourses] = useState<string[]>([]);
+    const [loadingUniv, setLoadingUniv] = useState(false);
+    const [loadingCourses, setLoadingCourses] = useState(false);
+
+    // Buscar universidades quando o país de formação muda
+    useEffect(() => {
+        if (!paisFormacao.trim() || paisFormacao.length < 4) {
+            setUniversities([]);
+            setUniversity("");
+            setCourses([]);
+            setCourse("");
+            return;
+        }
+        setLoadingUniv(true);
+        const timer = setTimeout(() => {
+            api.post("/ai/universities", { country: paisFormacao })
+                .then((r) => setUniversities(r.data || []))
+                .catch(() => setUniversities([]))
+                .finally(() => setLoadingUniv(false));
+        }, 600);
+        return () => clearTimeout(timer);
+    }, [paisFormacao]);
+
+    // Buscar cursos quando a universidade muda
+    useEffect(() => {
+        if (!university.trim() || university.trim().length < 4) {
+            setCourses([]);
+            setCourse("");
+            return;
+        }
+        setLoadingCourses(true);
+        const timer = setTimeout(() => {
+            api.post("/ai/courses", { university, country: paisFormacao })
+                .then((r) => setCourses(r.data || []))
+                .catch(() => setCourses([]))
+                .finally(() => setLoadingCourses(false));
+        }, 800);
+        return () => clearTimeout(timer);
+    }, [university, paisFormacao]);
+
+    // Cargos (IA) — menu de sugestões para o campo "Cargo".
+    const [cargos, setCargos] = useState<string[]>([]);
+    const [cargosCarregados, setCargosCarregados] = useState(false);
+    const carregarCargos = () => {
+        if (cargosCarregados) return;
+        setCargosCarregados(true);
+        api.post("/ai/job-titles", {})
+            .then((r) => setCargos(r.data || []))
+            .catch(() => setCargos([]));
+    };
+
+    // Países (IA) — lista mundial para a nacionalidade.
+    const [paises, setPaises] = useState<string[]>([]);
+    const [paisesCarregados, setPaisesCarregados] = useState(false);
+    const carregarPaises = () => {
+        if (paisesCarregados) return;
+        setPaisesCarregados(true);
+        api.post("/ai/countries", {})
+            .then((r) => setPaises(r.data || []))
+            .catch(() => setPaises([]));
+    };
+
     // Passo 3 — documentos.
-    const [tipoDocumento, setTipoDocumento] = useState("bi");
-    const [ficheiro, setFicheiro] = useState<File | null>(null);
+    const [docsPendentes, setDocsPendentes] = useState<{ tipo: string; ficheiro: File | null }[]>([{ tipo: "bi", ficheiro: null }]);
     const [documentos, setDocumentos] = useState<DocumentoColaborador[]>([]);
     const [aEnviarDoc, setAEnviarDoc] = useState(false);
     const [erroDoc, setErroDoc] = useState("");
 
     // Passo 4 — acolhimento (checklist do primeiro dia).
-    const [itensAcolhimento, setItensAcolhimento] = useState<{ id: number; description: string; done: boolean }[]>([]);
+    const [itensAcolhimento, setItensAcolhimento] = useState<ItemAcolhimento[]>([]);
     const [novoItem, setNovoItem] = useState("");
     const [erroAcolhimento, setErroAcolhimento] = useState("");
+    const [acolhimentoCarregado, setAcolhimentoCarregado] = useState(false);
 
     const inputCls = "w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-3 focus:outline-none focus:border-pri";
 
@@ -301,7 +516,6 @@ function ModalCadastro({ aoFechar, aoCriar }: { aoFechar: () => void; aoCriar: (
         setAGuardarFicha(true);
         try {
             await api.put(`/collaborators/${novoId}/profile`, {
-                employee_number: empNumber || null,
                 admission_date: admission || null,
                 contract_type: contractType || null,
                 job_category: jobCategory || null,
@@ -310,6 +524,22 @@ function ModalCadastro({ aoFechar, aoCriar }: { aoFechar: () => void; aoCriar: (
                 workplace: workplace || null,
                 work_schedule: workSchedule || null,
                 situation_tags: situationTags || null,
+                nationality: nationality || null,
+                university: university || null,
+                course: course || null,
+                cv: cv || null,
+                education: formacao.map((f) => ({
+                    nivel: f.nivel || null,
+                    ano_inicio: f.anoInicio ? Number(f.anoInicio) : null,
+                    ano_fim: f.anoFim ? Number(f.anoFim) : null,
+                    pais: f.pais || null,
+                })),
+                experience: experiencia.map((x) => ({
+                    onde: x.onde || null,
+                    ano_inicio: x.anoInicio ? Number(x.anoInicio) : null,
+                    ano_fim: x.anoFim ? Number(x.anoFim) : null,
+                    funcao: x.funcao || null,
+                })),
             });
             return true;
         } catch (err: any) {
@@ -322,30 +552,86 @@ function ModalCadastro({ aoFechar, aoCriar }: { aoFechar: () => void; aoCriar: (
 
     // Guarda a ficha e avança para o passo 3.
     const guardarEavancar = async () => {
+        // Um director tem de gerir uma direção: sem direção não avança.
+        if (role === "director" && !department.trim()) {
+            setErroFicha("Um director tem de gerir uma direção. Selecione a direção que vai gerir.");
+            return;
+        }
         const ok = await guardarFicha();
         if (ok) setPasso(3);
     };
 
     // ---- Passo 3: documentos ----
+    const atualizarDocPendente = (i: number, campo: keyof { tipo: string; ficheiro: File | null }, valor: string | File | null) =>
+        setDocsPendentes(prev => prev.map((d, idx) => idx === i ? { ...d, [campo]: valor as never } : d));
+    const adicionarDocPendente = (i: number) =>
+        setDocsPendentes(prev => [...prev.slice(0, i + 1), { tipo: "bi", ficheiro: null }, ...prev.slice(i + 1)]);
+    const removerDocPendente = (i: number) =>
+        setDocsPendentes(prev => prev.length > 1 ? prev.filter((_, idx) => idx !== i) : prev);
+
     const enviarDocumento = async () => {
-        if (!novoId || !ficheiro) return;
+        const porEnviar = docsPendentes.filter((d) => d.ficheiro);
+        if (!novoId || porEnviar.length === 0) return;
         setErroDoc("");
         setAEnviarDoc(true);
-        try {
-            const dados = new FormData();
-            dados.append("file", ficheiro);
-            dados.append("doc_type", tipoDocumento);
-            const resp = await api.post(`/collaborators/${novoId}/documents`, dados);
-            setDocumentos((prev) => [...prev, resp.data]);
-            setFicheiro(null);
-        } catch (err: any) {
-            setErroDoc(msgErro(err, "Não foi possível enviar o documento."));
-        } finally {
-            setAEnviarDoc(false);
+        let enviados: DocumentoColaborador[] = [];
+        for (const d of porEnviar) {
+            try {
+                const dados = new FormData();
+                dados.append("file", d.ficheiro as File);
+                dados.append("doc_type", d.tipo);
+                const resp = await api.post(`/collaborators/${novoId}/documents`, dados);
+                enviados = [...enviados, resp.data];
+            } catch (err: any) {
+                setErroDoc(msgErro(err, "Não foi possível enviar um dos documentos."));
+            }
         }
+        if (enviados.length) setDocumentos((prev) => [...prev, ...enviados]);
+        setDocsPendentes([{ tipo: "bi", ficheiro: null }]);
+        setAEnviarDoc(false);
     };
 
     // ---- Passo 4: acolhimento ----
+    const carregarAcolhimento = () => {
+        if (!novoId) return;
+        api.get(`/onboarding/${novoId}`)
+            .then((r) => {
+                const itens: ItemAcolhimento[] = r.data || [];
+                if (itens.length > 0) {
+                    setItensAcolhimento(itens);
+                    return;
+                }
+                // Sem itens: cria os de acolhimento por defeito.
+                (async () => {
+                    for (const descricao of ACOLHIMENTO_DEFAULT) {
+                        try {
+                            await api.post("/onboarding", {
+                                collaborator_id: novoId, description: descricao,
+                                applicable: true, delivered: false,
+                            });
+                        } catch { /* continua com o próximo */ }
+                    }
+                    const vistos = await api.get(`/onboarding/${novoId}`);
+                    setItensAcolhimento(vistos.data || []);
+                })();
+            })
+            .catch(() => setItensAcolhimento([]));
+    };
+
+    useEffect(() => {
+        if (passo === 4 && novoId && !acolhimentoCarregado) {
+            setAcolhimentoCarregado(true);
+            carregarAcolhimento();
+        }
+    }, [passo, novoId, acolhimentoCarregado]);
+
+    const atualizarAcolhimento = async (item: ItemAcolhimento, campo: "applicable" | "delivered", valor: boolean | null) => {
+        setItensAcolhimento((prev) => prev.map((it) => it.id === item.id ? { ...it, [campo]: valor } : it));
+        try {
+            await api.patch(`/onboarding/${item.id}`, { [campo]: valor });
+        } catch { /* ignora — mantém o valor local */ }
+    };
+
     const adicionarAcolhimento = async () => {
         if (!novoId || !novoItem.trim()) return;
         setErroAcolhimento("");
@@ -365,7 +651,7 @@ function ModalCadastro({ aoFechar, aoCriar }: { aoFechar: () => void; aoCriar: (
     const PASSOS = ["Conta", "Ficha", "Documentos", "Acolhimento"];
 
     return (
-        <Modal aberto={true} aoFechar={aoFechar}
+        <Modal aberto={true} aoFechar={aoFechar} largura="max-w-[880px]"
             titulo="Cadastrar colaborador"
             subtitulo={`Passo ${passo} de 4 — ${PASSOS[passo - 1]}`}>
 
@@ -402,13 +688,18 @@ function ModalCadastro({ aoFechar, aoCriar }: { aoFechar: () => void; aoCriar: (
                             <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Email</label>
                             <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="nome@empresa.ao" className={inputCls} />
                             <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Perfil</label>
-                            <select value={role} onChange={(e) => setRole(e.target.value)} className={inputCls}>
+                            <select value={role} onChange={(e) => setRole(e.target.value)} className={inputCls} disabled={!podeAtribuirPerfis}>
                                 <option value="colaborador">Colaborador</option>
-                                <option value="director">Director</option>
-                                <option value="capital_humano">Capital Humano</option>
-                                <option value="comissao">Comissão de Avaliação</option>
-                                <option value="administracao">Administração</option>
+                                {podeAtribuirPerfis && <option value="director">Director</option>}
+                                {podeAtribuirPerfis && <option value="capital_humano">Capital Humano</option>}
+                                {podeAtribuirPerfis && <option value="comissao">Comissão de Avaliação</option>}
+                                {podeAtribuirPerfis && <option value="administracao">Administração</option>}
                             </select>
+                            {!podeAtribuirPerfis && (
+                                <p className="text-[10.5px] text-dim mb-3 -mt-1">
+                                    O Capital Humano cria colaboradores. A atribuição de outros perfis é feita pelo Admin da empresa.
+                                </p>
+                            )}
                             {erro && <p className="text-bad text-sm mb-3">{erro}</p>}
                         </>
                     )}
@@ -427,32 +718,206 @@ function ModalCadastro({ aoFechar, aoCriar }: { aoFechar: () => void; aoCriar: (
 
             {/* ===== PASSO 2 — FICHA ===== */}
             {passo === 2 && (
-                <div>
+                <div className="pb-16">
                     <div className="grid grid-cols-2 gap-x-3">
-                        <div><label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">N.º colaborador</label>
-                            <input value={empNumber} onChange={(e) => setEmpNumber(e.target.value)} className={inputCls} /></div>
                         <div><label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Admissão</label>
                             <input value={admission} onChange={(e) => setAdmission(e.target.value)} type="date" className={inputCls} /></div>
                         <div><label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Vínculo</label>
                             <select value={contractType} onChange={(e) => setContractType(e.target.value)} className={inputCls}>
                                 <option value="">— escolher —</option>
-                                <option value="termo_incerto">A termo incerto</option>
-                                <option value="termo_certo">A termo certo</option>
+                                <option value="termo_certo">Tempo determinado</option>
                                 <option value="efetivo">Por tempo indeterminado</option>
                             </select></div>
-                        <div><label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Categoria</label>
-                            <input value={jobCategory} onChange={(e) => setJobCategory(e.target.value)} className={inputCls} /></div>
-                        <div><label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Cargo</label>
-                            <input value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} className={inputCls} /></div>
-                        <div><label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Direção</label>
-                            <input value={department} onChange={(e) => setDepartment(e.target.value)} className={inputCls} /></div>
+                        <div><label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Cargo {!jobTitle.trim() && <span className="text-dim normal-case">(sugestões ao clicar)</span>}</label>
+                            <AutocompleteIA
+                                value={jobTitle}
+                                onChange={setJobTitle}
+                                options={cargos}
+                                onFocus={carregarCargos}
+                                placeholder="Escreva ou escolha o cargo"
+                                className={inputCls}
+                            /></div>
+                        <div><label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Categoria (nível)</label>
+                            <select
+                                value={["Júnior", "Pleno", "Sénior", "Especialista"].includes(jobCategory) ? jobCategory : jobCategory ? "Outro:" + jobCategory : ""}
+                                onChange={(e) => setJobCategory(
+                                    e.target.value.startsWith("Outro:") ? e.target.value.slice(6) : e.target.value
+                                )}
+                                disabled={!jobTitle.trim()}
+                                className={inputCls}
+                            >
+                                <option value="">{jobTitle.trim() ? "— escolher nível —" : "Defina o cargo primeiro"}</option>
+                                <option value="Júnior">Júnior</option>
+                                <option value="Pleno">Pleno</option>
+                                <option value="Sénior">Sénior</option>
+                                <option value="Especialista">Especialista</option>
+                                {jobCategory && !["Júnior", "Pleno", "Sénior", "Especialista"].includes(jobCategory) && (
+                                    <option value={`Outro:${jobCategory}`}>{jobCategory}</option>
+                                )}
+                            </select></div>
+                        <div><label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Direção {role === "director" && <span className="text-pri normal-case">(obrigatória — a que o director vai gerir)</span>}</label>
+                            <DirecaoField value={department} onChange={setDepartment} className={inputCls} /></div>
                         <div><label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Local</label>
                             <input value={workplace} onChange={(e) => setWorkplace(e.target.value)} className={inputCls} /></div>
+                        <div className="col-span-2 mt-4">
+                            <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1.5">Formação académica</label>
+                            <div className="space-y-2">
+                                {formacao.map((f, i) => (
+                                    <div key={i} className="flex gap-2 items-start">
+                                        <div className="flex-[1.3]">
+                                            <select
+                                                value={f.nivel}
+                                                onChange={(e) => atualizarFormacao(i, "nivel", e.target.value)}
+                                                className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-pri"
+                                            >
+                                                <option value="">Habilitação literária</option>
+                                                {NIVEIS_FORMACAO.map((n) => (
+                                                    <option key={n} value={n}>{n}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div className="w-[92px]">
+                                            <input
+                                                type="number" min={1900} max={2200}
+                                                value={f.anoInicio}
+                                                onChange={(e) => atualizarFormacao(i, "anoInicio", e.target.value)}
+                                                placeholder="Ano início"
+                                                className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-pri"
+                                            />
+                                        </div>
+                                        <div className="w-[92px]">
+                                            <input
+                                                type="number" min={1900} max={2200}
+                                                value={f.anoFim}
+                                                onChange={(e) => atualizarFormacao(i, "anoFim", e.target.value)}
+                                                placeholder="Ano fim"
+                                                className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-pri"
+                                            />
+                                        </div>
+                                        <div className="flex-1">
+                                            <AutocompleteIA
+                                                value={f.pais}
+                                                onChange={(valor) => atualizarFormacao(i, "pais", valor)}
+                                                options={paises.length ? paises : PAISES}
+                                                onFocus={carregarPaises}
+                                                placeholder="País de formação"
+                                                className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-pri"
+                                            />
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => adicionarFormacao(i)}
+                                            title="Adicionar formação"
+                                            className="w-9 h-9 rounded-lg bg-pri-bg text-pri-dark font-bold text-[18px] leading-none hover:bg-pri hover:text-white transition-colors flex-shrink-0"
+                                        >
+                                            +
+                                        </button>
+                                        {formacao.length > 1 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => removerFormacao(i)}
+                                                title="Remover formação"
+                                                className="w-9 h-9 rounded-lg bg-panel border border-line text-dim font-bold text-[18px] leading-none hover:text-bad hover:border-bad transition-colors flex-shrink-0"
+                                            >
+                                                ×
+                                            </button>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="col-span-2 mt-4 mb-5">
+                            <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1.5">Experiência de trabalho</label>
+                            <div className="space-y-2">
+                                {experiencia.map((x, i) => (
+                                    <div key={i} className="flex gap-2 items-start">
+                                        <div className="flex-1">
+                                            <input
+                                                value={x.onde}
+                                                onChange={(e) => atualizarExperiencia(i, "onde", e.target.value)}
+                                                placeholder="Onde trabalhou"
+                                                className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-pri"
+                                            />
+                                        </div>
+                                        <div className="w-[92px]">
+                                            <input
+                                                type="number" min={1900} max={2200}
+                                                value={x.anoInicio}
+                                                onChange={(e) => atualizarExperiencia(i, "anoInicio", e.target.value)}
+                                                placeholder="Ano início"
+                                                className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-pri"
+                                            />
+                                        </div>
+                                        <div className="w-[92px]">
+                                            <input
+                                                type="number" min={1900} max={2200}
+                                                value={x.anoFim}
+                                                onChange={(e) => atualizarExperiencia(i, "anoFim", e.target.value)}
+                                                placeholder="Ano fim"
+                                                className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-pri"
+                                            />
+                                        </div>
+                                        <div className="flex-[1.3]">
+                                            <input
+                                                value={x.funcao}
+                                                onChange={(e) => atualizarExperiencia(i, "funcao", e.target.value)}
+                                                placeholder="Função"
+                                                className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-pri"
+                                            />
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => adicionarExperiencia(i)}
+                                            title="Adicionar experiência"
+                                            className="w-9 h-9 rounded-lg bg-pri-bg text-pri-dark font-bold text-[18px] leading-none hover:bg-pri hover:text-white transition-colors flex-shrink-0"
+                                        >
+                                            +
+                                        </button>
+                                        {experiencia.length > 1 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => removerExperiencia(i)}
+                                                title="Remover experiência"
+                                                className="w-9 h-9 rounded-lg bg-panel border border-line text-dim font-bold text-[18px] leading-none hover:text-bad hover:border-bad transition-colors flex-shrink-0"
+                                            >
+                                                ×
+                                            </button>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
                         <div><label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Horário</label>
                             <input value={workSchedule} onChange={(e) => setWorkSchedule(e.target.value)} placeholder="Ex.: 08h-16h30" className={inputCls} /></div>
+                        <div><label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Nacionalidade</label>
+                            <input value={nationality} onChange={(e) => setNationality(e.target.value)} placeholder="Ex.: Angolana" className={inputCls} /></div>
+                        <div><label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Universidade</label>
+                            <AutocompleteIA
+                                value={university}
+                                onChange={setUniversity}
+                                options={universities}
+                                loading={loadingUniv}
+                                disabled={!paisFormacao.trim()}
+                                placeholder={loadingUniv ? "A carregar sugestões..." : paisFormacao.trim() ? "Digite ou escolha a universidade" : "Defina o país de formação primeiro"}
+                                className={inputCls}
+                            />
+                        </div>
+                        <div><label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Curso</label>
+                            <AutocompleteIA
+                                value={course}
+                                onChange={setCourse}
+                                options={courses}
+                                loading={loadingCourses}
+                                disabled={!university.trim()}
+                                placeholder={loadingCourses ? "A carregar sugestões..." : "Digite ou escolha o curso"}
+                                className={inputCls}
+                            />
+                        </div>
                     </div>
                     <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Tags de situação</label>
                     <input value={situationTags} onChange={(e) => setSituationTags(e.target.value)} placeholder="separadas por vírgula" className={inputCls} />
+                    <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">CV / Notas</label>
+                    <textarea value={cv} onChange={(e) => setCv(e.target.value)} rows={5} placeholder="Biografia, experiência profissional, competências — o RH digitaliza aqui." className={`${inputCls} resize-y`} />
                     {erroFicha && <p className="text-bad text-sm mb-3">{erroFicha}</p>}
                     <div className="flex gap-2.5 mt-5 pt-4 border-t border-line">
                         <Botao variante="ghost" onClick={() => setPasso(1)}>← Anterior</Botao>
@@ -476,26 +941,57 @@ function ModalCadastro({ aoFechar, aoCriar }: { aoFechar: () => void; aoCriar: (
                             ))}
                         </div>
                     )}
-                    <div className="flex gap-2 items-end mb-2">
-                        <div className="flex-1">
-                            <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Tipo</label>
-                            <select value={tipoDocumento} onChange={(e) => setTipoDocumento(e.target.value)} className={inputCls}>
-                                <option value="bi">Bilhete de Identidade</option>
-                                <option value="contrato_assinado">Contrato assinado</option>
-                                <option value="certificado_habilitacoes">Certificado de habilitações</option>
-                                <option value="outro">Outro</option>
-                            </select>
-                        </div>
-                        <div className="flex-1">
-                            <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Ficheiro</label>
-                            <input type="file" onChange={(e) => setFicheiro(e.target.files?.[0] || null)}
-                                className="w-full bg-panel border border-line rounded-lg px-3 py-[7px] text-[12.5px] mb-3 focus:outline-none focus:border-pri" />
-                        </div>
-                        <Botao variante="ghost" onClick={enviarDocumento} disabled={!ficheiro || aEnviarDoc}>
-                            {aEnviarDoc ? "..." : "Anexar"}
-                        </Botao>
+                    <div className="space-y-2 mb-2">
+                        {docsPendentes.map((d, i) => (
+                            <div key={i} className="flex gap-2 items-end">
+                                <div className="flex-1">
+                                    <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Tipo</label>
+                                    <select value={d.tipo} onChange={(e) => atualizarDocPendente(i, "tipo", e.target.value)} className={inputCls}>
+                                        <option value="bi">Bilhete de Identidade</option>
+                                        <option value="contrato_assinado">Contrato assinado</option>
+                                        <option value="certificado_habilitacoes">Certificado de habilitações</option>
+                                        <option value="outro">Outro</option>
+                                    </select>
+                                </div>
+                                <div className="flex-1">
+                                    <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Ficheiro</label>
+                                    <input
+                                        type="file"
+                                        onChange={(e) => atualizarDocPendente(i, "ficheiro", e.target.files?.[0] || null)}
+                                        className="w-full bg-panel border border-line rounded-lg px-3 py-[7px] text-[12.5px] focus:outline-none focus:border-pri"
+                                    />
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => adicionarDocPendente(i)}
+                                    title="Adicionar documento"
+                                    className="w-9 h-9 rounded-lg bg-pri-bg text-pri-dark font-bold text-[18px] leading-none hover:bg-pri hover:text-white transition-colors flex-shrink-0"
+                                >
+                                    +
+                                </button>
+                                {docsPendentes.length > 1 && (
+                                    <button
+                                        type="button"
+                                        onClick={() => removerDocPendente(i)}
+                                        title="Remover documento"
+                                        className="w-9 h-9 rounded-lg bg-panel border border-line text-dim font-bold text-[18px] leading-none hover:text-bad hover:border-bad transition-colors flex-shrink-0"
+                                    >
+                                        ×
+                                    </button>
+                                )}
+                            </div>
+                        ))}
                     </div>
                     {erroDoc && <p className="text-bad text-[11px] mb-2">{erroDoc}</p>}
+                    <div className="flex justify-end mb-2">
+                        <Botao
+                            variante="ghost"
+                            onClick={enviarDocumento}
+                            disabled={aEnviarDoc || !docsPendentes.some((d) => d.ficheiro)}
+                        >
+                            {aEnviarDoc ? "A enviar..." : docsPendentes.filter((d) => d.ficheiro).length > 1 ? "Anexar todos" : "Anexar"}
+                        </Botao>
+                    </div>
                     <div className="flex gap-2.5 mt-5 pt-4 border-t border-line">
                         <Botao variante="ghost" onClick={() => setPasso(2)}>← Anterior</Botao>
                         <Botao onClick={() => setPasso(4)}>Continuar →</Botao>
@@ -511,7 +1007,28 @@ function ModalCadastro({ aoFechar, aoCriar }: { aoFechar: () => void; aoCriar: (
                         <div className="space-y-1.5 mb-3">
                             {itensAcolhimento.map((it) => (
                                 <div key={it.id} className="flex items-center gap-2 px-3 py-2 border border-line rounded-lg text-[12px]">
-                                    <span className="text-dim">○</span><span className="text-ink">{it.description}</span>
+                                    <span className="text-dim">○</span>
+                                    <span className="flex-1 text-ink">{it.description}</span>
+                                    <span className="text-[10px] uppercase tracking-wide text-dim">Aplicável</span>
+                                    <select
+                                        value={it.applicable === null ? "" : it.applicable ? "S" : "N"}
+                                        onChange={(e) => atualizarAcolhimento(it, "applicable", e.target.value === "" ? null : e.target.value === "S")}
+                                        className="w-[58px] bg-panel border border-line rounded-md px-1.5 py-1 text-[12px] focus:outline-none focus:border-pri"
+                                    >
+                                        <option value="">—</option>
+                                        <option value="S">S</option>
+                                        <option value="N">N</option>
+                                    </select>
+                                    <span className="text-[10px] uppercase tracking-wide text-dim">Entregue</span>
+                                    <select
+                                        value={it.delivered === null ? "" : it.delivered ? "S" : "N"}
+                                        onChange={(e) => atualizarAcolhimento(it, "delivered", e.target.value === "" ? null : e.target.value === "S")}
+                                        className="w-[58px] bg-panel border border-line rounded-md px-1.5 py-1 text-[12px] focus:outline-none focus:border-pri"
+                                    >
+                                        <option value="">—</option>
+                                        <option value="S">S</option>
+                                        <option value="N">N</option>
+                                    </select>
                                 </div>
                             ))}
                         </div>
@@ -523,7 +1040,7 @@ function ModalCadastro({ aoFechar, aoCriar }: { aoFechar: () => void; aoCriar: (
                                 placeholder="Ex.: Crachá e credenciais" className={inputCls}
                                 onKeyDown={(e) => { if (e.key === "Enter") adicionarAcolhimento(); }} />
                         </div>
-                        <Botao variante="ghost" onClick={adicionarAcolhimento} disabled={!novoItem.trim()}>Adicionar</Botao>
+                        <Botao variante="ghost" onClick={adicionarAcolhimento} disabled={!novoItem.trim()}>+ Adicionar</Botao>
                     </div>
                     {erroAcolhimento && <p className="text-bad text-[11px] mb-2">{erroAcolhimento}</p>}
                     <div className="flex gap-2.5 mt-5 pt-4 border-t border-line">
@@ -621,7 +1138,7 @@ function ModalAcolhimento({ colaborador, aoFechar }: { colaborador: Colaborador;
 }
 
 // ---- Modal de lançamento de dados de RH ----
-function ModalDadosRh({ colaborador, aoFechar }: { colaborador: Colaborador; aoFechar: () => void }) {
+function ModalDadosRh({ colaborador, aoFechar, aoGuardar }: { colaborador: Colaborador; aoFechar: () => void; aoGuardar: () => void }) {
     const [sub, setSub] = useState<"ficha" | "exame" | "salario" | "assiduidade" | "percurso" | "documentos" | "assinaturas" | "leituras">("ficha");
     const [msg, setMsg] = useState("");
     const [erro, setErro] = useState("");
@@ -658,6 +1175,79 @@ function ModalDadosRh({ colaborador, aoFechar }: { colaborador: Colaborador; aoF
     const [jobTitle, setJobTitle] = useState("");
     const [workSchedule, setWorkSchedule] = useState("");
     const [situationTags, setSituationTags] = useState("");
+    const [nationality, setNationality] = useState("");
+    const [habilitacoes, setHabilitacoes] = useState("");
+    const [university, setUniversity] = useState("");
+    const [course, setCourse] = useState("");
+    const [cv, setCv] = useState("");
+
+    // IA — universidades e cursos
+    const [universities, setUniversities] = useState<string[]>([]);
+    const [coursesList, setCoursesList] = useState<string[]>([]);
+    const [loadingUniv, setLoadingUniv] = useState(false);
+    const [loadingCourses, setLoadingCourses] = useState(false);
+
+    // Buscar universidades quando a nacionalidade muda
+    useEffect(() => {
+        if (!nationality.trim() || nationality.length < 4) {
+            setUniversities([]);
+            setUniversity("");
+            setCoursesList([]);
+            setCourse("");
+            return;
+        }
+        setLoadingUniv(true);
+        const timer = setTimeout(() => {
+            api.post("/ai/universities", { country: nationality })
+                .then((r) => setUniversities(r.data || []))
+                .catch(() => setUniversities([]))
+                .finally(() => setLoadingUniv(false));
+        }, 600);
+        return () => clearTimeout(timer);
+    }, [nationality]);
+
+    // Buscar cursos quando a universidade muda
+    useEffect(() => {
+        if (!university.trim() || university.trim().length < 4) {
+            setCoursesList([]);
+            setCourse("");
+            return;
+        }
+        setLoadingCourses(true);
+        const timer = setTimeout(() => {
+            api.post("/ai/courses", { university, country: nationality })
+                .then((r) => setCoursesList(r.data || []))
+                .catch(() => setCoursesList([]))
+                .finally(() => setLoadingCourses(false));
+        }, 800);
+        return () => clearTimeout(timer);
+    }, [university]);
+
+    // Cargos (IA) — menu de sugestões para o campo "Cargo".
+    const [cargos, setCargos] = useState<string[]>([]);
+    const [cargosCarregados, setCargosCarregados] = useState(false);
+    const carregarCargos = () => {
+        if (cargosCarregados) return;
+        setCargosCarregados(true);
+        api.post("/ai/job-titles", {})
+            .then((r) => setCargos(r.data || []))
+            .catch(() => setCargos([]));
+    };
+
+    // Países (IA) — lista mundial para a nacionalidade.
+    const [paises, setPaises] = useState<string[]>([]);
+    const [paisesCarregados, setPaisesCarregados] = useState(false);
+    const carregarPaises = () => {
+        if (paisesCarregados) return;
+        setPaisesCarregados(true);
+        api.post("/ai/countries", {})
+            .then((r) => setPaises(r.data || []))
+            .catch(() => setPaises([]));
+    };
+
+    // Dados da conta (nome e email) — editáveis para corrigir erros de cadastro.
+    const [fullName, setFullName] = useState(colaborador.full_name || "");
+    const [email, setEmail] = useState(colaborador.email || "");
 
     // Documentos do colaborador
     const [documentos, setDocumentos] = useState<{ id: number; filename: string; doc_type?: string | null; file_url?: string | null }[]>([]);
@@ -727,6 +1317,11 @@ function ModalDadosRh({ colaborador, aoFechar }: { colaborador: Colaborador; aoF
                 setJobTitle(p.job_title || "");
                 setWorkSchedule(p.work_schedule || "");
                 setSituationTags(p.situation_tags || "");
+                setNationality(p.nationality || "");
+                setHabilitacoes(p.habilitacoes || "");
+                setUniversity(p.university || "");
+                setCourse(p.course || "");
+                setCv(p.cv || "");
             })
             .catch(() => { })
             .finally(() => setFichaCarregada(true));
@@ -741,12 +1336,15 @@ function ModalDadosRh({ colaborador, aoFechar }: { colaborador: Colaborador; aoF
                 title: eventTitle,
                 description: eventDesc || null,
             });
-            feito("Evento de percurso registado.");
-            setEventTitle(""); setEventDesc("");
+            aoGuardar();
         } catch (e) { falhou(e); }
     };
     const gravarFicha = async () => {
         try {
+            // Guarda os dados da conta (nome e email) se mudaram.
+            if (fullName !== colaborador.full_name || email !== colaborador.email) {
+                await api.patch(`/collaborators/${colaborador.id}`, { full_name: fullName, email: email });
+            }
             await api.put(`/collaborators/${colaborador.id}/profile`, {
                 employee_number: empNumber || null,
                 admission_date: admission || null,
@@ -757,18 +1355,22 @@ function ModalDadosRh({ colaborador, aoFechar }: { colaborador: Colaborador; aoF
                 workplace: workplace || null,
                 work_schedule: workSchedule || null,
                 situation_tags: situationTags || null,
+                nationality: nationality || null,
+                habilitacoes: habilitacoes || null,
+                university: university || null,
+                course: course || null,
+                cv: cv || null,
             });
-            feito("Ficha atualizada.");
+            aoGuardar();
         } catch (e) { falhou(e); }
     };
-
     const gravarExame = async () => {
         try {
             await api.post("/occupational-health/exams", {
                 collaborator_id: colaborador.id, fitness, exam_date: examDate,
                 next_exam_date: nextExam || null, restriction_note: restricao || null,
             });
-            feito("Exame registado.");
+            aoGuardar();
         } catch (e) { falhou(e); }
     };
 
@@ -778,7 +1380,7 @@ function ModalDadosRh({ colaborador, aoFechar }: { colaborador: Colaborador; aoF
                 collaborator_id: colaborador.id, year, gross_salary: Number(gross),
                 salary_grade: grade || null,
             });
-            feito("Salário registado.");
+            aoGuardar();
         } catch (e) { falhou(e); }
     };
 
@@ -791,7 +1393,7 @@ function ModalDadosRh({ colaborador, aoFechar }: { colaborador: Colaborador; aoF
                 unjustified_absences: Number(unjustified) || 0,
                 vacation_days_taken: Number(vacation) || 0,
             });
-            feito("Assiduidade registada.");
+            aoGuardar();
         } catch (e) { falhou(e); }
     };
 
@@ -822,29 +1424,93 @@ function ModalDadosRh({ colaborador, aoFechar }: { colaborador: Colaborador; aoF
 
             {sub === "ficha" && (
                 <div>
+                    <div className="bg-panel border border-line rounded-lg p-3 mb-3">
+                        <p className="text-[10px] uppercase tracking-wide text-dim mb-2 font-semibold">Dados da conta</p>
+                        <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Nome completo</label>
+                        <input value={fullName} onChange={(e) => setFullName(e.target.value)} className={inputCls} />
+                        <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Email</label>
+                        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputCls} />
+                        <p className="text-[10px] text-dim">O email é usado para iniciar sessão. Alterá-lo muda as credenciais de acesso.</p>
+                    </div>
                     <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Nº de colaborador</label>
-                    <input value={empNumber} onChange={(e) => setEmpNumber(e.target.value)} className={inputCls} />
+                    <input value={empNumber} readOnly disabled className={inputCls + " opacity-60 cursor-not-allowed"} placeholder="Gerado automaticamente" />
+                    <p className="text-[10.5px] text-dim mb-3 -mt-1">Número atribuído automaticamente pelo sistema.</p>
                     <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Data de admissão</label>
                     <input type="date" value={admission} onChange={(e) => setAdmission(e.target.value)} className={inputCls} />
                     <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Tipo de vínculo</label>
                     <select value={contractType} onChange={(e) => setContractType(e.target.value)} className={inputCls}>
                         <option value="">— escolher —</option>
-                        <option value="termo_incerto">A termo incerto</option>
-                        <option value="termo_certo">A termo certo</option>
+                        <option value="termo_certo">Tempo determinado</option>
                         <option value="efetivo">Por tempo indeterminado</option>
                     </select>
-                    <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Categoria/Função</label>
-                    <input value={jobCategory} onChange={(e) => setJobCategory(e.target.value)} className={inputCls} />
-                    <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Cargo específico</label>
-                    <input value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} placeholder="Ex.: Chefe de Vendas" className={inputCls} />
+                    <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Cargo</label>
+                    <AutocompleteIA
+                        value={jobTitle}
+                        onChange={setJobTitle}
+                        options={cargos}
+                        onFocus={carregarCargos}
+                        placeholder="Escreva ou escolha o cargo"
+                        className={inputCls}
+                    />
+                    <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Categoria (nível)</label>
+                    <select
+                        value={["Júnior", "Pleno", "Sénior", "Especialista"].includes(jobCategory) ? jobCategory : jobCategory ? "Outro:" + jobCategory : ""}
+                        onChange={(e) => setJobCategory(
+                            e.target.value.startsWith("Outro:") ? e.target.value.slice(6) : e.target.value
+                        )}
+                        disabled={!jobTitle.trim()}
+                        className={inputCls}
+                    >
+                        <option value="">{jobTitle.trim() ? "— escolher nível —" : "Defina o cargo primeiro"}</option>
+                        <option value="Júnior">Júnior</option>
+                        <option value="Pleno">Pleno</option>
+                        <option value="Sénior">Sénior</option>
+                        <option value="Especialista">Especialista</option>
+                        {jobCategory && !["Júnior", "Pleno", "Sénior", "Especialista"].includes(jobCategory) && (
+                            <option value={`Outro:${jobCategory}`}>{jobCategory}</option>
+                        )}
+                    </select>
                     <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Direção/Departamento</label>
-                    <input value={department} onChange={(e) => setDepartment(e.target.value)} className={inputCls} />
+                    <DirecaoField value={department} onChange={setDepartment} className={inputCls} />
                     <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Local de trabalho</label>
                     <input value={workplace} onChange={(e) => setWorkplace(e.target.value)} className={inputCls} />
                     <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Horário de trabalho</label>
                     <input value={workSchedule} onChange={(e) => setWorkSchedule(e.target.value)} placeholder="Ex.: 2.ª a 6.ª · 08h00-16h30" className={inputCls} />
                     <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Etiquetas de situação (separadas por vírgula)</label>
                     <input value={situationTags} onChange={(e) => setSituationTags(e.target.value)} placeholder="Ex.: promovido 2025, Chefia" className={inputCls} />
+                    <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Nacionalidade</label>
+                    <AutocompleteIA
+                        value={nationality}
+                        onChange={setNationality}
+                        options={paises.length ? paises : PAISES}
+                        onFocus={carregarPaises}
+                        placeholder="Escreva ou escolha o país"
+                        className={inputCls}
+                    />
+                    <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Habilitações literárias</label>
+                    <input value={habilitacoes} onChange={(e) => setHabilitacoes(e.target.value)} placeholder="Ex.: Licenciatura" className={inputCls} />
+                    <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Universidade</label>
+                    <AutocompleteIA
+                        value={university}
+                        onChange={setUniversity}
+                        options={universities}
+                        loading={loadingUniv}
+                        disabled={!nationality.trim()}
+                        placeholder={loadingUniv ? "A carregar sugestões..." : "Digite ou escolha a universidade"}
+                        className={inputCls}
+                    />
+                    <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Curso</label>
+                    <AutocompleteIA
+                        value={course}
+                        onChange={setCourse}
+                        options={coursesList}
+                        loading={loadingCourses}
+                        disabled={!university.trim()}
+                        placeholder={loadingCourses ? "A carregar sugestões..." : "Digite ou escolha o curso"}
+                        className={inputCls}
+                    />
+                    <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">CV / Notas</label>
+                    <textarea value={cv} onChange={(e) => setCv(e.target.value)} rows={5} placeholder="Biografia, experiência profissional, competências — o RH digitaliza aqui." className={`${inputCls} resize-y`} />
                     <button onClick={gravarFicha} disabled={!fichaCarregada}
                         className="bg-pri text-white rounded-lg px-4 py-2 text-[12.3px] font-semibold hover:bg-pri-dark transition-colors disabled:opacity-40">
                         Guardar ficha
@@ -1008,7 +1674,7 @@ function ModalDadosRh({ colaborador, aoFechar }: { colaborador: Colaborador; aoF
                                             <span className="text-[12.5px] text-ink">{LABELS[t]}</span>
                                             {a ? (
                                                 <span className="text-[11px] text-ok font-semibold whitespace-nowrap">
-                                                    ✓ {new Date(a.signed_at).toLocaleDateString("pt-PT", { day: "2-digit", month: "2-digit", year: "numeric" })}
+                                                    ? {new Date(a.signed_at).toLocaleDateString("pt-PT", { day: "2-digit", month: "2-digit", year: "numeric" })}
                                                 </span>
                                             ) : (
                                                 <span className="text-[11px] text-warn font-semibold whitespace-nowrap">Pendente</span>

@@ -45,7 +45,7 @@ const campoCls = "w-full bg-panel border border-line rounded-lg px-3 py-2 text-[
 function traduzPerfil(role: string): string {
     const mapa: Record<string, string> = {
         colaborador: "Colaborador", director: "Director", capital_humano: "Capital Humano",
-        comissao: "Comissão", administracao: "Administração",
+        comissao: "Comissão", administracao: "Administração", admin: "Admin",
     };
     return mapa[role] || role;
 }

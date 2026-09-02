@@ -16,6 +16,13 @@ interface DocumentoCompleto extends Documento {
     content: string;
 }
 
+interface Leitura {
+    document_id: number;
+    title: string;
+    doc_type?: string | null;
+    read_at: string;
+}
+
 // Tipos de documento que constituem políticas/regulamentos (aba "Políticas").
 const TIPOS_POLITICA = [
     "regulamento_interno",
@@ -33,9 +40,11 @@ const TIPOS_DOC = [
     { valor: "regulamento_avaliacao", label: "Regulamento de avaliação" },
 ];
 
-export default function PoliticasTab() {
+export default function PoliticasTab({ colaboradorId }: { colaboradorId?: number }) {
     const { user } = useAuth();
+    const verOutro = typeof colaboradorId === "number";
     const [docs, setDocs] = useState<Documento[]>([]);
+    const [leituras, setLeituras] = useState<Leitura[]>([]);
     const [aCarregar, setACarregar] = useState(true);
     const [erro, setErro] = useState("");
     const [aberto, setAberto] = useState<DocumentoCompleto | null>(null);
@@ -43,6 +52,24 @@ export default function PoliticasTab() {
 
     const [aRegistar, setARegistar] = useState(false);
     const [leituraRegistada, setLeituraRegistada] = useState(false);
+
+    const carregar = () => {
+        setACarregar(true);
+        api.get("/documents")
+            .then((resp) => setDocs(resp.data.filter((d: Documento) => TIPOS_POLITICA.includes(d.doc_type || ""))))
+            .catch((err) => setErro(err.response?.data?.detail || "Erro ao carregar as políticas."))
+            .finally(() => setACarregar(false));
+    };
+
+    // Quando o CH vê outro colaborador, carrega a lista de leituras desse colaborador.
+    useEffect(() => {
+        if (verOutro) {
+            api.get(`/collaborators/${colaboradorId}/document-reads`)
+                .then((r) => setLeituras(r.data || []))
+                .catch(() => setLeituras([]));
+        }
+        carregar();
+    }, [verOutro, colaboradorId]);
 
     const registarLeitura = async () => {
         if (!aberto) return;
@@ -57,17 +84,7 @@ export default function PoliticasTab() {
         }
     };
 
-    const eCH = user?.role === "capital_humano";
-
-    const carregar = () => {
-        setACarregar(true);
-        api.get("/documents")
-            .then((resp) => setDocs(resp.data.filter((d: Documento) => TIPOS_POLITICA.includes(d.doc_type || ""))))
-            .catch((err) => setErro(err.response?.data?.detail || "Erro ao carregar as políticas."))
-            .finally(() => setACarregar(false));
-    };
-
-    useEffect(() => { carregar(); }, []);
+    const eCH = user?.role === "capital_humano" || verOutro;
 
     const abrir = async (id: number) => {
         setLeituraRegistada(false);
@@ -84,8 +101,8 @@ export default function PoliticasTab() {
     return (
         <Cartao>
             <div className="flex items-center justify-between mb-1">
-                <h3 className="text-[14.5px]">Políticas e regulamentos — leitura registada</h3>
-                {eCH && (
+                <h3 className="text-[14.5px]">Políticas e regulamentos</h3>
+                {eCH && !verOutro && (
                     <button
                         onClick={() => setModalCriar(true)}
                         className="bg-pri text-white rounded-lg px-3 py-1.5 text-[11.5px] font-semibold hover:bg-pri-dark transition-colors"
@@ -95,37 +112,83 @@ export default function PoliticasTab() {
                 )}
             </div>
             <p className="text-dim text-[11.5px] mb-3">
-                As normas da empresa em texto integral. Ler um documento fica registado — a prova de comunicação exigida em sede disciplinar.
+                {verOutro
+                    ? "Políticas da empresa e estado de leitura deste colaborador — prova de comunicação das normas."
+                    : "As normas da empresa em texto integral. Ler um documento fica registado — a prova de comunicação exigida em sede disciplinar."}
             </p>
 
             {erro && <p className="text-bad text-sm mb-3">{erro}</p>}
 
-            {docs.length === 0 && (
-                <p className="text-dim text-sm py-4 text-center">
-                    Ainda não há políticas publicadas.{eCH && " Publique a primeira acima."}
-                </p>
+            {verOutro ? (
+                <>
+                    <h4 className="text-[12px] text-dim uppercase tracking-wide mb-2 mt-1">
+                        Leituras registadas deste colaborador
+                    </h4>
+                    {leituras.length === 0 ? (
+                        <p className="text-dim text-sm py-3 text-center">Ainda não leu nenhuma política.</p>
+                    ) : (
+                        <div className="space-y-2">
+                            {leituras.map((l) => (
+                                <div key={l.document_id} className="border border-line rounded-lg px-3 py-2.5 flex items-center justify-between gap-3">
+                                    <div className="text-[12.8px] text-ink">{l.title}</div>
+                                    <div className="text-[10.8px] text-dim whitespace-nowrap flex-shrink-0">
+                                        lida em {new Date(l.read_at).toLocaleDateString("pt-PT", { day: "2-digit", month: "short", year: "numeric" })}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                    {docs.length > 0 && (
+                        <>
+                            <h4 className="text-[12px] text-dim uppercase tracking-wide mb-2 mt-5">
+                                Políticas publicadas
+                            </h4>
+                            {docs.map((doc) => (
+                                <DocRow
+                                    key={doc.id}
+                                    monograma={(doc.doc_type || doc.title).slice(0, 2).toUpperCase()}
+                                    titulo={doc.title}
+                                    meta="texto integral"
+                                    acaoLabel="Ler"
+                                    aoAcionar={() => abrir(doc.id)}
+                                />
+                            ))}
+                            <Notice className="mt-3">
+                                Vista de leitura — o registo de leitura é efetuado pelo próprio colaborador.
+                            </Notice>
+                        </>
+                    )}
+                </>
+            ) : (
+                <>
+                    {docs.length === 0 && (
+                        <p className="text-dim text-sm py-4 text-center">
+                            Ainda não há políticas publicadas.{eCH && " Publique a primeira acima."}
+                        </p>
+                    )}
+
+                    {docs.map((doc) => (
+                        <DocRow
+                            key={doc.id}
+                            monograma={(doc.doc_type || doc.title).slice(0, 2).toUpperCase()}
+                            titulo={doc.title}
+                            meta="texto integral"
+                            acaoLabel="Ler"
+                            aoAcionar={() => abrir(doc.id)}
+                        />
+                    ))}
+
+                    <Notice className="mt-3">
+                        Ao abrir um documento, a <b>leitura fica registada</b> com data e hora.
+                    </Notice>
+                </>
             )}
-
-            {docs.map((doc) => (
-                <DocRow
-                    key={doc.id}
-                    monograma={(doc.doc_type || doc.title).slice(0, 2).toUpperCase()}
-                    titulo={doc.title}
-                    meta="texto integral"
-                    acaoLabel="Ler"
-                    aoAcionar={() => abrir(doc.id)}
-                />
-            ))}
-
-            <Notice className="mt-3">
-                Ao abrir um documento, a <b>leitura fica registada</b> com data e hora.
-            </Notice>
 
             <Modal
                 aberto={aberto !== null}
                 aoFechar={() => setAberto(null)}
                 titulo={aberto?.title || ""}
-                subtitulo="Leitura registada · texto integral"
+                subtitulo={verOutro ? "Vista de leitura · texto integral" : "Leitura registada · texto integral"}
             >
                 <div className="whitespace-pre-wrap text-[12.6px] leading-relaxed text-ink bg-panel border border-line rounded-xl p-5 max-h-[56vh] overflow-y-auto">
                     {aberto?.content}
@@ -134,7 +197,7 @@ export default function PoliticasTab() {
                     <button onClick={() => setAberto(null)} className="bg-paper border border-line rounded-lg px-4 py-2 text-sm text-ink hover:border-pri hover:text-pri transition-colors">
                         Fechar
                     </button>
-                    {leituraRegistada ? (
+                    {!verOutro && (leituraRegistada ? (
                         <span className="bg-ok-bg text-ok rounded-lg px-4 py-2 text-sm font-semibold flex items-center gap-1.5">
                             ✓ Leitura registada
                         </span>
@@ -143,7 +206,7 @@ export default function PoliticasTab() {
                             className="bg-pri text-white rounded-lg px-4 py-2 text-[12.3px] font-semibold hover:bg-pri-dark transition-colors disabled:opacity-40">
                             {aRegistar ? "A registar..." : "Registar leitura"}
                         </button>
-                    )}
+                    ))}
                 </div>
             </Modal>
 

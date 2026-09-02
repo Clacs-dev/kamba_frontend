@@ -23,6 +23,11 @@ interface Ficha {
     workplace?: string | null;
     work_schedule?: string | null;
     situation_tags?: string | null;
+    nationality?: string | null;
+    habilitacoes?: string | null;
+    university?: string | null;
+    course?: string | null;
+    cv?: string | null;
 }
 
 interface AvaliacaoNota {
@@ -96,14 +101,15 @@ function traduzPerfil(role: string): string {
         capital_humano: "Capital Humano",
         comissao: "Comissão de Avaliação",
         administracao: "Administração",
+        admin: "Admin",
     };
     return mapa[role] || role;
 }
 
 const VINCULOS: Record<string, string> = {
-    termo_incerto: "A termo incerto",
-    termo_certo: "A termo certo",
     efetivo: "Por tempo indeterminado",
+    termo_certo: "Tempo determinado",
+    termo_incerto: "Tempo determinado",
 };
 
 const APTIDOES: Record<string, string> = {
@@ -215,6 +221,10 @@ export default function DossierColaborador({ colaborador, aoFechar }: { colabora
                                 <Linha rotulo="Direção" valor={ficha?.department} />
                                 <Linha rotulo="Local" valor={ficha?.workplace} />
                                 <Linha rotulo="Horário" valor={ficha?.work_schedule} />
+                                <Linha rotulo="Nacionalidade" valor={ficha?.nationality} />
+                                <Linha rotulo="Habilitações" valor={ficha?.habilitacoes} />
+                                <Linha rotulo="Universidade" valor={ficha?.university} />
+                                <Linha rotulo="Curso" valor={ficha?.course} />
                             </tbody>
                         </table>
                     </Cartao>
@@ -240,6 +250,13 @@ export default function DossierColaborador({ colaborador, aoFechar }: { colabora
                         )}
                     </Cartao>
                 </div>
+
+                {ficha?.cv && (
+                    <Cartao>
+                        <h3 className="text-[14px] mb-2">CV / Notas</h3>
+                        <p className="text-[12.5px] text-ink whitespace-pre-wrap leading-relaxed">{ficha.cv}</p>
+                    </Cartao>
+                )}
 
                 {/* Remuneração + Assiduidade */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">

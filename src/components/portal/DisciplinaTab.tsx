@@ -25,8 +25,10 @@ interface Processo {
 
 // Aba "Disciplina" do Portal — o próprio processo disciplinar do colaborador, se existir
 // (equivalente à aba `disc` do protótipo). Reaproveita os mesmos endpoints já usados em Disciplina.tsx.
-export default function DisciplinaTab() {
+export default function DisciplinaTab({ colaboradorId }: { colaboradorId?: number }) {
     const { user } = useAuth();
+    const targetId = colaboradorId ?? user?.id;
+    const verOutro = typeof colaboradorId === "number";
     const [processos, setProcessos] = useState<Processo[]>([]);
     const [aCarregar, setACarregar] = useState(true);
     const [texto, setTexto] = useState("");
@@ -35,12 +37,12 @@ export default function DisciplinaTab() {
     const carregar = () => {
         setACarregar(true);
         api.get("/disciplinary")
-            .then((r) => setProcessos(r.data.filter((p: Processo) => p.accused_id === user?.id)))
+            .then((r) => setProcessos(r.data.filter((p: Processo) => p.accused_id === targetId)))
             .catch(() => setProcessos([]))
             .finally(() => setACarregar(false));
     };
 
-    useEffect(() => { carregar(); }, [user?.id]);
+    useEffect(() => { carregar(); }, [targetId]);
 
     const acao = async (processId: number, endpoint: string, body?: any) => {
         setErro("");
@@ -102,7 +104,13 @@ export default function DisciplinaTab() {
 
                     {erro && <p className="text-bad text-sm mt-2">{erro}</p>}
 
-                    {p.phase === "nota_culpa" && (
+                    {verOutro && (
+                        <p className="text-[11.5px] text-dim mt-2">
+                            (Vista de leitura — as ações de conhecimento/defesa são efetuadas pelo colaborador no seu portal.)
+                        </p>
+                    )}
+
+                    {!verOutro && p.phase === "nota_culpa" && (
                         <div className="mt-3">
                             <Notice className="mb-2">
                                 Foi-lhe notificada uma nota de culpa. Tome conhecimento e apresente a sua defesa.
@@ -111,7 +119,7 @@ export default function DisciplinaTab() {
                         </div>
                     )}
 
-                    {p.phase === "defesa" && (
+                    {!verOutro && p.phase === "defesa" && (
                         <div className="mt-3">
                             <textarea
                                 value={texto}
@@ -126,7 +134,7 @@ export default function DisciplinaTab() {
                         </div>
                     )}
 
-                    {p.phase === "conhecimento_decisao" && (
+                    {!verOutro && p.phase === "conhecimento_decisao" && (
                         <Botao className="mt-3" onClick={() => acao(p.id, "acknowledge-decision")}>
                             Tomar conhecimento da decisão
                         </Botao>

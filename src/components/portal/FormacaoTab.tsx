@@ -38,7 +38,8 @@ const ESTADO_ACAO: Record<string, { texto: string; cor: "ok" | "info" | "warn" |
 
 // Aba "Formação" do Portal — o plano de formação do próprio colaborador
 // (ações do plano em execução) e o seu Plano Individual de Desenvolvimento (PID).
-export default function FormacaoTab() {
+export default function FormacaoTab({ colaboradorId }: { colaboradorId?: number }) {
+    const verOutro = typeof colaboradorId === "number";
     const [acoes, setAcoes] = useState<MinhaAcao[]>([]);
     const [pid, setPid] = useState<Pid | null>(null);
     const [aCarregar, setACarregar] = useState(true);
@@ -47,8 +48,9 @@ export default function FormacaoTab() {
     const carregar = () => {
         setACarregar(true);
         setErro("");
-        api.get("/training/my-actions").then((r) => setAcoes(r.data)).catch(() => setAcoes([]));
-        api.get("/development-plans")
+        const params = verOutro ? `?collaborator_id=${colaboradorId}` : "";
+        api.get(`/training/my-actions${params}`).then((r) => setAcoes(r.data)).catch(() => setAcoes([]));
+        api.get(`/development-plans${params}`)
             .then((r) => {
                 const meus = (r.data as Pid[]).filter((p) => p.status !== "concluido");
                 setPid(meus.length > 0 ? meus[0] : null);
@@ -57,7 +59,7 @@ export default function FormacaoTab() {
             .finally(() => setACarregar(false));
     };
 
-    useEffect(() => { carregar(); }, []);
+    useEffect(() => { carregar(); }, [verOutro, colaboradorId]);
 
     const completarAcao = async (acaoId: number) => {
         setErro("");
@@ -126,7 +128,7 @@ export default function FormacaoTab() {
                                     </div>
                                     <div className="flex items-center gap-2 flex-shrink-0">
                                         <Tag variante={ea.cor}>{ea.texto}</Tag>
-                                        {a.status !== "concluida" && (
+                                        {!verOutro && a.status !== "concluida" && (
                                             <Botao variante="ghost" className="!py-1.5 !px-3 !text-[11.5px]"
                                                 onClick={() => completarAcao(a.id)}>
                                                 Concluir ação

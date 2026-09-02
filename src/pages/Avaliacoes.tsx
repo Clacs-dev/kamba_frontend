@@ -14,6 +14,15 @@ import Notice from "../components/ui/Notice";
 
 const FASES = ["Autoavaliação", "Avaliação do Director", "Concordância", "Comissão", "Fechada", "Validada"];
 
+const DIRECOES = [
+    "DAF — Contabilidade e Finanças",
+    "DCM — Comercial",
+    "DOP — Operações",
+    "DTI — Tecnologias de Informação",
+    "DCH — Capital Humano",
+    "DJC — Jurídica e Conformidade",
+];
+
 const FASE_INDICE: Record<string, number> = {
     autoavaliacao: 0,
     avaliacao_director: 1,
@@ -265,16 +274,21 @@ function ModalAvaliacao({ ciclos, colaboradores, aoFechar, aoCriar }: {
     aoFechar: () => void;
     aoCriar: () => void;
 }) {
+    const [modo, setModo] = useState<"individual" | "direcao">("individual");
     const [cycleId, setCycleId] = useState(ciclos[0]?.id || 0);
     const [collaboratorId, setCollaboratorId] = useState(0);
     const [directorId, setDirectorId] = useState(0);
     const [category, setCategory] = useState("tecnico");
+    const [direcao, setDirecao] = useState("");
+    const [direcaoOutra, setDirecaoOutra] = useState("");
     const [objs, setObjs] = useState<{ description: string; weight: string }[]>([{ description: "", weight: "" }]);
     const [erro, setErro] = useState("");
     const [aCarregar, setACarregar] = useState(false);
     const { user } = useAuth();
     // Diretores disponíveis (para escolher quem avalia).
     const diretores = colaboradores.filter((c) => c.role === "director");
+
+    const direcaoFinal = direcao === "outro" ? direcaoOutra.trim() : direcao;
 
     const alterarObjetivo = (i: number, campo: "description" | "weight", valor: string) => {
         setObjs((prev) => prev.map((o, idx) => (idx === i ? { ...o, [campo]: valor } : o)));
@@ -289,18 +303,31 @@ function ModalAvaliacao({ ciclos, colaboradores, aoFechar, aoCriar }: {
         objs.every((o) => o.description.trim().length >= 2 && Number(o.weight) > 0) &&
         Math.round(totalPeso * 10) / 10 === 100;
 
+    const podeSubmeter = (modo === "individual" ? !!collaboratorId : !!direcaoFinal)
+        && !!directorId && objetivosOk;
+
     const submeter = async () => {
         setErro("");
-
         setACarregar(true);
         try {
-            await api.post("/evaluations", {
-                cycle_id: cycleId,
-                collaborator_id: collaboratorId,
-                director_id: directorId,
-                category,
-                objectives: objs.map((o) => ({ description: o.description.trim(), weight: Number(o.weight) })),
-            });
+            const objetivoData = objs.map((o) => ({ description: o.description.trim(), weight: Number(o.weight) }));
+            if (modo === "direcao") {
+                await api.post("/evaluations/by-direction", {
+                    cycle_id: cycleId,
+                    director_id: directorId,
+                    department: direcaoFinal,
+                    category,
+                    objectives: objetivoData,
+                });
+            } else {
+                await api.post("/evaluations", {
+                    cycle_id: cycleId,
+                    collaborator_id: collaboratorId,
+                    director_id: directorId,
+                    category,
+                    objectives: objetivoData,
+                });
+            }
             aoCriar();
         } catch (err: any) {
             setErro(err.response?.data?.detail || "Erro ao criar avaliação.");
@@ -311,19 +338,57 @@ function ModalAvaliacao({ ciclos, colaboradores, aoFechar, aoCriar }: {
 
     return (
         <Modal aberto={true} aoFechar={aoFechar} titulo="Criar avaliação"
-            subtitulo="Inicia o fluxo de avaliação de um colaborador com os objetivos pactuados definidos pelo Capital Humano">
+            subtitulo="Inicia o fluxo de avaliação com os objetivos pactuados definidos pelo Capital Humano">
+            <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Alcance</label>
+            <div className="flex gap-2 mb-3">
+                <button onClick={() => setModo("individual")}
+                    className={`flex-1 rounded-lg px-3 py-2 text-[12.3px] font-semibold border transition-colors ${modo === "individual" ? "bg-pri text-white border-pri" : "bg-paper border-line text-ink hover:border-pri"}`}>
+                    Um colaborador
+                </button>
+                <button onClick={() => setModo("direcao")}
+                    className={`flex-1 rounded-lg px-3 py-2 text-[12.3px] font-semibold border transition-colors ${modo === "direcao" ? "bg-pri text-white border-pri" : "bg-paper border-line text-ink hover:border-pri"}`}>
+                    Toda a direção
+                </button>
+            </div>
+
             <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Ciclo</label>
             <select value={cycleId} onChange={(e) => setCycleId(Number(e.target.value))}
                 className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-3 focus:outline-none focus:border-pri">
                 {ciclos.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
 
-            <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Colaborador a avaliar</label>
-            <select value={collaboratorId} onChange={(e) => setCollaboratorId(Number(e.target.value))}
-                className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-3 focus:outline-none focus:border-pri">
-                <option value={0}>— escolher —</option>
-                {colaboradores.filter((c) => c.id !== user?.id).map((c) => <option key={c.id} value={c.id}>{c.full_name}</option>)}
-            </select>
+            {modo === "individual" && (
+                <>
+                    <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Colaborador a avaliar</label>
+                    <select value={collaboratorId} onChange={(e) => setCollaboratorId(Number(e.target.value))}
+                        className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-3 focus:outline-none focus:border-pri">
+                        <option value={0}>— escolher —</option>
+                        {colaboradores.filter((c) => c.id !== user?.id).map((c) => <option key={c.id} value={c.id}>{c.full_name}</option>)}
+                    </select>
+                </>
+            )}
+
+            {modo === "direcao" && (
+                <>
+                    <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Direção</label>
+                    <select value={direcao} onChange={(e) => { setDirecao(e.target.value); if (e.target.value !== "outro") setDirecaoOutra(""); }}
+                        className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-2 focus:outline-none focus:border-pri">
+                        <option value="">— escolher —</option>
+                        {DIRECOES.map((d) => <option key={d} value={d}>{d}</option>)}
+                        <option value="outro">Outro (escrever)</option>
+                    </select>
+                    {direcao === "outro" && (
+                        <input
+                            value={direcaoOutra}
+                            onChange={(e) => setDirecaoOutra(e.target.value)}
+                            placeholder="Escreva a direção/área"
+                            className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-2 focus:outline-none focus:border-pri"
+                            autoFocus
+                        />
+                    )}
+                    <p className="text-dim text-[11.5px] mb-3">Abre uma autoavaliação para todos os colaboradores desta direção que ainda não têm avaliação no ciclo.</p>
+                </>
+            )}
 
             <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Director avaliador</label>
             <select value={directorId} onChange={(e) => setDirectorId(Number(e.target.value))}
@@ -384,9 +449,9 @@ function ModalAvaliacao({ ciclos, colaboradores, aoFechar, aoCriar }: {
                     className="bg-paper border border-line rounded-lg px-4 py-2 text-sm text-ink hover:border-pri hover:text-pri transition-colors">
                     Cancelar
                 </button>
-                <button onClick={submeter} disabled={aCarregar || !collaboratorId || !directorId || !objetivosOk}
+                <button onClick={submeter} disabled={aCarregar || !podeSubmeter}
                     className="bg-pri text-white rounded-lg px-4 py-2 text-[12.3px] font-semibold hover:bg-pri-dark transition-colors disabled:opacity-40">
-                    {aCarregar ? "A criar..." : "Criar avaliação"}
+                    {aCarregar ? "A criar..." : modo === "direcao" ? "Criar avaliações (direção)" : "Criar avaliação"}
                 </button>
             </div>
         </Modal>

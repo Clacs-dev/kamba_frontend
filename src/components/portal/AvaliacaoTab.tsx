@@ -20,17 +20,18 @@ interface Avaliacao {
 
 // Aba "Avaliação" do Portal — estado do ciclo em curso e histórico, equivalente à aba `aval` do protótipo.
 // Reaproveita GET /evaluations (já usado em Avaliacoes.tsx e PainelColaborador.tsx), filtrado ao próprio utilizador.
-export default function AvaliacaoTab() {
+export default function AvaliacaoTab({ colaboradorId }: { colaboradorId?: number }) {
     const { user } = useAuth();
+    const targetId = colaboradorId ?? user?.id;
     const [avaliacoes, setAvaliacoes] = useState<Avaliacao[]>([]);
     const [aCarregar, setACarregar] = useState(true);
 
     useEffect(() => {
         api.get("/evaluations")
-            .then((r) => setAvaliacoes(r.data.filter((a: Avaliacao) => a.collaborator_id === user?.id)))
+            .then((r) => setAvaliacoes(r.data.filter((a: Avaliacao) => a.collaborator_id === targetId)))
             .catch(() => setAvaliacoes([]))
             .finally(() => setACarregar(false));
-    }, [user?.id]);
+    }, [targetId]);
 
     if (aCarregar) return <p className="text-dim text-sm">A carregar...</p>;
 

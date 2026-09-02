@@ -1,12 +1,30 @@
-import { useState } from "react";
-import { Outlet } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import Sidebar from "../components/Sidebar";
 import Notificacoes from "../components/Notificacoes";
+import api from "../lib/api";
+
+const ROTULO_PERFIL: Record<string, string> = {
+    colaborador: "Colaborador",
+    director: "Director",
+    capital_humano: "Capital Humano",
+    comissao: "Comissão de Avaliação",
+    administracao: "Administração",
+    admin: "Admin",
+};
 
 export default function Home() {
     const { user, logout } = useAuth();
+    const location = useLocation();
     const [menuAberto, setMenuAberto] = useState(false);
+    const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+
+    useEffect(() => {
+        api.get("/me/profile")
+            .then((r) => setPhotoUrl(r.data?.photo_url ?? null))
+            .catch(() => setPhotoUrl(null));
+    }, [user?.id]);
 
     const iniciais = (user?.full_name || "")
         .split(" ")
@@ -35,10 +53,19 @@ export default function Home() {
                 </div>
                 <div className="flex-1" />
                 <Notificacoes />
-                <div className="hidden sm:flex items-center gap-2 text-xs text-dim">
-                    <span className="truncate max-w-[120px]">{user?.full_name}</span>
-                    <div className="w-8 h-8 rounded-full bg-pri-bg text-pri-dark flex items-center justify-center font-semibold text-xs flex-shrink-0">
-                        {iniciais}
+                <div className="hidden sm:flex items-center gap-2.5 text-xs text-dim">
+                    <div className="text-right leading-tight min-w-0">
+                        <div className="text-[12.5px] font-semibold text-ink truncate max-w-[140px]">{user?.full_name}</div>
+                        <div className="text-[10px] text-dim truncate max-w-[140px]">
+                            {ROTULO_PERFIL[user?.role || ""] || user?.role}
+                        </div>
+                    </div>
+                    <div className="w-[30px] h-[30px] rounded-full overflow-hidden bg-pri-bg text-pri-dark flex items-center justify-center font-semibold text-xs flex-shrink-0">
+                        {photoUrl ? (
+                            <img src={photoUrl} alt={user?.full_name || ""} className="w-full h-full object-cover" />
+                        ) : (
+                            iniciais
+                        )}
                     </div>
                 </div>
                 <button
@@ -55,7 +82,9 @@ export default function Home() {
                 <Sidebar aberto={menuAberto} aoFechar={() => setMenuAberto(false)} />
 
                 <main className="flex-1 px-4 sm:px-7 py-4 sm:py-5 max-w-[1230px] w-full overflow-x-hidden">
-                    <Outlet />
+                    <div key={location.pathname} className="page-entrada">
+                        <Outlet />
+                    </div>
                 </main>
             </div>
         </div>

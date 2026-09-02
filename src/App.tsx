@@ -7,6 +7,7 @@ import TrocarPassword from "./pages/TrocarPassword";
 import Inicio from "./pages/Inicio";
 import Portal from "./pages/Portal";
 import Colaboradores from "./pages/Colaboradores";
+import Equipa from "./pages/Equipa";
 import Avaliacoes from "./pages/Avaliacoes";
 import Ausencias from "./pages/Ausencias";
 import Disciplina from "./pages/Disciplina";
@@ -20,7 +21,7 @@ import Administracao from "./pages/Administracao";
 
 function RotaProtegida({ children }: { children: React.ReactNode }) {
   const { token, user, aCarregar } = useAuth();
-  if (aCarregar) return <div className="min-h-screen flex items-center justify-center text-slate-400">A carregar...</div>;
+  if (aCarregar) return <div className="min-h-screen flex items-center justify-center text-dim">A carregar...</div>;
   if (!token) return <Navigate to="/login" replace />;
   // Se o utilizador tem de trocar a password, mostra esse ecrã antes de tudo.
   if (user?.must_change_password) return <TrocarPassword />;
@@ -44,7 +45,9 @@ function App() {
           <Route path="/" element={<RotaProtegida><Home /></RotaProtegida>}>
             <Route index element={<Inicio />} />
             <Route path="portal" element={<Portal />} />
+            <Route path="colaboradores/:id/portal" element={<Portal />} />
             <Route path="colaboradores" element={<Colaboradores />} />
+            <Route path="equipa" element={<Equipa />} />
             <Route path="avaliacoes" element={<Avaliacoes />} />
             <Route path="ausencias" element={<Ausencias />} />
             <Route path="disciplina" element={<Disciplina />} />

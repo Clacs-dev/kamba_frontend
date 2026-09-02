@@ -49,8 +49,9 @@ const DECLARACOES = [
     },
 ];
 
-export default function AcolhimentoTab() {
+export default function AcolhimentoTab({ colaboradorId }: { colaboradorId?: number }) {
     const { user } = useAuth();
+    const verOutro = typeof colaboradorId === "number";
     const [itens, setItens] = useState<ItemAcolhimento[]>([]);
     const [assinaturas, setAssinaturas] = useState<Assinatura[]>([]);
     const [documentos, setDocumentos] = useState<Documento[]>([]);
@@ -63,16 +64,20 @@ export default function AcolhimentoTab() {
     const [nomeAssinatura, setNomeAssinatura] = useState("");
     const [aAssinar, setAAssinar] = useState(false);
 
+    const id = colaboradorId ?? user?.id;
+
     const carregar = () => {
-        if (!user?.id) return;
+        if (!id) return;
         Promise.all([
-            api.get(`/onboarding/${user.id}`).then((r) => setItens(r.data)).catch(() => setItens([])),
-            api.get("/me/signatures").then((r) => setAssinaturas(r.data)).catch(() => setAssinaturas([])),
+            api.get(`/onboarding/${id}`).then((r) => setItens(r.data)).catch(() => setItens([])),
+            verOutro
+                ? api.get(`/collaborators/${id}/signatures`).then((r) => setAssinaturas(r.data)).catch(() => setAssinaturas([]))
+                : api.get("/me/signatures").then((r) => setAssinaturas(r.data)).catch(() => setAssinaturas([])),
             api.get("/documents").then((r) => setDocumentos(r.data)).catch(() => setDocumentos([])),
         ]).finally(() => setACarregar(false));
     };
 
-    useEffect(() => { carregar(); }, [user?.id]);
+    useEffect(() => { carregar(); }, [id, verOutro]);
     useEffect(() => { if (user?.full_name) setNomeAssinatura(user.full_name); }, [user?.full_name]);
 
     const jaAssinou = (tipo: string) => assinaturas.some((a) => a.signature_type === tipo);
@@ -97,7 +102,11 @@ export default function AcolhimentoTab() {
         try {
             const porAssinar = DECLARACOES.filter((d) => !jaAssinou(d.tipo));
             for (const d of porAssinar) {
-                await api.post("/me/signatures", { signature_type: d.tipo });
+                if (verOutro) {
+                    await api.post(`/collaborators/${colaboradorId}/signatures`, { signature_type: d.tipo });
+                } else {
+                    await api.post("/me/signatures", { signature_type: d.tipo });
+                }
             }
             setMsg("Assinaturas registadas com sucesso.");
             carregar();

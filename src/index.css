@@ -1,9 +1,9 @@
-@import "tailwindcss";
-
-/* Fontes do protótipo KAMBA */
+/* Tipografia do protótipo KAMBA */
 @import url('https://fonts.googleapis.com/css2?family=Lora:wght@500;600&family=Sora:wght@300;400;600&display=swap');
 
-/* Paleta e tokens do design KAMBA (do protótipo) */
+@import "tailwindcss";
+
+/* Paleta e tokens do design KAMBA (do protótipo de referência) */
 @theme {
     --color-bg: #F6F8F7;
     --color-paper: #FFFFFF;
@@ -29,21 +29,109 @@
 
     --font-serif: 'Lora', serif;
     --font-sans: 'Sora', sans-serif;
+
+    /* Extra tokens: formas e sombras usadas no protótipo */
+    --radius-card: 12px;
+    --radius-ctrl: 9px;
+    --shadow-card: 0 1px 4px rgba(34, 50, 58, 0.04);
+    --shadow-hover: 0 3px 10px rgba(67, 128, 140, 0.13);
+    --shadow-float: 0 12px 40px rgba(34, 50, 58, 0.25);
 }
 
-body {
-    font-family: var(--font-sans);
-    background: var(--color-bg);
-    color: var(--color-ink);
+@layer base {
+    html {
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
+    }
+
+    body {
+        font-family: var(--font-sans);
+        font-size: 14px;
+        background: var(--color-bg);
+        color: var(--color-ink);
+    }
+
+    h1,
+    h2,
+    h3,
+    h4 {
+        font-family: var(--font-serif);
+        font-weight: 600;
+        color: var(--color-strong);
+    }
+
+    ::selection {
+        background: var(--color-pri-soft);
+        color: var(--color-strong);
+    }
+
+    button {
+        cursor: pointer;
+    }
+
+    /* Controlos uniformes ao gosto do protótipo (dimensões ficam nas classes) */
+    input,
+    select,
+    textarea {
+        font: inherit;
+        color: var(--color-ink);
+        background: var(--color-paper);
+        border: 1px solid var(--color-line);
+        border-radius: var(--radius-ctrl);
+    }
+
+    input::placeholder,
+    textarea::placeholder {
+        color: var(--color-dim);
+    }
+
+    input:focus-visible,
+    select:focus-visible,
+    textarea:focus-visible {
+        outline: none;
+        border-color: var(--color-pri);
+        box-shadow: 0 0 0 3px var(--color-pri-bg);
+    }
 }
 
-h1,
-h2,
-h3,
-h4 {
-    font-family: var(--font-serif);
-    font-weight: 600;
-    color: var(--color-strong);
+/* Scrollbar discreto */
+*::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+    background: var(--color-line);
+    border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    background: var(--color-pri-soft);
+}
+
+/* Rótulos de secção no menu (ao gosto do protótipo KAMBA) */
+.side-lab {
+    font-size: 9.5px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--color-dim);
+}
+
+/* Transição suave de página (à la protótipo KAMBA) */
+/* Sem transform/translate: um transform num ancestral criaria um containing
+   block para position:fixed e poderia limitar/cortar os modais. */
+@keyframes entrada-pagina {
+    from {
+        opacity: 0;
+    }
+}
+
+.page-entrada {
+    animation: entrada-pagina 0.24s ease-out both;
 }
 
 /* Responsividade: tabelas ganham scroll horizontal em ecrãs pequenos */

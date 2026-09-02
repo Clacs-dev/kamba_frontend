@@ -25,15 +25,23 @@ const ROTULO_AUSENCIA: Record<string, string> = {
     maternidade: "Documento de maternidade",
 };
 
-export default function DocumentosTab() {
+export default function DocumentosTab({ colaboradorId }: { colaboradorId?: number }) {
+    const verOutro = typeof colaboradorId === "number";
     const [docs, setDocs] = useState<DocItem[]>([]);
     const [aCarregar, setACarregar] = useState(true);
     const [erro, setErro] = useState("");
 
     useEffect(() => {
+        const pessoaisUrl = verOutro
+            ? `/collaborators/${colaboradorId}/documents`
+            : "/collaborators/me/documents";
+        const pedidosPromessa = verOutro
+            ? Promise.resolve([]) // ausências não têm equivalente por-colaborador aqui
+            : api.get("/leave/requests").then((r) => r.data).catch(() => []);
+
         Promise.all([
-            api.get("/collaborators/me/documents").then((r) => r.data).catch(() => []),
-            api.get("/leave/requests").then((r) => r.data).catch(() => []),
+            api.get(pessoaisUrl).then((r) => r.data).catch(() => []),
+            pedidosPromessa,
         ]).then(([pessoais, pedidos]) => {
             const lista: DocItem[] = [];
 
@@ -48,16 +56,18 @@ export default function DocumentosTab() {
                 });
             }
 
-            for (const p of pedidos) {
-                if (p.document_name || p.document_url) {
-                    lista.push({
-                        id: `a${p.id}`,
-                        filename: p.document_name || "Documento anexado",
-                        tipo: ROTULO_AUSENCIA[p.type] || "Documento de ausência",
-                        file_url: p.document_url,
-                        data: p.start_date,
-                        origem: "ausencia",
-                    });
+            if (!verOutro) {
+                for (const p of pedidos) {
+                    if (p.document_name || p.document_url) {
+                        lista.push({
+                            id: `a${p.id}`,
+                            filename: p.document_name || "Documento anexado",
+                            tipo: ROTULO_AUSENCIA[p.type] || "Documento de ausência",
+                            file_url: p.document_url,
+                            data: p.start_date,
+                            origem: "ausencia",
+                        });
+                    }
                 }
             }
 
@@ -65,7 +75,7 @@ export default function DocumentosTab() {
         }).catch((e: any) => {
             setErro(e.response?.data?.detail || "Erro ao carregar documentos.");
         }).finally(() => setACarregar(false));
-    }, []);
+    }, [verOutro, colaboradorId]);
 
     if (aCarregar) return <p className="text-dim text-sm">A carregar documentos...</p>;
 

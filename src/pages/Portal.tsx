@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { ChangeEvent } from "react";
+import { useParams, useLocation } from "react-router-dom";
 import DocumentosTab from "../components/portal/DocumentosTab";
 import { useAuth } from "../context/AuthContext";
 import api from "../lib/api";
@@ -13,6 +15,7 @@ import FormacaoTab from "../components/portal/FormacaoTab";
 import PoliticasTab from "../components/portal/PoliticasTab";
 import CorrecoesFicha from "../components/portal/CorrecoesFicha";
 import Cartao from "../components/Cartao";
+import Modal from "../components/Modal";
 import Tabs from "../components/Tabs";
 import Tag from "../components/ui/Tag";
 import Spark from "../components/ui/Spark";
@@ -40,15 +43,16 @@ interface Perfil {
     workplace?: string | null;
     work_schedule?: string | null;
     situation_tags?: string | null;
+    photo_url?: string | null;
 }
 
 // Rótulo legível do tipo de vínculo.
 function rotuloVinculo(v?: string | null): string | null | undefined {
     if (!v) return v;
     const mapa: Record<string, string> = {
-        termo_incerto: "A termo incerto",
-        termo_certo: "A termo certo",
         efetivo: "Por tempo indeterminado",
+        termo_certo: "Tempo determinado",
+        termo_incerto: "Tempo determinado",
         estagio: "Estágio",
         prestacao_servicos: "Prestação de serviços",
     };
@@ -57,45 +61,116 @@ function rotuloVinculo(v?: string | null): string | null | undefined {
 
 export default function Portal() {
     const { user } = useAuth();
+    const params = useParams();
+    const location = useLocation();
+    // Se a URL for /colaboradores/:id/portal, o CH está a ver OUTRO colaborador.
+    const collaboratorId = params.id ? Number(params.id) : undefined;
+    const verOutro = typeof collaboratorId === "number" && !Number.isNaN(collaboratorId);
+    // O nome pode vir no state da navegação (ao clicar na linha).
+    const nomeDoState = (location.state as { nome?: string } | null)?.nome;
+
+    const baseProfile = verOutro ? `/collaborators/${collaboratorId}/profile` : "/me/profile";
+    const baseHistorico = verOutro
+        ? `/evaluations/collaborators/${collaboratorId}/score-history`
+        : "/evaluations/me/score-history";
+    const nomeMostrado = verOutro ? (nomeDoState || "Colaborador") : (user?.full_name || "");
+
     const [tab, setTab] = useState("ficha");
     const [perfil, setPerfil] = useState<Perfil | null>(null);
     const [aCarregar, setACarregar] = useState(true);
     const [historico, setHistorico] = useState<{ cycle_name: string; final_score: number | null; classification: string | null }[]>([]);
     useEffect(() => {
-        api.get("/me/profile")
+        setACarregar(true);
+        api.get(baseProfile)
             .then((resp) => setPerfil(resp.data))
             .catch(() => setPerfil(null))
             .finally(() => setACarregar(false));
-        api.get("/evaluations/me/score-history")
+        api.get(baseHistorico)
             .then((resp) => setHistorico(resp.data))
             .catch(() => setHistorico([]));
-    }, []);
+    }, [collaboratorId]);
 
-    const iniciais = (user?.full_name || "").split(" ").map((p) => p[0]).slice(0, 2).join("");
+    const iniciais = (nomeMostrado || "").split(" ").map((p) => p[0]).slice(0, 2).join("");
+
+    const [aCarregarFoto, setACarregarFoto] = useState(false);
+    const [fotoModal, setFotoModal] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const aoEscolherFoto = async (e: ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !verOutro) return;
+        setACarregarFoto(true);
+        try {
+            const fd = new FormData();
+            fd.append("file", file);
+            const resp = await api.post(`/collaborators/${collaboratorId}/photo`, fd);
+            setPerfil(resp.data);
+        } catch (err: any) {
+            alert(err.response?.data?.detail || "Erro ao carregar a foto.");
+        } finally {
+            setACarregarFoto(false);
+            e.target.value = "";
+        }
+    };
+    const aoRemoverFoto = async () => {
+        if (!verOutro) return;
+        if (!window.confirm("Remover a foto deste colaborador?")) return;
+        setACarregarFoto(true);
+        try {
+            const resp = await api.delete(`/collaborators/${collaboratorId}/photo`);
+            setPerfil(resp.data);
+        } catch (err: any) {
+            alert(err.response?.data?.detail || "Erro ao remover a foto.");
+        } finally {
+            setACarregarFoto(false);
+        }
+    };
+
+    // Quando o CH vê outro colaborador, mostra todas as abas com os dados desse colaborador.
+    const tabsVisiveis = TABS;
+    const tabAtiva = tab;
 
     return (
         <div>
             <Cabecalho
-                eyebrow="O seu dossier pessoal"
-                titulo={`Portal do Colaborador — ${user?.full_name || ""}`}
+                eyebrow={verOutro ? "Portal do colaborador" : "O seu dossier pessoal"}
+                titulo={`Portal do Colaborador — ${nomeMostrado}`}
                 descricao="Do primeiro ao último dia: ficha, documentos, saúde e remuneração — tudo num só lugar."
             />
 
-            <Tabs tabs={TABS} ativo={tab} aoSelecionar={setTab} />
+            <Tabs tabs={tabsVisiveis} ativo={tabAtiva} aoSelecionar={setTab} />
 
-            {tab === "ficha" && (
+            {tabAtiva === "ficha" && (
                 <>
                     {/* Cabeçalho do colaborador — foto, cargo, tags e nota em destaque */}
                     <Cartao className="mb-3">
                         <div className="flex gap-4 items-start">
-                            <div className="w-14 h-14 rounded-full bg-pri-bg text-pri-dark flex items-center justify-center font-serif text-xl font-semibold flex-shrink-0">
-                                {iniciais}
+                            <div className="flex flex-col items-center gap-1.5 flex-shrink-0">
+                                <button
+                                    type="button"
+                                    onClick={() => verOutro && setFotoModal(true)}
+                                    disabled={!verOutro}
+                                    title={verOutro ? "Gerir foto" : undefined}
+                                    className={`w-24 h-24 rounded-full overflow-hidden bg-pri-bg text-pri-dark flex items-center justify-center font-serif text-3xl font-semibold ${verOutro ? "cursor-pointer hover:ring-2 hover:ring-pri/60 transition-shadow" : "cursor-default"}`}
+                                >
+                                    {perfil?.photo_url ? (
+                                        <img src={perfil.photo_url} alt={nomeMostrado} className="w-full h-full object-cover" />
+                                    ) : (
+                                        iniciais
+                                    )}
+                                </button>
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={aoEscolherFoto}
+                                />
                             </div>
                             <div className="flex-1 min-w-0">
-                                <h3 className="m-0 text-[17px] text-strong">{user?.full_name}</h3>
+                                <h3 className="m-0 text-[17px] text-strong">{nomeMostrado}</h3>
                                 <div className="text-[11.5px] text-dim mt-0.5">
-                                    {traduzPerfil(user?.role || "")}
-                                    {perfil?.job_category && ` · ${perfil.job_category}`}
+                                    {!verOutro && traduzPerfil(user?.role || "")}
+                                    {perfil?.job_category && `${!verOutro ? " · " : ""}${perfil.job_category}`}
                                     {perfil?.department && ` · ${perfil.department}`}
                                 </div>
                                 <div className="mt-2 flex flex-wrap gap-1.5">
@@ -176,19 +251,64 @@ export default function Portal() {
                     </div>
 
                     <div className="mt-3">
-                        <CorrecoesFicha />
+                        <CorrecoesFicha colaboradorId={collaboratorId} />
                     </div>
                 </>
             )}
-            {tab === "acolhimento" && <AcolhimentoTab />}
-            {tab === "percurso" && <PercursoTab />}
-            {tab === "documentos" && <DocumentosTab />}
-            {tab === "avaliacao" && <AvaliacaoTab />}
-            {tab === "formacao" && <FormacaoTab />}
-            {tab === "disciplina" && <DisciplinaTab />}
-            {tab === "saude" && <SaudeTab />}
-            {tab === "remuneracao" && <RemuneracaoTab />}
-            {tab === "politicas" && <PoliticasTab />}
+            {tabAtiva === "acolhimento" && <AcolhimentoTab colaboradorId={collaboratorId} />}
+            {tabAtiva === "percurso" && <PercursoTab colaboradorId={collaboratorId} />}
+            {tabAtiva === "documentos" && <DocumentosTab colaboradorId={collaboratorId} />}
+            {tabAtiva === "avaliacao" && <AvaliacaoTab colaboradorId={collaboratorId} />}
+            {tabAtiva === "formacao" && <FormacaoTab colaboradorId={collaboratorId} />}
+            {tabAtiva === "disciplina" && <DisciplinaTab colaboradorId={collaboratorId} />}
+            {tabAtiva === "saude" && <SaudeTab colaboradorId={collaboratorId} />}
+            {tabAtiva === "remuneracao" && <RemuneracaoTab colaboradorId={collaboratorId} />}
+            {tabAtiva === "politicas" && <PoliticasTab colaboradorId={collaboratorId} />}
+
+            {fotoModal && verOutro && (
+                <Modal aberto aoFechar={() => setFotoModal(false)} titulo="Foto do colaborador" subtitulo={nomeMostrado}>
+                    <div className="flex flex-col items-center gap-4">
+                        {perfil?.photo_url ? (
+                            <img
+                                src={perfil.photo_url}
+                                alt={nomeMostrado}
+                                className="w-48 h-48 rounded-full object-cover border-4 border-line"
+                            />
+                        ) : (
+                            <div className="w-48 h-48 rounded-full bg-pri-bg text-pri-dark flex items-center justify-center font-serif text-6xl font-semibold">
+                                {iniciais}
+                            </div>
+                        )}
+                        <div className="flex flex-wrap gap-2.5 justify-center">
+                            <button
+                                type="button"
+                                disabled={aCarregarFoto}
+                                onClick={() => fileInputRef.current?.click()}
+                                className="bg-pri text-white rounded-lg px-4 py-2 text-[12.3px] font-semibold hover:bg-pri-dark transition-colors disabled:opacity-40"
+                            >
+                                {aCarregarFoto ? "A carregar..." : perfil?.photo_url ? "Mudar foto" : "Adicionar foto"}
+                            </button>
+                            {perfil?.photo_url && (
+                                <button
+                                    type="button"
+                                    disabled={aCarregarFoto}
+                                    onClick={aoRemoverFoto}
+                                    className="bg-bad text-white rounded-lg px-4 py-2 text-[12.3px] font-semibold hover:opacity-80 transition-opacity disabled:opacity-40"
+                                >
+                                    Remover foto
+                                </button>
+                            )}
+                            <button
+                                type="button"
+                                onClick={() => setFotoModal(false)}
+                                className="bg-paper border border-line rounded-lg px-4 py-2 text-[12.3px] font-semibold text-ink hover:border-pri hover:text-pri transition-colors"
+                            >
+                                Fechar
+                            </button>
+                        </div>
+                    </div>
+                </Modal>
+            )}
         </div>
     );
 }
@@ -209,6 +329,7 @@ function traduzPerfil(role: string): string {
         capital_humano: "Capital Humano",
         comissao: "Comissão de Avaliação",
         administracao: "Administração",
+        admin: "Admin",
     };
     return mapa[role] || role;
 }
