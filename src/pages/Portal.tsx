@@ -33,6 +33,17 @@ const TABS = [
     { chave: "politicas", label: "Políticas" },
 ];
 
+// Situação do vínculo e/ou cessação do contrato do colaborador.
+const SITUACOES_VINCULO = [
+    "Ativo",
+    "Caducidade",
+    "Revogação por mútuo acordo",
+    "Despedimento por justa causa",
+    "Despedimento coletivo / por causas objetivas",
+    "Denúncia (rescisão) pelo trabalhador",
+    "Rescisão pelo trabalhador com justa causa",
+];
+
 interface Perfil {
     employee_number?: string | null;
     admission_date?: string | null;
@@ -79,6 +90,22 @@ export default function Portal() {
     const [perfil, setPerfil] = useState<Perfil | null>(null);
     const [aCarregar, setACarregar] = useState(true);
     const [historico, setHistorico] = useState<{ cycle_name: string; final_score: number | null; classification: string | null }[]>([]);
+    const [aGuardarSituacao, setAGuardarSituacao] = useState(false);
+
+    const situacaoAtual = (perfil?.situation_tags || "").split(",").map((t) => t.trim()).find((t) => SITUACOES_VINCULO.includes(t)) || "";
+
+    const guardarSituacao = async (valor: string) => {
+        if (!verOutro || !collaboratorId) return;
+        setAGuardarSituacao(true);
+        try {
+            const resp = await api.put(`/collaborators/${collaboratorId}/profile`, { situation_tags: valor });
+            setPerfil(resp.data);
+        } catch (err: any) {
+            alert(err.response?.data?.detail || "Erro ao guardar a situação.");
+        } finally {
+            setAGuardarSituacao(false);
+        }
+    };
     useEffect(() => {
         setACarregar(true);
         api.get(baseProfile)
@@ -135,6 +162,22 @@ export default function Portal() {
                 eyebrow={verOutro ? "Portal do colaborador" : "O seu dossier pessoal"}
                 titulo={`Portal do Colaborador — ${nomeMostrado}`}
                 descricao="Do primeiro ao último dia: ficha, documentos, saúde e remuneração — tudo num só lugar."
+                acao={verOutro ? (
+                    <div className="flex items-center gap-2">
+                        <span className="text-[11px] uppercase tracking-wide text-dim">Situação</span>
+                        <select
+                            value={situacaoAtual || "Ativo"}
+                            onChange={(e) => guardarSituacao(e.target.value)}
+                            disabled={aGuardarSituacao}
+                            className="text-[12.5px] bg-panel border border-line rounded-lg px-3 py-2 focus:outline-none focus:border-pri disabled:opacity-50"
+                            title="Situação / cessação do vínculo"
+                        >
+                            {SITUACOES_VINCULO.map((s) => (
+                                <option key={s} value={s}>{s}</option>
+                            ))}
+                        </select>
+                    </div>
+                ) : undefined}
             />
 
             <Tabs tabs={tabsVisiveis} ativo={tabAtiva} aoSelecionar={setTab} />
@@ -173,13 +216,13 @@ export default function Portal() {
                                     {perfil?.job_category && `${!verOutro ? " · " : ""}${perfil.job_category}`}
                                     {perfil?.department && ` · ${perfil.department}`}
                                 </div>
-                                <div className="mt-2 flex flex-wrap gap-1.5">
-                                    {(perfil?.situation_tags || "").split(",").map((t) => t.trim()).filter(Boolean).map((t, i) => (
-                                        <span key={i} className="text-[10.5px] bg-warn-bg text-warn rounded-full px-2 py-0.5 font-medium">{t}</span>
-                                    ))}
-                                    <Tag variante="ok">Ativo</Tag>
-                                </div>
+                            <div className="mt-2 flex flex-wrap gap-1.5">
+                                {(perfil?.situation_tags || "").split(",").map((t) => t.trim()).filter(Boolean).filter((t) => !SITUACOES_VINCULO.includes(t)).map((t, i) => (
+                                    <span key={i} className="text-[10.5px] bg-warn-bg text-warn rounded-full px-2 py-0.5 font-medium">{t}</span>
+                                ))}
+                                {situacaoAtual && <Tag variante="warn">{situacaoAtual}</Tag>}
                             </div>
+                        </div>
                             {historico.length > 0 && historico[historico.length - 1]?.final_score != null && (
                                 <div className="text-right flex-shrink-0">
                                     <div className="text-[28px] font-serif font-semibold text-pri-dark leading-none">

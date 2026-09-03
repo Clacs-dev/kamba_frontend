@@ -130,6 +130,106 @@ const PAISES = [    "Angola", "Moçambique", "Portugal", "Brasil", "Cabo Verde",
     "Malásia", "Filipinas", "Tailândia", "Vietname", "Austrália",
 ];
 
+// Cursos comuns (formação académica) — dropdown com opção "Outro (escrever)".
+const CURSOS_FORMACAO = [
+    "Engenharia Informática",
+    "Engenharia Civil",
+    "Engenharia Electrotécnica",
+    "Engenharia Mecânica",
+    "Gestão de Empresas",
+    "Contabilidade e Auditoria",
+    "Economia",
+    "Direito",
+    "Recursos Humanos",
+    "Marketing",
+    "Gestão Hoteleira",
+    "Enfermagem",
+    "Medicina",
+    "Farmacologia",
+    "Psicologia",
+    "Serviço Social",
+    "Sociologia",
+    "Educação / Pedagogia",
+    "Arquitectura",
+    "Jornalismo / Comunicação",
+    "Relações Internacionais",
+];
+
+// Principais disciplinas — dropdown com opção "Outro (escrever)".
+const DISCIPLINAS_FORMACAO = [
+    "Programação e Desenvolvimento",
+    "Base de Dados",
+    "Redes de Comunicação",
+    "Matemática Aplicada",
+    "Estatística",
+    "Gestão de Projetos",
+    "Contabilidade Geral",
+    "Direito do Trabalho",
+    "Gestão de Pessoas",
+    "Ética e Deontologia",
+    "Comunicação Empresarial",
+    "Liderança e Gestão",
+    "Saúde Pública",
+    "Investigação Científica",
+    "Segurança e Higiene no Trabalho",
+    "Empreendedorismo",
+    "Atendimento ao Cliente",
+    "Inglês Técnico",
+];
+
+// Dropdown com lista pré-definida + opção "Outro" que permite escrever.
+function SelectComOutro({
+    valor,
+    aoMudar,
+    opcoes,
+    placeholder,
+    rotuloOutro,
+    className,
+}: {
+    valor: string;
+    aoMudar: (v: string) => void;
+    opcoes: string[];
+    placeholder?: string;
+    rotuloOutro?: string;
+    className?: string;
+}) {
+    const ePadrao = opcoes.includes(valor);
+    const [outroAtivo, setOutroAtivo] = useState(false);
+    const eOutro = outroAtivo || (!!valor && !ePadrao);
+    return (
+        <>
+            <select
+                value={ePadrao ? valor : eOutro ? "outro" : ""}
+                onChange={(e) => {
+                    if (e.target.value === "outro") {
+                        setOutroAtivo(true);
+                        aoMudar("");
+                    } else {
+                        setOutroAtivo(false);
+                        aoMudar(e.target.value);
+                    }
+                }}
+                className={className}
+            >
+                <option value="">{placeholder || "— escolher —"}</option>
+                {opcoes.map((o) => (
+                    <option key={o} value={o}>{o}</option>
+                ))}
+                <option value="outro">{rotuloOutro || "Outro (escrever)"}</option>
+            </select>
+            {eOutro && (
+                <input
+                    value={valor}
+                    onChange={(e) => aoMudar(e.target.value)}
+                    placeholder="Escreva..."
+                    className={className}
+                    autoFocus
+                />
+            )}
+        </>
+    );
+}
+
 export default function Colaboradores() {
 
     const { user } = useAuth();
@@ -385,19 +485,17 @@ function ModalCadastro({ aoFechar, aoCriar }: { aoFechar: () => void; aoCriar: (
     const [workSchedule, setWorkSchedule] = useState("");
     const [situationTags, setSituationTags] = useState("");
     const [nationality, setNationality] = useState("");
-    const [university, setUniversity] = useState("");
-    const [course, setCourse] = useState("");
     const [cv, setCv] = useState("");
     const [erroFicha, setErroFicha] = useState("");
     const [aGuardarFicha, setAGuardarFicha] = useState(false);
 
     // Formação académica — habilitações literárias repetíveis (licenciatura, mestrado, ...).
-    interface FormacaoLinha { nivel: string; anoInicio: string; anoFim: string; pais: string; }
-    const [formacao, setFormacao] = useState<FormacaoLinha[]>([{ nivel: "", anoInicio: "", anoFim: "", pais: "" }]);
+    interface FormacaoLinha { nivel: string; anoInicio: string; anoFim: string; pais: string; instituicao: string; curso: string; areas: string; }
+    const [formacao, setFormacao] = useState<FormacaoLinha[]>([{ nivel: "", anoInicio: "", anoFim: "", pais: "", instituicao: "", curso: "", areas: "" }]);
     const atualizarFormacao = (i: number, campo: keyof FormacaoLinha, valor: string) =>
         setFormacao(prev => prev.map((f, idx) => idx === i ? { ...f, [campo]: valor } : f));
-    const adicionarFormacao = (i: number) =>
-        setFormacao(prev => [...prev.slice(0, i + 1), { nivel: "", anoInicio: "", anoFim: "", pais: "" }, ...prev.slice(i + 1)]);
+    const adicionarFormacao = () =>
+        setFormacao(prev => [{ nivel: "", anoInicio: "", anoFim: "", pais: "", instituicao: "", curso: "", areas: "" }, ...prev]);
     const removerFormacao = (i: number) =>
         setFormacao(prev => prev.length > 1 ? prev.filter((_, idx) => idx !== i) : prev);
 
@@ -411,50 +509,24 @@ function ModalCadastro({ aoFechar, aoCriar }: { aoFechar: () => void; aoCriar: (
     const removerExperiencia = (i: number) =>
         setExperiencia(prev => prev.length > 1 ? prev.filter((_, idx) => idx !== i) : prev);
 
-    // O país de formação (última linha com país) é que alimenta as sugestões de universidade/curso.
-    const paisFormacao = [...formacao].reverse().find((f) => f.pais.trim())?.pais ?? "";
+    // IA — sugestões de universidades (por linha de formação, consoante o país da linha)
+    const [universities, setUniversities] = useState<string[][]>([]);
+    const [loadingUniv, setLoadingUniv] = useState<boolean[]>([]);
 
-    // IA — universidades e cursos
-    const [universities, setUniversities] = useState<string[]>([]);
-    const [courses, setCourses] = useState<string[]>([]);
-    const [loadingUniv, setLoadingUniv] = useState(false);
-    const [loadingCourses, setLoadingCourses] = useState(false);
-
-    // Buscar universidades quando o país de formação muda
-    useEffect(() => {
-        if (!paisFormacao.trim() || paisFormacao.length < 4) {
-            setUniversities([]);
-            setUniversity("");
-            setCourses([]);
-            setCourse("");
+    const carregarUniversidades = (i: number, pais: string) => {
+        if (!pais.trim() || pais.length < 4) {
+            setUniversities((prev) => { const n = [...prev]; n[i] = []; return n; });
             return;
         }
-        setLoadingUniv(true);
-        const timer = setTimeout(() => {
-            api.post("/ai/universities", { country: paisFormacao })
-                .then((r) => setUniversities(r.data || []))
-                .catch(() => setUniversities([]))
-                .finally(() => setLoadingUniv(false));
-        }, 600);
-        return () => clearTimeout(timer);
-    }, [paisFormacao]);
+        setUnivLoading(i, true);
+        api.post("/ai/universities", { country: pais })
+            .then((r) => setUniversities((prev) => { const n = [...prev]; n[i] = r.data || []; return n; }))
+            .catch(() => setUniversities((prev) => { const n = [...prev]; n[i] = []; return n; }))
+            .finally(() => setUnivLoading(i, false));
+    };
 
-    // Buscar cursos quando a universidade muda
-    useEffect(() => {
-        if (!university.trim() || university.trim().length < 4) {
-            setCourses([]);
-            setCourse("");
-            return;
-        }
-        setLoadingCourses(true);
-        const timer = setTimeout(() => {
-            api.post("/ai/courses", { university, country: paisFormacao })
-                .then((r) => setCourses(r.data || []))
-                .catch(() => setCourses([]))
-                .finally(() => setLoadingCourses(false));
-        }, 800);
-        return () => clearTimeout(timer);
-    }, [university, paisFormacao]);
+    const setUnivLoading = (i: number, v: boolean) =>
+        setLoadingUniv((prev) => { const n = [...prev]; n[i] = v; return n; });
 
     // Cargos (IA) — menu de sugestões para o campo "Cargo".
     const [cargos, setCargos] = useState<string[]>([]);
@@ -525,14 +597,15 @@ function ModalCadastro({ aoFechar, aoCriar }: { aoFechar: () => void; aoCriar: (
                 work_schedule: workSchedule || null,
                 situation_tags: situationTags || null,
                 nationality: nationality || null,
-                university: university || null,
-                course: course || null,
                 cv: cv || null,
                 education: formacao.map((f) => ({
                     nivel: f.nivel || null,
                     ano_inicio: f.anoInicio ? Number(f.anoInicio) : null,
                     ano_fim: f.anoFim ? Number(f.anoFim) : null,
                     pais: f.pais || null,
+                    instituicao: f.instituicao || null,
+                    curso: f.curso || null,
+                    areas: f.areas || null,
                 })),
                 experience: experiencia.map((x) => ({
                     onde: x.onde || null,
@@ -763,65 +836,101 @@ function ModalCadastro({ aoFechar, aoCriar }: { aoFechar: () => void; aoCriar: (
                             <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1.5">Formação académica</label>
                             <div className="space-y-2">
                                 {formacao.map((f, i) => (
-                                    <div key={i} className="flex gap-2 items-start">
-                                        <div className="flex-[1.3]">
-                                            <select
-                                                value={f.nivel}
-                                                onChange={(e) => atualizarFormacao(i, "nivel", e.target.value)}
-                                                className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-pri"
-                                            >
-                                                <option value="">Habilitação literária</option>
-                                                {NIVEIS_FORMACAO.map((n) => (
-                                                    <option key={n} value={n}>{n}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                        <div className="w-[92px]">
-                                            <input
-                                                type="number" min={1900} max={2200}
-                                                value={f.anoInicio}
-                                                onChange={(e) => atualizarFormacao(i, "anoInicio", e.target.value)}
-                                                placeholder="Ano início"
-                                                className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-pri"
-                                            />
-                                        </div>
-                                        <div className="w-[92px]">
-                                            <input
-                                                type="number" min={1900} max={2200}
-                                                value={f.anoFim}
-                                                onChange={(e) => atualizarFormacao(i, "anoFim", e.target.value)}
-                                                placeholder="Ano fim"
-                                                className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-pri"
-                                            />
-                                        </div>
-                                        <div className="flex-1">
-                                            <AutocompleteIA
-                                                value={f.pais}
-                                                onChange={(valor) => atualizarFormacao(i, "pais", valor)}
-                                                options={paises.length ? paises : PAISES}
-                                                onFocus={carregarPaises}
-                                                placeholder="País de formação"
-                                                className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-pri"
-                                            />
-                                        </div>
-                                        <button
-                                            type="button"
-                                            onClick={() => adicionarFormacao(i)}
-                                            title="Adicionar formação"
-                                            className="w-9 h-9 rounded-lg bg-pri-bg text-pri-dark font-bold text-[18px] leading-none hover:bg-pri hover:text-white transition-colors flex-shrink-0"
-                                        >
-                                            +
-                                        </button>
-                                        {formacao.length > 1 && (
+                                    <div key={i} className="border border-line rounded-lg p-3">
+                                        <div className="flex gap-2 items-start">
+                                            <div className="flex-[1.3]">
+                                                <select
+                                                    value={f.nivel}
+                                                    onChange={(e) => atualizarFormacao(i, "nivel", e.target.value)}
+                                                    className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-pri"
+                                                >
+                                                    <option value="">Habilitação literária</option>
+                                                    {NIVEIS_FORMACAO.map((n) => (
+                                                        <option key={n} value={n}>{n}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div className="w-[92px]">
+                                                <input
+                                                    type="number" min={1900} max={2200}
+                                                    value={f.anoInicio}
+                                                    onChange={(e) => atualizarFormacao(i, "anoInicio", e.target.value)}
+                                                    placeholder="Ano início"
+                                                    className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-pri"
+                                                />
+                                            </div>
+                                            <div className="w-[92px]">
+                                                <input
+                                                    type="number" min={1900} max={2200}
+                                                    value={f.anoFim}
+                                                    onChange={(e) => atualizarFormacao(i, "anoFim", e.target.value)}
+                                                    placeholder="Ano fim"
+                                                    className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-pri"
+                                                />
+                                            </div>
+                                            <div className="flex-1">
+                                                <AutocompleteIA
+                                                    value={f.pais}
+                                                    onChange={(valor) => atualizarFormacao(i, "pais", valor)}
+                                                    options={paises.length ? paises : PAISES}
+                                                    onFocus={carregarPaises}
+                                                    placeholder="País de formação"
+                                                    className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-pri"
+                                                />
+                                            </div>
                                             <button
                                                 type="button"
-                                                onClick={() => removerFormacao(i)}
-                                                title="Remover formação"
-                                                className="w-9 h-9 rounded-lg bg-panel border border-line text-dim font-bold text-[18px] leading-none hover:text-bad hover:border-bad transition-colors flex-shrink-0"
+                                                onClick={adicionarFormacao}
+                                                title="Adicionar formação"
+                                                className="w-9 h-9 rounded-lg bg-pri-bg text-pri-dark font-bold text-[18px] leading-none hover:bg-pri hover:text-white transition-colors flex-shrink-0"
                                             >
-                                                ×
+                                                +
                                             </button>
-                                        )}
+                                            {formacao.length > 1 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removerFormacao(i)}
+                                                    title="Remover formação"
+                                                    className="w-9 h-9 rounded-lg bg-panel border border-line text-dim font-bold text-[18px] leading-none hover:text-bad hover:border-bad transition-colors flex-shrink-0"
+                                                >
+                                                    ×
+                                                </button>
+                                            )}
+                                        </div>
+                                        <div className="flex gap-2 items-start mt-2">
+                                            <div className="flex-1">
+                                                <AutocompleteIA
+                                                    value={f.instituicao}
+                                                    onChange={(valor) => atualizarFormacao(i, "instituicao", valor)}
+                                                    options={universities[i] || []}
+                                                    loading={loadingUniv[i]}
+                                                    disabled={!f.pais.trim()}
+                                                    onFocus={() => carregarUniversidades(i, f.pais)}
+                                                    placeholder={f.pais.trim() ? "Instituição de ensino (universidade)" : "Defina o país de formação primeiro"}
+                                                    className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-pri"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="mt-2">
+                                            <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Curso</label>
+                                            <SelectComOutro
+                                                valor={f.curso}
+                                                aoMudar={(valor) => atualizarFormacao(i, "curso", valor)}
+                                                opcoes={CURSOS_FORMACAO}
+                                                placeholder="— escolher curso —"
+                                                className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-pri"
+                                            />
+                                        </div>
+                                        <div className="mt-2">
+                                            <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Principais disciplinas</label>
+                                            <SelectComOutro
+                                                valor={f.areas}
+                                                aoMudar={(valor) => atualizarFormacao(i, "areas", valor)}
+                                                opcoes={DISCIPLINAS_FORMACAO}
+                                                placeholder="— escolher disciplina —"
+                                                className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-pri"
+                                            />
+                                        </div>
                                     </div>
                                 ))}
                             </div>
@@ -891,28 +1000,6 @@ function ModalCadastro({ aoFechar, aoCriar }: { aoFechar: () => void; aoCriar: (
                             <input value={workSchedule} onChange={(e) => setWorkSchedule(e.target.value)} placeholder="Ex.: 08h-16h30" className={inputCls} /></div>
                         <div><label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Nacionalidade</label>
                             <input value={nationality} onChange={(e) => setNationality(e.target.value)} placeholder="Ex.: Angolana" className={inputCls} /></div>
-                        <div><label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Universidade</label>
-                            <AutocompleteIA
-                                value={university}
-                                onChange={setUniversity}
-                                options={universities}
-                                loading={loadingUniv}
-                                disabled={!paisFormacao.trim()}
-                                placeholder={loadingUniv ? "A carregar sugestões..." : paisFormacao.trim() ? "Digite ou escolha a universidade" : "Defina o país de formação primeiro"}
-                                className={inputCls}
-                            />
-                        </div>
-                        <div><label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Curso</label>
-                            <AutocompleteIA
-                                value={course}
-                                onChange={setCourse}
-                                options={courses}
-                                loading={loadingCourses}
-                                disabled={!university.trim()}
-                                placeholder={loadingCourses ? "A carregar sugestões..." : "Digite ou escolha o curso"}
-                                className={inputCls}
-                            />
-                        </div>
                     </div>
                     <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Tags de situação</label>
                     <input value={situationTags} onChange={(e) => setSituationTags(e.target.value)} placeholder="separadas por vírgula" className={inputCls} />
@@ -1181,6 +1268,12 @@ function ModalDadosRh({ colaborador, aoFechar, aoGuardar }: { colaborador: Colab
     const [course, setCourse] = useState("");
     const [cv, setCv] = useState("");
 
+    // Formação e experiência (JSON do perfil).
+    interface FormacaoLinha { nivel: string; anoInicio: string; anoFim: string; pais: string; }
+    const [formacao, setFormacao] = useState<FormacaoLinha[]>([]);
+    interface ExperienciaLinha { onde: string; anoInicio: string; anoFim: string; funcao: string; }
+    const [experiencia, setExperiencia] = useState<ExperienciaLinha[]>([]);
+
     // IA — universidades e cursos
     const [universities, setUniversities] = useState<string[]>([]);
     const [coursesList, setCoursesList] = useState<string[]>([]);
@@ -1322,6 +1415,19 @@ function ModalDadosRh({ colaborador, aoFechar, aoGuardar }: { colaborador: Colab
                 setUniversity(p.university || "");
                 setCourse(p.course || "");
                 setCv(p.cv || "");
+                // Carrega formação e experiência do JSON.
+                if (Array.isArray(p.education)) {
+                    setFormacao(p.education.map((e: any) => ({
+                        nivel: e.nivel || "", anoInicio: e.ano_inicio ? String(e.ano_inicio) : "",
+                        anoFim: e.ano_fim ? String(e.ano_fim) : "", pais: e.pais || "",
+                    })));
+                }
+                if (Array.isArray(p.experience)) {
+                    setExperiencia(p.experience.map((x: any) => ({
+                        onde: x.onde || "", anoInicio: x.ano_inicio ? String(x.ano_inicio) : "",
+                        anoFim: x.ano_fim ? String(x.ano_fim) : "", funcao: x.funcao || "",
+                    })));
+                }
             })
             .catch(() => { })
             .finally(() => setFichaCarregada(true));
@@ -1360,6 +1466,18 @@ function ModalDadosRh({ colaborador, aoFechar, aoGuardar }: { colaborador: Colab
                 university: university || null,
                 course: course || null,
                 cv: cv || null,
+                education: formacao.map((f) => ({
+                    nivel: f.nivel || null,
+                    ano_inicio: f.anoInicio ? Number(f.anoInicio) : null,
+                    ano_fim: f.anoFim ? Number(f.anoFim) : null,
+                    pais: f.pais || null,
+                })),
+                experience: experiencia.map((x) => ({
+                    onde: x.onde || null,
+                    ano_inicio: x.anoInicio ? Number(x.anoInicio) : null,
+                    ano_fim: x.anoFim ? Number(x.anoFim) : null,
+                    funcao: x.funcao || null,
+                })),
             });
             aoGuardar();
         } catch (e) { falhou(e); }
@@ -1511,10 +1629,58 @@ function ModalDadosRh({ colaborador, aoFechar, aoGuardar }: { colaborador: Colab
                     />
                     <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">CV / Notas</label>
                     <textarea value={cv} onChange={(e) => setCv(e.target.value)} rows={5} placeholder="Biografia, experiência profissional, competências — o RH digitaliza aqui." className={`${inputCls} resize-y`} />
-                    <button onClick={gravarFicha} disabled={!fichaCarregada}
-                        className="bg-pri text-white rounded-lg px-4 py-2 text-[12.3px] font-semibold hover:bg-pri-dark transition-colors disabled:opacity-40">
-                        Guardar ficha
-                    </button>
+
+                    {/* Formação académica guardada */}
+                    {formacao.length > 0 && (
+                        <div className="mt-3">
+                            <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Formação académica</label>
+                            <div className="space-y-1">
+                                {formacao.map((f, i) => (
+                                    <div key={i} className="flex gap-2 text-[12px] px-2 py-1 bg-panel border border-line rounded-lg">
+                                        <span className="font-semibold text-ink">{f.nivel || "—"}</span>
+                                        {f.anoInicio && <span className="text-dim">{f.anoInicio}{f.anoFim ? ` – ${f.anoFim}` : ""}</span>}
+                                        {f.pais && <span className="text-dim">— {f.pais}</span>}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Experiência profissional guardada */}
+                    {experiencia.length > 0 && (
+                        <div className="mt-3">
+                            <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Experiência profissional</label>
+                            <div className="space-y-1">
+                                {experiencia.map((x, i) => (
+                                    <div key={i} className="flex gap-2 text-[12px] px-2 py-1 bg-panel border border-line rounded-lg">
+                                        {x.onde && <span className="font-semibold text-ink">{x.onde}</span>}
+                                        {x.anoInicio && <span className="text-dim">{x.anoInicio}{x.anoFim ? ` – ${x.anoFim}` : ""}</span>}
+                                        {x.funcao && <span className="text-dim">— {x.funcao}</span>}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="flex gap-2 mt-4">
+                        <button onClick={gravarFicha} disabled={!fichaCarregada}
+                            className="bg-pri text-white rounded-lg px-4 py-2 text-[12.3px] font-semibold hover:bg-pri-dark transition-colors disabled:opacity-40">
+                            Guardar ficha
+                        </button>
+                        <button
+                            onClick={async () => {
+                                const token = localStorage.getItem("kamba_token");
+                                const url = `${api.defaults.baseURL}/collaborators/${colaborador.id}/cv-pdf`;
+                                const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+                                const blob = await resp.blob();
+                                const blobUrl = URL.createObjectURL(blob);
+                                window.open(blobUrl, "_blank");
+                            }}
+                            className="inline-flex items-center gap-1.5 bg-panel border border-line rounded-lg px-4 py-2 text-[12.3px] font-semibold text-ink hover:border-pri hover:text-pri transition-colors"
+                        >
+                            Gerar CV (PDF)
+                        </button>
+                    </div>
                 </div>
             )}
 

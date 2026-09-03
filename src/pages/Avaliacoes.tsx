@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import FormularioAvaliacao from "../components/avaliacao/FormularioAvaliacao";
 import BlocoValidacao from "../components/avaliacao/BlocoValidacao";
@@ -39,6 +39,7 @@ interface ObjetivoPactuado {
 
 interface Avaliacao {
     id: number;
+    cycle_id: number;
     collaborator_id: number;
     director_id: number;
     category: string;
@@ -52,6 +53,21 @@ interface Avaliacao {
 interface Ciclo {
     id: number;
     name: string;
+    form_config?: { stages: StageConfig[] } | null;
+}
+
+interface StageItem {
+    description: string;
+    weight?: number | null;
+    scale?: string[] | null;
+}
+
+interface StageConfig {
+    number: number;
+    name: string;
+    weight: number;
+    stage_type: "objectives" | "competencies" | "values" | "notes";
+    items: StageItem[];
 }
 
 interface Colaborador {
@@ -69,6 +85,7 @@ export default function Avaliacoes() {
     const [erro] = useState("");
     const [modalCiclo, setModalCiclo] = useState(false);
     const [modalAvaliacao, setModalAvaliacao] = useState(false);
+    const [cicloAConfigurar, setCicloAConfigurar] = useState<Ciclo | null>(null);
 
     const eGestor = user?.role === "capital_humano" || user?.role === "administracao";
 
@@ -121,6 +138,30 @@ export default function Avaliacoes() {
                 </div>
             )}
 
+            {eGestor && ciclos.length > 0 && (
+                <Cartao className="mb-4">
+                    <h3 className="text-[14.5px] mb-3">Ciclos de avaliação</h3>
+                    <div className="space-y-2">
+                        {ciclos.map((ciclo) => (
+                            <div key={ciclo.id} className="flex items-center justify-between py-2 border-b border-line2 last:border-0">
+                                <div>
+                                    <span className="text-[13.5px] font-semibold text-strong">{ciclo.name}</span>
+                                    <span className="text-dim text-[11.5px] ml-2">
+                                        {ciclo.form_config?.stages?.length ?? 4} etapas configuradas
+                                    </span>
+                                </div>
+                                <button
+                                    onClick={() => setCicloAConfigurar(ciclo)}
+                                    className="text-[11.5px] font-semibold text-pri hover:text-pri-dark transition-colors"
+                                >
+                                    Configurar formulário
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </Cartao>
+            )}
+
             {aCarregar ? (
                 <p className="text-dim text-sm">A carregar avaliações...</p>
             ) : erro ? (
@@ -165,6 +206,7 @@ export default function Avaliacoes() {
                                 <div className="mt-4 pt-4 border-t border-line">
                                     <FormularioAvaliacao
                                         evaluationId={av.id}
+                                        cycleId={av.cycle_id}
                                         modo="auto"
                                         categoria={av.category}
                                         objetivosDefinidos={av.objectives ?? null}
@@ -180,6 +222,7 @@ export default function Avaliacoes() {
                                     </Notice>
                                     <FormularioAvaliacao
                                         evaluationId={av.id}
+                                        cycleId={av.cycle_id}
                                         modo="director"
                                         categoria={av.category}
                                         objetivosDefinidos={av.objectives ?? null}
@@ -217,6 +260,13 @@ export default function Avaliacoes() {
                     colaboradores={colaboradores}
                     aoFechar={() => setModalAvaliacao(false)}
                     aoCriar={() => { setModalAvaliacao(false); carregar(); }}
+                />
+            )}
+            {cicloAConfigurar && (
+                <ModalConfigAvaliacao
+                    ciclo={cicloAConfigurar}
+                    aoFechar={() => setCicloAConfigurar(null)}
+                    aoGuardar={() => { setCicloAConfigurar(null); carregar(); }}
                 />
             )}
         </div>
@@ -267,6 +317,265 @@ function ModalCiclo({ aoFechar, aoCriar }: { aoFechar: () => void; aoCriar: () =
     );
 }
 
+// ---- Modal: configurar formulário do ciclo ----
+const TIPOS_LABEL: Record<string, string> = {
+    objectives: "Objetivos",
+    competencies: "Competências",
+    values: "Valores e conduta",
+    notes: "Notas",
+};
+
+const DEFAULT_STAGES: StageConfig[] = [
+    { number: 1, name: "Objectivos pactuados", weight: 50, stage_type: "objectives", items: [
+        { description: "Atingir 100% da meta anual de vendas da equipa", weight: 40 },
+        { description: "Reduzir o prazo médio de recebimento da carteira para 60 dias", weight: 30 },
+        { description: "Garantir a adopção do CRM por 90% da equipa comercial", weight: 30 },
+    ]},
+    { number: 2, name: "Competências", weight: 35, stage_type: "competencies", items: [
+        { description: "Orientação para resultados" },
+        { description: "Trabalho em equipa e colaboração" },
+        { description: "Ética e conformidade" },
+        { description: "Comunicação" },
+        { description: "Adaptabilidade e melhoria contínua" },
+    ]},
+    { number: 3, name: "Valores e conduta", weight: 15, stage_type: "values", items: [
+        { description: "Cumpri o Código de Ética e Conduta da empresa" },
+        { description: "Cumpri as normas de segurança e saúde no trabalho" },
+        { description: "Mantive assiduidade e pontualidade regulares" },
+    ]},
+];
+
+function ModalConfigAvaliacao({ ciclo, aoFechar, aoGuardar }: {
+    ciclo: Ciclo;
+    aoFechar: () => void;
+    aoGuardar: () => void;
+}) {
+    const [stages, setStages] = useState<StageConfig[]>(() => {
+        if (ciclo.form_config?.stages && ciclo.form_config.stages.length > 0) {
+            return ciclo.form_config.stages.map((s, i) => ({ ...s, number: i + 1 }));
+        }
+        return DEFAULT_STAGES.map((s, i) => ({ ...s, number: i + 1 }));
+    });
+    const [aCarregar, setACarregar] = useState(false);
+    const [erro, setErro] = useState("");
+    const scrollRef = useRef<HTMLDivElement>(null);
+
+    const pesoTotal = stages.reduce((acc, s) => acc + (s.weight || 0), 0);
+
+    const alterarStage = (idx: number, campo: keyof StageConfig, valor: any) => {
+        setStages((prev) => prev.map((s, i) => {
+            if (i !== idx) return s;
+            if (campo === "weight") {
+                const n = Number(valor);
+                return { ...s, weight: Number.isFinite(n) ? n : 0 };
+            }
+            return { ...s, [campo]: valor as never };
+        }));
+    };
+
+    const alterarItem = (stageIdx: number, itemIdx: number, campo: keyof StageItem, valor: string) => {
+        setStages((prev) => prev.map((s, i) => {
+            if (i !== stageIdx) return s;
+            return {
+                ...s,
+                items: s.items.map((it, j) => {
+                    if (j !== itemIdx) return it;
+                    if (campo === "weight") {
+                        const n = Number(valor);
+                        return { ...it, weight: Number.isFinite(n) ? n : null };
+                    }
+                    return { ...it, [campo]: valor };
+                }),
+            };
+        }));
+    };
+
+    const adicionarItem = (stageIdx: number) => {
+        setStages((prev) => prev.map((s, i) => {
+            if (i !== stageIdx) return s;
+            return { ...s, items: [...s.items, { description: "Novo item", weight: null }] };
+        }));
+    };
+
+    const removerItem = (stageIdx: number, itemIdx: number) => {
+        setStages((prev) => prev.map((s, i) => {
+            if (i !== stageIdx) return s;
+            if (s.items.length <= 1) return s;
+            return { ...s, items: s.items.filter((_, j) => j !== itemIdx) };
+        }));
+    };
+
+    const adicionarStage = () => {
+        setStages((prev) => [
+            ...prev,
+            { number: prev.length + 1, name: "Nova etapa", weight: 0, stage_type: "objectives", items: [{ description: "Novo objetivo", weight: null }] },
+        ]);
+        requestAnimationFrame(() => {
+            scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+        });
+    };
+
+    const removerStage = (idx: number) => {
+        setStages((prev) => {
+            if (prev.length <= 1) return prev;
+            return prev.filter((_, i) => i !== idx).map((s, i) => ({ ...s, number: i + 1 }));
+        });
+    };
+
+    const guardar = async () => {
+        setErro("");
+        setACarregar(true);
+        try {
+            await api.put(`/evaluations/cycles/${ciclo.id}/config`, { stages });
+            aoGuardar();
+        } catch (err: any) {
+            setErro(err.response?.data?.detail || "Erro ao guardar configuração.");
+        } finally {
+            setACarregar(false);
+        }
+    };
+
+    const reporDefaults = async () => {
+        setErro("");
+        setACarregar(true);
+        try {
+            await api.post(`/evaluations/cycles/${ciclo.id}/config/reset`);
+            setStages(DEFAULT_STAGES.map((s, i) => ({ ...s, number: i + 1 })));
+        } catch (err: any) {
+            setErro(err.response?.data?.detail || "Erro ao repor configuração.");
+        } finally {
+            setACarregar(false);
+        }
+    };
+
+    return (
+        <Modal aberto aoFechar={aoFechar} titulo={`Configurar formulário — ${ciclo.name}`}
+            subtitulo="Defina as etapas, ponderações e itens do formulário de avaliação para este ciclo"
+            largura="xl">
+            <div ref={scrollRef} className="space-y-4 max-h-[65vh] overflow-y-auto pr-1">
+                <div className="flex items-center justify-between">
+                    <span className={`text-[12.3px] font-semibold ${Math.round(pesoTotal * 10) / 10 === 100 ? "text-ok" : "text-warn"}`}>
+                        Peso total das etapas: {Math.round(pesoTotal * 10) / 10}%
+                    </span>
+                    <div className="flex gap-2">
+                        <button onClick={reporDefaults} disabled={aCarregar}
+                            className="text-[11px] font-semibold text-dim hover:text-ink transition-colors disabled:opacity-40">
+                            Repor Valores Padrão
+                        </button>
+                        <button onClick={adicionarStage} disabled={aCarregar}
+                            className="text-[11px] font-semibold text-pri hover:text-pri-dark transition-colors disabled:opacity-40">
+                            + Adicionar etapa
+                        </button>
+                    </div>
+                </div>
+
+                {stages.map((stage, si) => (
+                    <div key={si} className="border border-line rounded-xl p-4 space-y-3">
+                        <div className="flex items-start gap-3">
+                            <div className="flex-1 grid grid-cols-[1fr_80px_140px] gap-2 items-center">
+                                <input
+                                    value={stage.name}
+                                    onChange={(e) => alterarStage(si, "name", e.target.value)}
+                                    placeholder={`Etapa ${si + 1}`}
+                                    className="bg-panel border border-line rounded-lg px-3 py-2 text-[13px] font-semibold focus:outline-none focus:border-pri"
+                                />
+                                <div className="flex items-center gap-1">
+                                    <input
+                                        type="number" min={0} max={100}
+                                        value={stage.weight}
+                                        onChange={(e) => alterarStage(si, "weight", Number(e.target.value))}
+                                        className="w-16 text-center font-semibold bg-panel border border-line rounded-lg px-2 py-2 text-[13px] focus:outline-none focus:border-pri"
+                                    />
+                                    <span className="text-dim text-[11px]">%</span>
+                                </div>
+                                <select
+                                    value={stage.stage_type}
+                                    onChange={(e) => alterarStage(si, "stage_type", e.target.value)}
+                                    className="bg-panel border border-line rounded-lg px-2 py-2 text-[12px] focus:outline-none focus:border-pri"
+                                >
+                                    {Object.entries(TIPOS_LABEL).map(([v, l]) => (
+                                        <option key={v} value={v}>{l}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            {stages.length > 1 && (
+                                <button onClick={() => removerStage(si)} title="Remover etapa"
+                                    className="text-bad text-[18px] leading-none hover:opacity-70 transition-opacity mt-1">×</button>
+                            )}
+                        </div>
+
+                        {stage.stage_type === "objectives" ? (
+                            <div className="space-y-2 pl-1">
+                                <div className="text-[10.5px] uppercase tracking-wide text-dim">Itens / objetivos</div>
+                                {stage.items.map((item, ii) => (
+                                    <div key={ii} className="flex items-center gap-2">
+                                        <input
+                                            value={item.description}
+                                            onChange={(e) => alterarItem(si, ii, "description", e.target.value)}
+                                            placeholder={`Objetivo ${ii + 1}`}
+                                            className="flex-1 bg-panel border border-line rounded-lg px-3 py-1.5 text-[12.5px] focus:outline-none focus:border-pri"
+                                        />
+                                        <input
+                                            type="number" min={0} max={100}
+                                            value={item.weight ?? ""}
+                                            onChange={(e) => alterarItem(si, ii, "weight", e.target.value === "" ? "0" : e.target.value)}
+                                            placeholder="Peso"
+                                            className="w-16 text-center text-[12px] bg-panel border border-line rounded-lg px-2 py-1.5 focus:outline-none focus:border-pri"
+                                        />
+                                        <span className="text-dim text-[10px]">%</span>
+                                        {stage.items.length > 1 && (
+                                            <button onClick={() => removerItem(si, ii)} title="Remover"
+                                                className="text-bad text-[16px] leading-none hover:opacity-70">×</button>
+                                        )}
+                                    </div>
+                                ))}
+                                <button onClick={() => adicionarItem(si)}
+                                    className="text-[11px] font-semibold text-pri hover:text-pri-dark transition-colors">
+                                    + Adicionar item
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="space-y-2 pl-1">
+                                <div className="text-[10.5px] uppercase tracking-wide text-dim">Itens</div>
+                                {stage.items.map((item, ii) => (
+                                    <div key={ii} className="flex items-center gap-2">
+                                        <input
+                                            value={item.description}
+                                            onChange={(e) => alterarItem(si, ii, "description", e.target.value)}
+                                            placeholder={`Item ${ii + 1}`}
+                                            className="flex-1 bg-panel border border-line rounded-lg px-3 py-1.5 text-[12.5px] focus:outline-none focus:border-pri"
+                                        />
+                                        {stage.items.length > 1 && (
+                                            <button onClick={() => removerItem(si, ii)} title="Remover"
+                                                className="text-bad text-[16px] leading-none hover:opacity-70">×</button>
+                                        )}
+                                    </div>
+                                ))}
+                                <button onClick={() => adicionarItem(si)}
+                                    className="text-[11px] font-semibold text-pri hover:text-pri-dark transition-colors">
+                                    + Adicionar item
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                ))}
+            </div>
+
+            {erro && <p className="text-bad text-sm mt-3">{erro}</p>}
+            <div className="flex gap-2.5 mt-4 pt-4 border-t border-line">
+                <button onClick={aoFechar}
+                    className="bg-paper border border-line rounded-lg px-4 py-2 text-sm text-ink hover:border-pri hover:text-pri transition-colors">
+                    Cancelar
+                </button>
+                <button onClick={guardar} disabled={aCarregar}
+                    className="bg-pri text-white rounded-lg px-4 py-2 text-[12.3px] font-semibold hover:bg-pri-dark transition-colors disabled:opacity-40">
+                    {aCarregar ? "A guardar..." : "Guardar configuração"}
+                </button>
+            </div>
+        </Modal>
+    );
+}
+
 // ---- Modal: criar avaliação ----
 function ModalAvaliacao({ ciclos, colaboradores, aoFechar, aoCriar }: {
     ciclos: Ciclo[];
@@ -281,43 +590,28 @@ function ModalAvaliacao({ ciclos, colaboradores, aoFechar, aoCriar }: {
     const [category, setCategory] = useState("tecnico");
     const [direcao, setDirecao] = useState("");
     const [direcaoOutra, setDirecaoOutra] = useState("");
-    const [objs, setObjs] = useState<{ description: string; weight: string }[]>([{ description: "", weight: "" }]);
     const [erro, setErro] = useState("");
     const [aCarregar, setACarregar] = useState(false);
     const { user } = useAuth();
-    // Diretores disponíveis (para escolher quem avalia).
     const diretores = colaboradores.filter((c) => c.role === "director");
 
     const direcaoFinal = direcao === "outro" ? direcaoOutra.trim() : direcao;
 
-    const alterarObjetivo = (i: number, campo: "description" | "weight", valor: string) => {
-        setObjs((prev) => prev.map((o, idx) => (idx === i ? { ...o, [campo]: valor } : o)));
-    };
-    const adicionarObjetivo = () => setObjs((prev) => [...prev, { description: "", weight: "" }]);
-    const removerObjetivo = (i: number) =>
-        setObjs((prev) => (prev.length === 1 ? prev : prev.filter((_, idx) => idx !== i)));
-
-    // Objetivos pactuados: descrições preenchidas, pesos válidos e a somar 100%.
-    const totalPeso = objs.reduce((acc, o) => acc + (Number(o.weight) || 0), 0);
-    const objetivosOk =
-        objs.every((o) => o.description.trim().length >= 2 && Number(o.weight) > 0) &&
-        Math.round(totalPeso * 10) / 10 === 100;
+    const cicloSeleccionado = ciclos.find((c) => c.id === cycleId);
 
     const podeSubmeter = (modo === "individual" ? !!collaboratorId : !!direcaoFinal)
-        && !!directorId && objetivosOk;
+        && !!directorId && !!cicloSeleccionado;
 
     const submeter = async () => {
         setErro("");
         setACarregar(true);
         try {
-            const objetivoData = objs.map((o) => ({ description: o.description.trim(), weight: Number(o.weight) }));
             if (modo === "direcao") {
                 await api.post("/evaluations/by-direction", {
                     cycle_id: cycleId,
                     director_id: directorId,
                     department: direcaoFinal,
                     category,
-                    objectives: objetivoData,
                 });
             } else {
                 await api.post("/evaluations", {
@@ -325,7 +619,6 @@ function ModalAvaliacao({ ciclos, colaboradores, aoFechar, aoCriar }: {
                     collaborator_id: collaboratorId,
                     director_id: directorId,
                     category,
-                    objectives: objetivoData,
                 });
             }
             aoCriar();
@@ -338,7 +631,7 @@ function ModalAvaliacao({ ciclos, colaboradores, aoFechar, aoCriar }: {
 
     return (
         <Modal aberto={true} aoFechar={aoFechar} titulo="Criar avaliação"
-            subtitulo="Inicia o fluxo de avaliação com os objetivos pactuados definidos pelo Capital Humano">
+            subtitulo="Selecione o ciclo configurado — os objectivos e competências vêm do form_config">
             <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Alcance</label>
             <div className="flex gap-2 mb-3">
                 <button onClick={() => setModo("individual")}
@@ -404,44 +697,40 @@ function ModalAvaliacao({ ciclos, colaboradores, aoFechar, aoCriar }: {
                 <option value="dirigente">Dirigente</option>
             </select>
 
-            <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">
-                Objetivos pactuados <span className="normal-case">(definidos por si — os pesos têm de somar 100%)</span>
-            </label>
-            <div className="border border-line rounded-xl p-3 mb-4 space-y-2">
-                {objs.map((o, i) => (
-                    <div key={i} className="flex items-center gap-2">
-                        <input
-                            value={o.description}
-                            onChange={(e) => alterarObjetivo(i, "description", e.target.value)}
-                            placeholder={`Objetivo ${i + 1}…`}
-                            className="flex-1 bg-panel border border-line rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-pri"
-                        />
-                        <input
-                            type="number" min={0} max={100}
-                            value={o.weight}
-                            onChange={(e) => alterarObjetivo(i, "weight", e.target.value)}
-                            placeholder="Peso"
-                            className="w-20 text-center font-semibold bg-panel border border-line rounded-lg px-2 py-2 text-[13px] focus:outline-none focus:border-pri"
-                        />
-                        <span className="text-dim text-[11px]">%</span>
-                        {objs.length > 1 && (
-                            <button onClick={() => removerObjetivo(i)} title="Remover objetivo"
-                                className="text-bad text-[18px] leading-none hover:opacity-70 transition-opacity">
-                                ×
-                            </button>
-                        )}
+            {cicloSeleccionado?.form_config?.stages && (
+                <div className="border border-line rounded-xl p-3 mb-4 space-y-2">
+                    <div className="text-[10.5px] uppercase tracking-wide text-dim mb-1">
+                        Formulário do ciclo seleccionado
                     </div>
-                ))}
-                <div className="flex items-center justify-between pt-1">
-                    <button type="button" onClick={adicionarObjetivo}
-                        className="text-[11.5px] font-semibold text-pri hover:text-pri-dark transition-colors">
-                        + Adicionar objetivo
-                    </button>
-                    <span className={`text-[11.5px] font-semibold ${objetivosOk ? "text-ok" : "text-warn"}`}>
-                        Pesos: {Math.round(totalPeso * 10) / 10}%
-                    </span>
+                    {(cicloSeleccionado.form_config as any).stages.map((s: any, i: number) => (
+                        <div key={i} className="py-1.5 border-b border-line2 last:border-0">
+                            <div className="text-[12.5px] font-semibold text-strong">
+                                Etapa {s.number} · {s.name}
+                                <span className="text-dim font-normal ml-1">(peso {s.weight}%)</span>
+                            </div>
+                            {s.items?.length > 0 && s.stage_type === "objectives" && (
+                                <div className="ml-3 mt-1 space-y-0.5">
+                                    {s.items.map((it: any, j: number) => (
+                                        <div key={j} className="text-[12px] text-dim">
+                                            {j + 1}. {it.description}
+                                            {it.weight != null && (
+                                                <span className="bg-pri-bg text-pri-dark text-[10px] font-semibold px-1.5 py-0.5 rounded-full ml-1">
+                                                    {it.weight}%
+                                                </span>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            {s.items?.length > 0 && s.stage_type !== "objectives" && (
+                                <div className="ml-3 mt-1 text-[11.5px] text-dim">
+                                    {s.items.length} {s.stage_type === "competencies" ? "competências" : s.stage_type === "values" ? "itens" : "itens"}
+                                </div>
+                            )}
+                        </div>
+                    ))}
                 </div>
-            </div>
+            )}
 
             {erro && <p className="text-bad text-sm mb-3">{erro}</p>}
             <div className="flex gap-2.5">

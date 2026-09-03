@@ -5,21 +5,7 @@ import { Chip, ChipGroup } from "../ui/Chip";
 import ScoreBox from "../ui/ScoreBox";
 import { normalizarLado, type LadoComparacao } from "../../lib/comparison";
 
-const COMPETENCIAS = [
-    { chave: "orientacao_resultados", label: "Orientação para resultados" },
-    { chave: "trabalho_equipa", label: "Trabalho em equipa e colaboração" },
-    { chave: "etica_conformidade", label: "Ética e conformidade" },
-    { chave: "comunicacao", label: "Comunicação" },
-    { chave: "adaptabilidade", label: "Adaptabilidade e melhoria contínua" },
-];
-
-const VALORES = [
-    { chave: "codigo_etica", label: "Cumpri o Código de Ética e Conduta" },
-    { chave: "seguranca_saude", label: "Cumpri as normas de segurança e saúde no trabalho" },
-    { chave: "assiduidade_pontualidade", label: "Mantive assiduidade e pontualidade regulares" },
-];
-
-const ESCALA = [
+const ESCALA_DEFAULT = [
     { v: 1, l: "Raramente" },
     { v: 2, l: "Às vezes" },
     { v: 3, l: "Com regularidade" },
@@ -27,41 +13,131 @@ const ESCALA = [
     { v: 5, l: "Sempre" },
 ];
 
-const PESOS = {
-    tecnico: { objectives: 0.5, competencies: 0.35, values: 0.15 },
-    dirigente: { objectives: 0.6, competencies: 0.25, values: 0.15 },
-};
+interface FormItem {
+    description: string;
+    weight?: number | null;
+    scale?: string[] | null;
+}
+
+interface FormStage {
+    number: number;
+    name: string;
+    weight: number;
+    stage_type: "objectives" | "competencies" | "values" | "notes";
+    items: FormItem[];
+}
 
 interface ObjetivoLinha {
     description: string;
-    weight: string;
+    weight: number;
     execution: string;
 }
 
 interface Props {
     evaluationId: number;
-    modo: "auto" | "director"; // autoavaliação ou avaliação do director
-    categoria?: string; // "tecnico" | "dirigente" — define as ponderações
-    objetivosDefinidos?: { description: string; weight: number }[] | null; // objetivos pactuados definidos pelo Capital Humano na criação
+    cycleId?: number;
+    modo: "auto" | "director";
+    categoria?: string;
+    objetivosDefinidos?: { description: string; weight: number }[] | null;
     aoSubmeter: () => void;
 }
 
-export default function FormularioAvaliacao({ evaluationId, modo, categoria = "tecnico", objetivosDefinidos = null, aoSubmeter }: Props) {
+export default function FormularioAvaliacao({ evaluationId, cycleId, modo, categoria = "tecnico", objetivosDefinidos = null, aoSubmeter }: Props) {
     const pactuados = !!objetivosDefinidos && objetivosDefinidos.length > 0;
-    const [objs, setObjs] = useState<ObjetivoLinha[]>(() =>
-        pactuados
-            ? objetivosDefinidos!.map((o) => ({ description: o.description, weight: String(o.weight), execution: "" }))
-            : [{ description: "", weight: "100", execution: "" }]
-    );
+
+    const [stages, setStages] = useState<FormStage[]>([]);
+    const [configLoaded, setConfigLoaded] = useState(false);
+    const [objs, setObjs] = useState<ObjetivoLinha[]>([]);
     const [comps, setComps] = useState<Record<string, number>>({});
     const [vals, setVals] = useState<Record<string, boolean>>({});
     const [erro, setErro] = useState("");
     const [aCarregar, setACarregar] = useState(false);
     const [auto, setAuto] = useState<LadoComparacao | null>(null);
 
+    const PESOS = {
+        tecnico: { objectives: 50, competencies: 35, values: 15 },
+        dirigente: { objectives: 60, competencies: 25, values: 15 },
+    };
     const pesos = PESOS[categoria as keyof typeof PESOS] ?? PESOS.tecnico;
 
-    // No modo director, mostra a autoavaliação do colaborador lado a lado.
+    useEffect(() => {
+        if (!cycleId) {
+            setStages([
+                { number: 1, name: "Objectivos pactuados", weight: 50, stage_type: "objectives", items: [
+                    { description: "Atingir 100% da meta anual de vendas da equipa", weight: 40 },
+                    { description: "Reduzir o prazo médio de recebimento da carteira para 60 dias", weight: 30 },
+                    { description: "Garantir a adopção do CRM por 90% da equipa comercial", weight: 30 },
+                ]},
+                { number: 2, name: "Competências", weight: 35, stage_type: "competencies", items: [
+                    { description: "Orientação para resultados" },
+                    { description: "Trabalho em equipa e colaboração" },
+                    { description: "Ética e conformidade" },
+                    { description: "Comunicação" },
+                    { description: "Adaptabilidade e melhoria contínua" },
+                ]},
+                { number: 3, name: "Valores e conduta", weight: 15, stage_type: "values", items: [
+                    { description: "Cumpri o Código de Ética e Conduta da empresa" },
+                    { description: "Cumpri as normas de segurança e saúde no trabalho" },
+                    { description: "Mantive assiduidade e pontualidade regulares" },
+                ]},
+            ]);
+            setConfigLoaded(true);
+            return;
+        }
+        api.get(`/evaluations/cycles/${cycleId}`)
+            .then((r) => {
+                const cfg = r.data?.form_config;
+                const arr: FormStage[] = Array.isArray(cfg?.stages)
+                    ? cfg.stages.map((s: any, i: number) => ({ ...s, number: i + 1 }))
+                    : [];
+                if (arr.length === 0) {
+                    arr.push(
+                        { number: 1, name: "Objectivos pactuados", weight: 50, stage_type: "objectives", items: [
+                            { description: "Atingir 100% da meta anual de vendas da equipa", weight: 40 },
+                            { description: "Reduzir o prazo médio de recebimento da carteira para 60 dias", weight: 30 },
+                            { description: "Garantir a adopção do CRM por 90% da equipa comercial", weight: 30 },
+                        ]},
+                        { number: 2, name: "Competências", weight: 35, stage_type: "competencies", items: [
+                            { description: "Orientação para resultados" },
+                            { description: "Trabalho em equipa e colaboração" },
+                            { description: "Ética e conformidade" },
+                            { description: "Comunicação" },
+                            { description: "Adaptabilidade e melhoria contínua" },
+                        ]},
+                        { number: 3, name: "Valores e conduta", weight: 15, stage_type: "values", items: [
+                            { description: "Cumpri o Código de Ética e Conduta da empresa" },
+                            { description: "Cumpri as normas de segurança e saúde no trabalho" },
+                            { description: "Mantive assiduidade e pontualidade regulares" },
+                        ]},
+                    );
+                }
+                setStages(arr);
+            })
+            .catch(() => setStages([]))
+            .finally(() => setConfigLoaded(true));
+    }, [cycleId]);
+
+    useEffect(() => {
+        if (objs.length > 0) return;
+        if (pactuados) {
+            setObjs(objetivosDefinidos!.map((o) => ({
+                description: o.description,
+                weight: o.weight,
+                execution: "",
+            })));
+            return;
+        }
+        const objItems = stages.find((s) => s.stage_type === "objectives")?.items ?? [];
+        if (objItems.length > 0) {
+            setObjs(objItems.map((it) => ({
+                description: it.description,
+                weight: it.weight ?? 0,
+                execution: "",
+            })));
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [stages]);
+
     useEffect(() => {
         if (modo !== "director") return;
         api.get(`/evaluations/${evaluationId}/comparison`)
@@ -69,51 +145,58 @@ export default function FormularioAvaliacao({ evaluationId, modo, categoria = "t
             .catch(() => setAuto(null));
     }, [evaluationId, modo]);
 
-    const pct = (s: string): number | null => {
-        const n = Number(s);
-        return s !== "" && Number.isFinite(n) ? n : null;
+    const objetivosStage = stages.find((s) => s.stage_type === "objectives");
+    const competenciasStage = stages.find((s) => s.stage_type === "competencies");
+    const valoresStage = stages.find((s) => s.stage_type === "values");
+
+    const alterarExecucao = (i: number, valor: string) => {
+        setObjs((prev) => prev.map((o, idx) => (idx === i ? { ...o, execution: valor } : o)));
     };
 
     const objNums = objs.map((o) => ({
         description: o.description.trim(),
-        weight: pct(o.weight),
-        execution: pct(o.execution),
+        weight: o.weight,
+        execution: o.execution !== "" ? Number(o.execution) : null,
     }));
 
-    const objsPreenchidos = objNums.length > 0 && objNums.every(
-        (o) => o.description !== "" && o.weight != null && o.execution != null
-    );
-    const totalPeso = objNums.reduce((acc, o) => acc + (o.weight ?? 0), 0);
-    const pesosOk = objsPreenchidos && Math.round(totalPeso * 10) / 10 === 100;
+    const totalPeso = objNums.reduce((acc, o) => acc + o.weight, 0);
+    const pesosOk = Math.round(totalPeso * 10) / 10 === 100;
 
     const objScore = pesosOk
-        ? objNums.reduce((acc, o) => acc + (o.execution! * o.weight!), 0) / 100 * 5
+        ? objNums.reduce((acc, o) => {
+            if (o.execution == null) return acc;
+            return acc + (Math.min(o.execution, 100) / 100 * o.weight);
+        }, 0) / 100 * 5
         : null;
 
-    const compVals = Object.values(comps);
-    const compMedia = compVals.length === COMPETENCIAS.length
-        ? compVals.reduce((a, b) => a + b, 0) / compVals.length : null;
-    const valVals = Object.values(vals);
-    const valScore = valVals.length === VALORES.length
-        ? valVals.reduce((a, b) => a + (b ? 5 : 2.5), 0) / valVals.length : null;
+    const compItems = competenciasStage?.items ?? [];
+    const valItems = valoresStage?.items ?? [];
 
-    const tudoPreenchido = pesosOk && compMedia != null && valScore != null;
-
-    const notaFinal = tudoPreenchido && objScore != null && compMedia != null && valScore != null
-        ? Math.round((objScore * pesos.objectives + compMedia * pesos.competencies + valScore * pesos.values) * 10) / 10
+    const compVals = compItems.map((it) => comps[it.description]).filter((v) => v != null);
+    const compScore = compVals.length === compItems.length && compVals.length > 0
+        ? compVals.reduce((a, b) => a + b, 0) / compVals.length
         : null;
 
-    const alterarObjetivo = (i: number, campo: keyof ObjetivoLinha, valor: string) => {
-        setObjs((prev) => prev.map((o, idx) => (idx === i ? { ...o, [campo]: valor } : o)));
-    };
+    const valVals = valItems.map((it) => vals[it.description]).filter((v) => v != null);
+    const valScore = valVals.length === valItems.length && valVals.length > 0
+        ? valVals.reduce((a, b) => a + (b ? 5 : 2.5), 0) / valVals.length
+        : null;
 
-    const adicionarObjetivo = () => {
-        setObjs((prev) => [...prev, { description: "", weight: "", execution: "" }]);
-    };
+    const objDone = objNums.filter((o) => o.execution != null).length;
+    const objTotal = objNums.length;
+    const compDone = compVals.length;
+    const compTotal = compItems.length;
+    const valDone = valVals.length;
+    const valTotal = valItems.length;
 
-    const removerObjetivo = (i: number) => {
-        setObjs((prev) => (prev.length === 1 ? prev : prev.filter((_, idx) => idx !== i)));
-    };
+    const done = objDone + compDone + valDone;
+    const total = objTotal + compTotal + valTotal;
+
+    const tudoPreenchido = objDone === objTotal && compDone === compTotal && valDone === valTotal && pesosOk;
+
+    const notaFinal = tudoPreenchido && objScore != null && compScore != null && valScore != null
+        ? Math.round((objScore * pesos.objectives / 100 + compScore * pesos.competencies / 100 + valScore * pesos.values / 100) * 10) / 10
+        : null;
 
     const submeter = async () => {
         setErro("");
@@ -124,10 +207,14 @@ export default function FormularioAvaliacao({ evaluationId, modo, categoria = "t
                 objectives: objNums.map((o) => ({
                     description: o.description,
                     weight: o.weight,
-                    execution: o.execution,
+                    execution: o.execution ?? 0,
                 })),
-                competencies: comps,
-                values: vals,
+                competencies: Object.fromEntries(
+                    compItems.map((it) => [it.description, comps[it.description] ?? 0])
+                ),
+                values: Object.fromEntries(
+                    valItems.map((it) => [it.description, vals[it.description] ?? false])
+                ),
             });
             aoSubmeter();
         } catch (err: any) {
@@ -138,201 +225,223 @@ export default function FormularioAvaliacao({ evaluationId, modo, categoria = "t
     };
 
     const nota = (n: number | null | undefined) => (n != null ? n.toFixed(1) : "—");
-    const pesoLabel = Math.round(pesos.objectives * 100);
+
+    if (!configLoaded) {
+        return <p className="text-dim text-sm">A carregar formulário...</p>;
+    }
 
     return (
         <div className="space-y-3">
-            {modo === "director" && (
+            {modo === "director" && auto && (
                 <div className="border border-line rounded-xl p-4">
                     <h4 className="text-[13.5px] font-semibold text-strong mb-1">
-                        Autoavaliação do colaborador{auto ? ` — nota provisória ${nota(auto.final)} (${auto.classification || "—"})` : ""}
+                        Autoavaliação do colaborador — nota provisória {nota(auto.final)} ({auto.classification || "—"})
                     </h4>
-                    {!auto ? (
-                        <p className="text-dim text-sm">A carregar a autoavaliação...</p>
-                    ) : (
-                        <div className="space-y-3 mt-2">
-                            {auto.objectives.length > 0 && (
-                                <div>
-                                    <div className="text-dim text-[10.5px] uppercase tracking-wide mb-1">Objetivos</div>
-                                    {auto.objectives.map((o, i) => (
-                                        <div key={i} className="text-[12.8px] py-1 border-b border-line2 last:border-0">
-                                            {o.description || "—"} <span className="text-dim">· peso {o.weight}% · execução {o.execution}%</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
+                    <div className="space-y-3 mt-2">
+                        {auto.objectives.length > 0 && (
                             <div>
-                                <div className="text-dim text-[10.5px] uppercase tracking-wide mb-1">Competências</div>
-                                {COMPETENCIAS.map((c) => (
-                                    <div key={c.chave} className="flex justify-between text-[12.8px] py-1 border-b border-line2 last:border-0">
-                                        <span>{c.label}</span>
-                                        <span className="font-semibold">{auto.competencies[c.chave] != null ? auto.competencies[c.chave] : "—"}</span>
+                                <div className="text-dim text-[10.5px] uppercase tracking-wide mb-1">Objectivos</div>
+                                {auto.objectives.map((o, i) => (
+                                    <div key={i} className="text-[12.8px] py-1 border-b border-line2 last:border-0">
+                                        {o.description || "—"} <span className="text-dim">· peso {o.weight}% · execução {o.execution}%</span>
                                     </div>
                                 ))}
                             </div>
+                        )}
+                        {compItems.length > 0 && (
+                            <div>
+                                <div className="text-dim text-[10.5px] uppercase tracking-wide mb-1">Competências</div>
+                                {compItems.map((c) => (
+                                    <div key={c.description} className="flex justify-between text-[12.8px] py-1 border-b border-line2 last:border-0">
+                                        <span>{c.description}</span>
+                                        <span className="font-semibold">{auto.competencies[c.description] != null ? auto.competencies[c.description] : "—"}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        {valItems.length > 0 && (
                             <div>
                                 <div className="text-dim text-[10.5px] uppercase tracking-wide mb-1">Valores e conduta</div>
-                                {VALORES.map((v) => (
-                                    <div key={v.chave} className="flex justify-between text-[12.8px] py-1 border-b border-line2 last:border-0">
-                                        <span>{v.label}</span>
+                                {valItems.map((v) => (
+                                    <div key={v.description} className="flex justify-between text-[12.8px] py-1 border-b border-line2 last:border-0">
+                                        <span>{v.description}</span>
                                         <span className="font-semibold">
-                                            {auto.values[v.chave] == null ? "—" : auto.values[v.chave] ? "Sim" : "Não"}
+                                            {auto.values[v.description] == null ? "—" : auto.values[v.description] ? "Sim" : "Não"}
                                         </span>
                                     </div>
                                 ))}
                             </div>
-                            <div className="flex justify-between text-[12.8px] pt-1">
-                                <span className="font-semibold text-strong">Nota provisória (auto)</span>
-                                <span className="font-semibold text-pri-dark">{nota(auto.final)}</span>
-                            </div>
+                        )}
+                        <div className="flex justify-between text-[12.8px] pt-1">
+                            <span className="font-semibold text-strong">Nota provisória (auto)</span>
+                            <span className="font-semibold text-pri-dark">{nota(auto.final)}</span>
                         </div>
-                    )}
+                    </div>
                 </div>
             )}
 
             <div className="grid grid-cols-1 lg:grid-cols-[2.2fr_1fr] gap-3 items-start">
                 <div className="space-y-3">
-                    {/* Objetivos */}
+                    {/* Etapa 1 — Objectivos */}
                     <Cartao>
-                        <div className="flex items-center justify-between mb-2">
-                            <h3 className="text-[14.5px]">
-                                Objetivos{" "}
-                                <span className="text-dim text-[11px]">
-                                    {pactuados
-                                        ? "(definidos pelo Capital Humano — indique apenas a execução)"
-                                        : `(peso ${pesoLabel}% — peso próprio por objetivo)`}
-                                </span>
-                            </h3>
-                            {!pactuados && (
-                                <button
-                                    onClick={adicionarObjetivo}
-                                    className="text-[11.5px] font-semibold text-pri hover:text-pri-dark transition-colors"
-                                >
-                                    + Adicionar objetivo
-                                </button>
-                            )}
-                        </div>
+                        <h3 className="text-[14.5px] mb-2">
+                            Etapa 1 · {objetivosStage?.name || "Objectivos pactuados"}{" "}
+                            <span className="text-dim text-[11px]">
+                                (peso {pesos.objectives}% — indique a % de execução de cada objectivo)
+                            </span>
+                        </h3>
                         {objs.map((o, i) => (
                             <div key={i} className="py-2.5 border-b border-line2 last:border-0">
-                                <input
-                                    value={o.description}
-                                    onChange={(e) => alterarObjetivo(i, "description", e.target.value)}
-                                    disabled={pactuados}
-                                    placeholder={`Descreva o objetivo ${i + 1} do ciclo…`}
-                                    className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-2 focus:outline-none focus:border-pri disabled:opacity-70 disabled:cursor-not-allowed"
-                                />
+                                <div className="text-[13.3px] text-strong mb-2">
+                                    {i + 1}. {o.description}{" "}
+                                    <span className="inline-block bg-pri-bg text-pri-dark text-[10.5px] font-semibold px-2 py-0.5 rounded-full ml-1">
+                                        peso {o.weight}%
+                                    </span>
+                                    {modo === "director" && auto && auto.objectives[i] && (
+                                        <span className="inline-block bg-info-bg text-info text-[10.5px] font-semibold px-2 py-0.5 rounded-full ml-1">
+                                            auto: {auto.objectives[i].execution}%
+                                        </span>
+                                    )}
+                                </div>
                                 <div className="flex items-center gap-2.5">
                                     <input
                                         type="number" min={0} max={100}
-                                        value={o.weight}
-                                        onChange={(e) => alterarObjetivo(i, "weight", e.target.value)}
-                                        disabled={pactuados}
-                                        placeholder="Peso"
-                                        className="w-20 text-center font-semibold bg-panel border border-line rounded-lg px-2 py-2 text-[13px] focus:outline-none focus:border-pri disabled:opacity-70 disabled:cursor-not-allowed"
-                                    />
-                                    <span className="text-dim text-[11px]">% peso</span>
-                                    <input
-                                        type="number" min={0} max={100}
                                         value={o.execution}
-                                        onChange={(e) => alterarObjetivo(i, "execution", e.target.value)}
-                                        placeholder="Execução"
+                                        onChange={(e) => alterarExecucao(i, e.target.value)}
+                                        placeholder="%"
                                         className="w-20 text-center font-semibold bg-panel border border-line rounded-lg px-2 py-2 text-[13px] focus:outline-none focus:border-pri"
                                     />
-                                    <span className="text-dim text-[11px]">% execução (0–100)</span>
-                                    {!pactuados && objs.length > 1 && (
-                                        <button
-                                            onClick={() => removerObjetivo(i)}
-                                            title="Remover objetivo"
-                                            className="text-bad text-[18px] leading-none hover:opacity-70 transition-opacity ml-1"
-                                        >
-                                            ×
-                                        </button>
-                                    )}
+                                    <span className="text-dim text-[11px]">% de execução (0–100)</span>
                                 </div>
                             </div>
                         ))}
-                        {objsPreenchidos && !pesosOk && (
+                        {pesosOk && (
+                            <p className="text-ok text-[12.3px] mt-2">Pesos: 100%.</p>
+                        )}
+                        {!pesosOk && (
                             <p className="text-warn text-[12.3px] mt-2">
                                 Os pesos somam {Math.round(totalPeso * 10) / 10}% — têm de somar 100%.
                             </p>
                         )}
-                        {pesosOk && (
-                            <p className="text-ok text-[12.3px] mt-2">Pesos: 100%.</p>
-                        )}
                     </Cartao>
 
-                    {/* Competências */}
-                    <Cartao>
-                        <h3 className="text-[14.5px] mb-2">
-                            Competências <span className="text-dim text-[11px]">(peso {Math.round(pesos.competencies * 100)}% — escala 1 a 5)</span>
-                        </h3>
-                        {COMPETENCIAS.map((c) => (
-                            <div key={c.chave} className="py-2 border-b border-line2 last:border-0">
-                                <div className="text-[13.3px] text-strong mb-2">{c.label}</div>
-                                <ChipGroup>
-                                    {ESCALA.map((s) => (
+                    {/* Etapa 2 — Competências */}
+                    {compItems.length > 0 && (
+                        <Cartao>
+                            <h3 className="text-[14.5px] mb-2">
+                                Etapa 2 · {competenciasStage?.name || "Competências"}{" "}
+                                <span className="text-dim text-[11px]">(peso {pesos.competencies}% — escala 1 a 5)</span>
+                            </h3>
+                            {compItems.map((item) => (
+                                <div key={item.description} className="py-2 border-b border-line2 last:border-0">
+                                    <div className="text-[13.3px] text-strong mb-2">
+                                        {item.description}
+                                        {modo === "director" && auto && auto.competencies[item.description] != null && (
+                                            <span className="inline-block bg-info-bg text-info text-[10.5px] font-semibold px-2 py-0.5 rounded-full ml-1">
+                                                auto: {auto.competencies[item.description]}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <ChipGroup>
+                                        {ESCALA_DEFAULT.map((s) => (
+                                            <Chip
+                                                key={s.v}
+                                                label={s.v}
+                                                sublabel={s.l}
+                                                selecionado={comps[item.description] === s.v}
+                                                onClick={() => setComps({ ...comps, [item.description]: s.v })}
+                                            />
+                                        ))}
+                                    </ChipGroup>
+                                </div>
+                            ))}
+                        </Cartao>
+                    )}
+
+                    {/* Etapa 3 — Valores e conduta */}
+                    {valItems.length > 0 && (
+                        <Cartao>
+                            <h3 className="text-[14.5px] mb-2">
+                                Etapa 3 · {valoresStage?.name || "Valores e conduta"}{" "}
+                                <span className="text-dim text-[11px]">(peso {pesos.values}% — resposta Sim / Não)</span>
+                            </h3>
+                            {valItems.map((item) => (
+                                <div key={item.description} className="py-2 border-b border-line2 last:border-0">
+                                    <div className="text-[13.3px] text-strong mb-2">
+                                        {item.description}
+                                        {modo === "director" && auto && auto.values[item.description] != null && (
+                                            <span className="inline-block bg-info-bg text-info text-[10.5px] font-semibold px-2 py-0.5 rounded-full ml-1">
+                                                auto: {auto.values[item.description] ? "Sim" : "Não"}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <ChipGroup>
                                         <Chip
-                                            key={s.v}
-                                            label={s.v}
-                                            sublabel={s.l}
-                                            selecionado={comps[c.chave] === s.v}
-                                            onClick={() => setComps({ ...comps, [c.chave]: s.v })}
+                                            largo
+                                            label="Sim"
+                                            sublabel="cumpri"
+                                            selecionado={vals[item.description] === true}
+                                            onClick={() => setVals({ ...vals, [item.description]: true })}
                                         />
-                                    ))}
-                                </ChipGroup>
-                            </div>
-                        ))}
-                    </Cartao>
+                                        <Chip
+                                            largo
+                                            label="Não"
+                                            sublabel="não cumpri / com falhas"
+                                            selecionado={vals[item.description] === false}
+                                            onClick={() => setVals({ ...vals, [item.description]: false })}
+                                        />
+                                    </ChipGroup>
+                                </div>
+                            ))}
+                        </Cartao>
+                    )}
 
-                    {/* Valores */}
-                    <Cartao>
-                        <h3 className="text-[14.5px] mb-2">
-                            Valores e conduta <span className="text-dim text-[11px]">(peso {Math.round(pesos.values * 100)}% — Sim / Não)</span>
-                        </h3>
-                        {VALORES.map((v) => (
-                            <div key={v.chave} className="py-2 border-b border-line2 last:border-0">
-                                <div className="text-[13.3px] text-strong mb-2">{v.label}</div>
-                                <ChipGroup>
-                                    <Chip
-                                        largo
-                                        label="Sim"
-                                        selecionado={vals[v.chave] === true}
-                                        onClick={() => setVals({ ...vals, [v.chave]: true })}
-                                    />
-                                    <Chip
-                                        largo
-                                        label="Não"
-                                        selecionado={vals[v.chave] === false}
-                                        onClick={() => setVals({ ...vals, [v.chave]: false })}
-                                    />
-                                </ChipGroup>
-                            </div>
-                        ))}
-                        {erro && <p className="text-bad text-sm mt-3">{erro}</p>}
-                        <button
-                            onClick={submeter}
-                            disabled={!tudoPreenchido || aCarregar}
-                            className="w-full bg-pri text-white rounded-lg py-2.5 mt-3 text-[12.3px] font-semibold hover:bg-pri-dark transition-colors disabled:opacity-40"
-                        >
-                            {aCarregar ? "A submeter..." : tudoPreenchido
-                                ? (modo === "auto" ? "Submeter autoavaliação" : "Submeter avaliação")
-                                : "Preencha tudo para submeter"}
-                        </button>
-                    </Cartao>
+                    {erro && <p className="text-bad text-sm mt-3">{erro}</p>}
+                    <button
+                        onClick={submeter}
+                        disabled={!tudoPreenchido || aCarregar}
+                        className="w-full bg-pri text-white rounded-lg py-2.5 mt-3 text-[12.3px] font-semibold hover:bg-pri-dark transition-colors disabled:opacity-40"
+                    >
+                        {aCarregar ? "A submeter..." : tudoPreenchido
+                            ? (modo === "auto"
+                                ? "Submeter autoavaliação"
+                                : "Submeter avaliação e notificar o colaborador")
+                            : "Responda a tudo para submeter"}
+                    </button>
                 </div>
 
-                {/* Caixa de pontuação em direto */}
-                <ScoreBox label="Pontuação em direto" valor={notaFinal ?? "—"}>
+                {/* ScoreBox */}
+                <ScoreBox label="Pontuação em directo" valor={notaFinal ?? "—"}>
+                    <div className="text-[11px] text-dim mt-0.5">
+                        {notaFinal != null
+                            ? notaFinal >= 4.5 ? "Excelente" : notaFinal >= 3.5 ? "Bom" : notaFinal >= 2.5 ? "Suficiente" : "Insuficiente"
+                            : `${done} de ${total} respostas dadas`}
+                    </div>
                     <table className="w-full mt-2 text-[12px]">
                         <tbody>
-                            <tr><td className="text-dim py-0.5">Objetivos</td><td className="text-right">{objScore != null ? objScore.toFixed(1) : "—"}</td></tr>
-                            <tr><td className="text-dim py-0.5">Competências</td><td className="text-right">{compMedia != null ? compMedia.toFixed(1) : "—"}</td></tr>
-                            <tr><td className="text-dim py-0.5">Valores</td><td className="text-right">{valScore != null ? valScore.toFixed(1) : "—"}</td></tr>
-                            <tr><td className="text-dim py-0.5">Ponderações</td><td className="text-right">
-                                {categoria === "dirigente" ? "60/25/15" : "50/35/15"}
-                            </td></tr>
+                            <tr>
+                                <td className="text-dim py-0.5">Objectivos</td>
+                                <td className="text-right">{objScore != null ? objScore.toFixed(1) : "—"}</td>
+                            </tr>
+                            <tr>
+                                <td className="text-dim py-0.5">Competências</td>
+                                <td className="text-right">{compScore != null ? compScore.toFixed(1) : "—"}</td>
+                            </tr>
+                            <tr>
+                                <td className="text-dim py-0.5">Valores</td>
+                                <td className="text-right">{valScore != null ? valScore.toFixed(1) : "—"}</td>
+                            </tr>
                         </tbody>
                     </table>
+                    <div className="mt-2 h-2 bg-line rounded-full overflow-hidden">
+                        <div
+                            className="h-full bg-pri rounded-full transition-all duration-300"
+                            style={{ width: `${total > 0 ? (done / total) * 100 : 0}%` }}
+                        />
+                    </div>
+                    <div className="text-[11px] text-dim mt-1">
+                        {total > 0 ? Math.round((done / total) * 100) : 0}% preenchido
+                    </div>
                 </ScoreBox>
             </div>
         </div>

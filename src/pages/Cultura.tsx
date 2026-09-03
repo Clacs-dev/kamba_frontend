@@ -42,6 +42,23 @@ interface RelatorioCultura {
     recommendations: string[];
 }
 
+interface DimensionCyclePoint {
+    survey_id: number;
+    cycle_label: string;
+    value: number | null;
+}
+
+interface DimensionEvolution {
+    name: string;
+    points: DimensionCyclePoint[];
+    latest: number | null;
+}
+
+interface EvolucaoCultura {
+    dimensions: DimensionEvolution[];
+    cycles: string[];
+}
+
 const ESCALA = [
     { v: 1, l: "Raramente" }, { v: 2, l: "Às vezes" }, { v: 3, l: "Com regularidade" },
     { v: 4, l: "Quase sempre" }, { v: 5, l: "Sempre" },
@@ -57,6 +74,13 @@ function KpiCard({ valor, label, nota }: { valor: string; label: string; nota?: 
     );
 }
 
+const variantePorValor = (v: number | null): "ok" | "pri" | "warn" => {
+    if (v == null) return "pri";
+    if (v >= 70) return "ok";
+    if (v >= 55) return "pri";
+    return "warn";
+};
+
 export default function Cultura() {
     const { user } = useAuth();
     const [inqueritos, setInqueritos] = useState<Inquerito[]>([]);
@@ -68,6 +92,7 @@ export default function Cultura() {
     const [modalEditar, setModalEditar] = useState(false);
     const [respostas, setRespostas] = useState<Record<number, Record<string, number>>>({});
     const [respondido, setRespondido] = useState<Record<number, boolean>>({});
+    const [evolucao, setEvolucao] = useState<EvolucaoCultura | null>(null);
 
     const eCH = user?.role === "capital_humano";
     const eGestor = eCH || user?.role === "administracao";
@@ -80,6 +105,7 @@ export default function Cultura() {
         Promise.all([
             api.get("/surveys").then((r) => setInqueritos(r.data)).catch(() => { }),
             api.get("/surveys/culture-report/data").then((r) => setRelatorio(r.data)).catch(() => { }),
+            api.get("/surveys/culture-report/evolution").then((r) => setEvolucao(r.data)).catch(() => { }),
         ]).finally(() => setACarregar(false));
     };
 
@@ -117,7 +143,6 @@ export default function Cultura() {
     };
 
     const temIndicadores = relatorio && (relatorio.enps || relatorio.participation || relatorio.pulses_note);
-    const temDimensoes = relatorio && relatorio.dimensions.length > 0;
 
     return (
         <div>
@@ -157,32 +182,42 @@ export default function Cultura() {
                         </div>
                     )}
 
-                    {/* Tabela de dimensões (editada pelo CH) */}
-                    {temDimensoes && (
+                    {/* Tabela de dimensões — evolução por ciclo (calculada das respostas) */}
+                    {evolucao && evolucao.dimensions.length > 0 && (
                         <Cartao className="mb-4 p-0 overflow-hidden">
-                            <h3 className="text-[14.5px] p-4 pb-2">Dimensões — evolução 2023 → 2025</h3>
+                            <h3 className="text-[14.5px] p-4 pb-2">Dimensões — evolução por ciclo</h3>
+                            <p className="px-4 pb-2 text-[11.5px] text-dim">
+                                Percentagem calculada automaticamente das respostas ao pulse em cada ciclo.
+                            </p>
                             <table className="w-full text-[12.8px]">
                                 <thead>
                                     <tr>
-                                        <Th>Dimensão</Th><Th>2023</Th><Th>2024</Th><Th>2025</Th>
+                                        <Th>Dimensão</Th>
+                                        {evolucao.cycles.map((c, i) => (
+                                            <Th key={i}>{c}</Th>
+                                        ))}
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {relatorio!.dimensions.map((d, i) => (
+                                    {evolucao.dimensions.map((d, i) => (
                                         <tr key={i} className="hover:bg-panel">
                                             <Td><b className="text-strong">{d.name}</b></Td>
-                                            <Td>{d.y2023 != null ? `${d.y2023}%` : "—"}</Td>
-                                            <Td>{d.y2024 != null ? `${d.y2024}%` : "—"}</Td>
-                                            <Td>
-                                                {d.y2025 != null ? (
-                                                    <>
-                                                        <b>{d.y2025}%</b>
-                                                        <div className="max-w-[120px]">
-                                                            <Barra valor={d.y2025} variante="pri" />
-                                                        </div>
-                                                    </>
-                                                ) : "—"}
-                                            </Td>
+                                            {evolucao.cycles.map((_, ci) => {
+                                                const pt = d.points[ci];
+                                                const v = pt ? pt.value : null;
+                                                return (
+                                                    <Td key={ci}>
+                                                        {v != null ? (
+                                                            <>
+                                                                <b>{v}%</b>
+                                                                <div className="max-w-[120px]">
+                                                                    <Barra valor={v} variante={variantePorValor(v)} />
+                                                                </div>
+                                                            </>
+                                                        ) : "—"}
+                                                    </Td>
+                                                );
+                                            })}
                                         </tr>
                                     ))}
                                 </tbody>
