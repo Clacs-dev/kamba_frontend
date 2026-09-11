@@ -171,7 +171,7 @@ export default function Chat() {
             setTexto("");
             solicitarRolagem();
             carregarConversas();
-        } catch (e) {
+        } catch (e: any) {
             setErro(e.response?.data?.detail || "Não foi possível enviar a mensagem.");
         } finally {
             setAEnviar(false);
