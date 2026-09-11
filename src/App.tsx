@@ -18,6 +18,7 @@ import Dashboard from "./pages/Dashboard";
 import Auditoria from "./pages/Auditoria";
 import Historico from "./pages/Historico";
 import Administracao from "./pages/Administracao";
+import Chat from "./pages/Chat";
 
 function RotaProtegida({ children }: { children: React.ReactNode }) {
   const { token, user, aCarregar } = useAuth();
@@ -58,6 +59,7 @@ function App() {
             <Route path="auditoria" element={<Auditoria />} />
             <Route path="historico" element={<Historico />} />
             <Route path="administracao" element={<Administracao />} />
+            <Route path="chat" element={<Chat />} />
           </Route>
 
           {/* Qualquer outro caminho volta ao início. */}

@@ -253,7 +253,14 @@ export default function Colaboradores() {
         setACarregar(true);
         const url = user?.role === "director" ? "/collaborators/my-direction" : "/collaborators";
         api.get(url)
-            .then((resp) => setColaboradores(resp.data))
+            .then((resp) => {
+                // O Capital Humano não vê os administradores na lista de colaboradores.
+                const lista = resp.data as Colaborador[];
+                const visiveis = user?.role === "capital_humano"
+                    ? lista.filter((c) => c.role !== "admin")
+                    : lista;
+                setColaboradores(visiveis);
+            })
             .catch((err) => setErro(msgErro(err, "Erro ao carregar.")))
             .finally(() => setACarregar(false));
     };

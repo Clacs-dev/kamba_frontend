@@ -3,6 +3,7 @@ import { Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import Sidebar from "../components/Sidebar";
 import Notificacoes from "../components/Notificacoes";
+import ChatIndicador from "../components/ChatIndicador";
 import api from "../lib/api";
 
 const ROTULO_PERFIL: Record<string, string> = {
@@ -52,7 +53,10 @@ export default function Home() {
                     </span>
                 </div>
                 <div className="flex-1" />
-                <Notificacoes />
+                <div className="flex items-center gap-1.5">
+                    <Notificacoes />
+                    <ChatIndicador />
+                </div>
                 <div className="hidden sm:flex items-center gap-2.5 text-xs text-dim">
                     <div className="text-right leading-tight min-w-0">
                         <div className="text-[12.5px] font-semibold text-ink truncate max-w-[140px]">{user?.full_name}</div>

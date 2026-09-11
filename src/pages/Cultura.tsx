@@ -14,6 +14,7 @@ interface Inquerito {
     title: string;
     dimensions: string[];
     status: string;
+    participated?: boolean;
 }
 
 interface ResultadosInquerito {
@@ -142,7 +143,40 @@ export default function Cultura() {
         }
     };
 
-    const temIndicadores = relatorio && (relatorio.enps || relatorio.participation || relatorio.pulses_note);
+    const eliminarPulse = async (inq: Inquerito) => {
+        if (!confirm(`Eliminar o inquérito "${inq.title}"? As respostas anónimas também serão removidas.`)) return;
+        try {
+            await api.delete(`/surveys/${inq.id}`);
+            setMsg("Inquérito eliminado.");
+            carregar();
+        } catch (err: any) {
+            setMsg(err.response?.data?.detail || "Erro ao eliminar o inquérito.");
+        }
+    };
+
+    const pulseAlvo = inqueritos.find((i) => i.status === "aberto") || inqueritos[0] || null;
+    const resAlvo = pulseAlvo ? resultados[pulseAlvo.id] : undefined;
+    const respondiAlvo = pulseAlvo ? !!(respondido[pulseAlvo.id] || pulseAlvo.participated) : false;
+
+    const kpis: { v: string; l: string; n?: string }[] = [];
+    if (relatorio?.enps) kpis.push({ v: relatorio.enps, l: "eNPS", n: "série de cultura" });
+    if (resAlvo && resAlvo.participation_rate != null) {
+        kpis.push({
+            v: `${resAlvo.participation_rate}%`,
+            l: "Participação",
+            n: `${resAlvo.participation_count} de ${resAlvo.universe} responderam`,
+        });
+    } else if (relatorio?.participation) {
+        kpis.push({ v: relatorio.participation, l: "Participação", n: "série de cultura" });
+    }
+    kpis.push({ v: `${inqueritos.length}`, l: "Pulses realizados", n: "trimestrais" });
+    if (pulseAlvo) {
+        kpis.push({
+            v: podeCriarPulse ? "gestão" : respondiAlvo ? "✓ já respondeu" : "responda ao lado",
+            l: `Pulse ativo · ${pulseAlvo.title}`,
+            n: podeCriarPulse ? "a gestão não participa" : "anónimo, 60 segundos",
+        });
+    }
 
     return (
         <div>
@@ -173,15 +207,15 @@ export default function Cultura() {
                 <p className="text-dim text-sm">A carregar...</p>
             ) : (
                 <>
-                    {/* Indicadores (editados pelo CH) */}
-                    {temIndicadores && (
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5 mb-4">
-                            {relatorio?.enps && <KpiCard valor={relatorio.enps} label="eNPS" nota="série de cultura" />}
-                            {relatorio?.participation && <KpiCard valor={relatorio.participation} label="Participação" />}
-                            {relatorio?.pulses_note && <KpiCard valor="✓" label={relatorio.pulses_note} />}
-                        </div>
-                    )}
+                    {/* Indicadores — calculados das respostas reais */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5 mb-4">
+                        {kpis.map((k, i) => (
+                            <KpiCard key={i} valor={k.v} label={k.l} nota={k.n} />
+                        ))}
+                    </div>
 
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <div className="space-y-4">
                     {/* Tabela de dimensões — evolução por ciclo (calculada das respostas) */}
                     {evolucao && evolucao.dimensions.length > 0 && (
                         <Cartao className="mb-4 p-0 overflow-hidden">
@@ -209,7 +243,9 @@ export default function Cultura() {
                                                     <Td key={ci}>
                                                         {v != null ? (
                                                             <>
-                                                                <b>{v}%</b>
+                                                                {ci === evolucao.cycles.length - 1
+                                                                    ? <b className="text-pri-dark">{v}%</b>
+                                                                    : <b>{v}%</b>}
                                                                 <div className="max-w-[120px]">
                                                                     <Barra valor={v} variante={variantePorValor(v)} />
                                                                 </div>
@@ -237,7 +273,9 @@ export default function Cultura() {
                             ))}
                         </Cartao>
                     )}
+                    </div>
 
+                        <div>
                     {/* Pulses para responder */}
                     {inqueritos.length === 0 ? (
                         <Cartao><p className="text-dim text-center py-3">
@@ -249,9 +287,17 @@ export default function Cultura() {
                                 <Cartao key={inq.id}>
                                     <div className="flex items-start justify-between gap-3 mb-3">
                                         <h3 className="text-[15px] m-0">{inq.title} — anónimo, 60 segundos</h3>
-                                        <Tag variante={inq.status === "aberto" ? "ok" : "info"}>
-                                            {inq.status === "aberto" ? "Aberto" : "Fechado"}
-                                        </Tag>
+                                        <div className="flex items-center gap-2.5 shrink-0">
+                                            <Tag variante={inq.status === "aberto" ? "ok" : "info"}>
+                                                {inq.status === "aberto" ? "Aberto" : "Fechado"}
+                                            </Tag>
+                                            {podeCriarPulse && (
+                                                <button onClick={() => eliminarPulse(inq)}
+                                                    className="text-[11px] font-semibold text-bad hover:underline">
+                                                    Eliminar
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
 
                                     {eGestor && resultados[inq.id] && (() => {
@@ -291,7 +337,12 @@ export default function Cultura() {
                                         );
                                     })()}
 
-                                    {respondido[inq.id] ? (
+                                    {podeCriarPulse ? (
+                                        <Notice variante="soft">
+                                            <b>Pulse gerido pela equipa de gestão.</b> A resposta é anónima e feita
+                                            pelos colaboradores — a gestão não participa.
+                                        </Notice>
+                                    ) : (respondido[inq.id] || inq.participated) ? (
                                         <Notice variante="soft">
                                             <b>Resposta registada.</b> A sua identidade nunca é associada às respostas.
                                         </Notice>
@@ -328,6 +379,8 @@ export default function Cultura() {
                             ))}
                         </div>
                     )}
+                    </div>
+                    </div>
                 </>
             )}
 
