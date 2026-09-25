@@ -69,6 +69,13 @@ interface CertificationItem {
     validade?: string | null;
 }
 
+interface LanguageItem {
+    nome?: string | null;
+    fala?: string | null;
+    escreve?: string | null;
+    le?: string | null;
+}
+
 interface Perfil {
     employee_number?: string | null;
     admission_date?: string | null;
@@ -82,6 +89,11 @@ interface Perfil {
     situation_tags?: string | null;
     photo_url?: string | null;
     nationality?: string | null;
+    address?: string | null;
+    phone?: string | null;
+    languages?: LanguageItem[] | null;
+    social_skills?: string | null;
+    technical_skills?: string | null;
     habilitacoes?: string | null;
     university?: string | null;
     course?: string | null;
@@ -316,6 +328,20 @@ export default function Portal() {
                                         <LinhaFicha rotulo="Horário" valor={perfil?.work_schedule} />
                                         <LinhaFicha rotulo="Local" valor={perfil?.workplace} />
                                         <LinhaFicha rotulo="Nacionalidade" valor={perfil?.nationality} />
+                                        <LinhaFicha rotulo="Morada" valor={perfil?.address} />
+                                        <LinhaFicha rotulo="Telefone" valor={perfil?.phone} />
+                                        <LinhaFicha
+                                            rotulo="Idiomas"
+                                            valor={(perfil?.languages || []).length > 0
+                                                ? (perfil?.languages || [])
+                                                    .map((i) => i.nome
+                                                        ? `${i.nome}${i.fala ? ` (${i.fala})` : ""}`
+                                                        : "")
+                                                    .filter(Boolean).join(" · ")
+                                                : null}
+                                        />
+                                        <LinhaFicha rotulo="Aptidões sociais" valor={perfil?.social_skills} />
+                                        <LinhaFicha rotulo="Aptidões técnicas" valor={perfil?.technical_skills} />
                                         <LinhaFicha rotulo="Habilitações" valor={perfil?.habilitacoes} />
                                         <LinhaFicha rotulo="Universidade" valor={perfil?.university} />
                                         <LinhaFicha rotulo="Curso" valor={perfil?.course} />

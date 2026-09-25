@@ -1399,15 +1399,29 @@ function ModalDadosRh({ colaborador, aoFechar, aoGuardar }: { colaborador: Colab
     const [workSchedule, setWorkSchedule] = useState("");
     const [situationTags, setSituationTags] = useState("");
     const [nationality, setNationality] = useState("");
+    const [address, setAddress] = useState("");
+    const [phone, setPhone] = useState("");
     const [habilitacoes, setHabilitacoes] = useState("");
     const [university, setUniversity] = useState("");
     const [course, setCourse] = useState("");
     const [birthDate, setBirthDate] = useState("");
+    const [socialSkills, setSocialSkills] = useState("");
+    const [technicalSkills, setTechnicalSkills] = useState("");
     const [cv, setCv] = useState("");
 
     // Formação e experiência (JSON do perfil).
-    interface FormacaoLinha { nivel: string; anoInicio: string; anoFim: string; pais: string; }
+    interface FormacaoLinha { nivel: string; anoInicio: string; anoFim: string; pais: string; instituicao: string; curso: string; areas: string; }
     const [formacao, setFormacao] = useState<FormacaoLinha[]>([]);
+
+    // Idiomas (fala / escrita / leitura) — secção IDIOMAS do Curriculum Vitae.
+    interface IdiomaLinha { nome: string; fala: string; escreve: string; le: string; }
+    const [idiomas, setIdiomas] = useState<IdiomaLinha[]>([]);
+    const atualizarIdioma = (i: number, campo: keyof IdiomaLinha, valor: string) =>
+        setIdiomas(prev => prev.map((f, idx) => (idx === i ? { ...f, [campo]: valor } : f)));
+    const adicionarIdioma = () =>
+        setIdiomas(prev => [...prev, { nome: "", fala: "", escreve: "", le: "" }]);
+    const removerIdioma = (i: number) =>
+        setIdiomas(prev => prev.filter((_, idx) => idx !== i));
     interface ExperienciaLinha { onde: string; anoInicio: string; anoFim: string; funcao: string; }
     const [experiencia, setExperiencia] = useState<ExperienciaLinha[]>([]);
 
@@ -1549,22 +1563,33 @@ function ModalDadosRh({ colaborador, aoFechar, aoGuardar }: { colaborador: Colab
                 setWorkSchedule(p.work_schedule || "");
                 setSituationTags(p.situation_tags || "");
                 setNationality(p.nationality || "");
+                setAddress(p.address || "");
+                setPhone(p.phone || "");
                 setHabilitacoes(p.habilitacoes || "");
                 setUniversity(p.university || "");
                 setCourse(p.course || "");
                 setBirthDate(p.birth_date || "");
+                setSocialSkills(p.social_skills || "");
+                setTechnicalSkills(p.technical_skills || "");
                 setCv(p.cv || "");
                 // Carrega formação e experiência do JSON.
                 if (Array.isArray(p.education)) {
                     setFormacao(p.education.map((e: any) => ({
                         nivel: e.nivel || "", anoInicio: e.ano_inicio ? String(e.ano_inicio) : "",
                         anoFim: e.ano_fim ? String(e.ano_fim) : "", pais: e.pais || "",
+                        instituicao: e.instituicao || "", curso: e.curso || "", areas: e.areas || "",
                     })));
                 }
                 if (Array.isArray(p.experience)) {
                     setExperiencia(p.experience.map((x: any) => ({
                         onde: x.onde || "", anoInicio: x.ano_inicio ? String(x.ano_inicio) : "",
                         anoFim: x.ano_fim ? String(x.ano_fim) : "", funcao: x.funcao || "",
+                    })));
+                }
+                if (Array.isArray(p.languages)) {
+                    setIdiomas(p.languages.map((i: any) => ({
+                        nome: i.nome || "", fala: i.fala || "",
+                        escreve: i.escreve || "", le: i.le || "",
                     })));
                 }
             })
@@ -1607,6 +1632,10 @@ function ModalDadosRh({ colaborador, aoFechar, aoGuardar }: { colaborador: Colab
                 situation_tags: situationTags || null,
                 nationality: nationality || null,
                 birth_date: birthDate || null,
+                address: address || null,
+                phone: phone || null,
+                social_skills: socialSkills || null,
+                technical_skills: technicalSkills || null,
                 habilitacoes: habilitacoes || null,
                 university: university || null,
                 course: course || null,
@@ -1616,6 +1645,15 @@ function ModalDadosRh({ colaborador, aoFechar, aoGuardar }: { colaborador: Colab
                     ano_inicio: f.anoInicio ? Number(f.anoInicio) : null,
                     ano_fim: f.anoFim ? Number(f.anoFim) : null,
                     pais: f.pais || null,
+                    instituicao: f.instituicao || null,
+                    curso: f.curso || null,
+                    areas: f.areas || null,
+                })),
+                languages: idiomas.map((i) => ({
+                    nome: i.nome || null,
+                    fala: i.fala || null,
+                    escreve: i.escreve || null,
+                    le: i.le || null,
                 })),
                 experience: experiencia.map((x) => ({
                     onde: x.onde || null,
@@ -1747,6 +1785,10 @@ function ModalDadosRh({ colaborador, aoFechar, aoGuardar }: { colaborador: Colab
                     <input value={workSchedule} onChange={(e) => setWorkSchedule(e.target.value)} placeholder="Ex.: 2.ª a 6.ª · 08h00-16h30" className={inputCls} />
                     <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Etiquetas de situação (separadas por vírgula)</label>
                     <input value={situationTags} onChange={(e) => setSituationTags(e.target.value)} placeholder="Ex.: promovido 2025, Chefia" className={inputCls} />
+                    <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Morada</label>
+                    <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Ex.: Rua Manuel Nascimento de Oliveira, n.º 42, Luanda" className={inputCls} />
+                    <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Telefone</label>
+                    <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Ex.: +244 922 000 000" className={inputCls} />
                     <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Nacionalidade</label>
                     <AutocompleteIA
                         value={nationality}
@@ -1780,7 +1822,59 @@ function ModalDadosRh({ colaborador, aoFechar, aoGuardar }: { colaborador: Colab
                         placeholder={loadingCourses ? "A carregar sugestões..." : "Digite ou escolha o curso"}
                         className={inputCls}
                     />
-                    <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">CV / Notas</label>
+                    <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Idomas <span className="text-pri normal-case">(para o Curriculum Vitae)</span></label>
+                    {idiomas.length > 0 && (
+                        <div className="mb-2 space-y-2">
+                            {idiomas.map((i, idx) => (
+                                <div key={idx} className="flex gap-2 items-center">
+                                    <input
+                                        value={i.nome}
+                                        onChange={(e) => atualizarIdioma(idx, "nome", e.target.value)}
+                                        placeholder="Idioma"
+                                        className="flex-1 bg-panel border border-line rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-pri"
+                                    />
+                                    <input
+                                        value={i.fala}
+                                        onChange={(e) => atualizarIdioma(idx, "fala", e.target.value)}
+                                        placeholder="Fala"
+                                        className="w-[86px] bg-panel border border-line rounded-lg px-2 py-2 text-[13px] focus:outline-none focus:border-pri"
+                                    />
+                                    <input
+                                        value={i.escreve}
+                                        onChange={(e) => atualizarIdioma(idx, "escreve", e.target.value)}
+                                        placeholder="Escreve"
+                                        className="w-[86px] bg-panel border border-line rounded-lg px-2 py-2 text-[13px] focus:outline-none focus:border-pri"
+                                    />
+                                    <input
+                                        value={i.le}
+                                        onChange={(e) => atualizarIdioma(idx, "le", e.target.value)}
+                                        placeholder="Lê"
+                                        className="w-[86px] bg-panel border border-line rounded-lg px-2 py-2 text-[13px] focus:outline-none focus:border-pri"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => removerIdioma(idx)}
+                                        title="Remover idioma"
+                                        className="w-8 h-8 rounded-lg bg-panel border border-line text-dim font-bold text-[16px] leading-none hover:text-bad hover:border-bad transition-colors flex-shrink-0"
+                                    >
+                                        ×
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                    <button
+                        type="button"
+                        onClick={adicionarIdioma}
+                        className="mb-3 text-[12.3px] font-semibold text-pri hover:text-pri-dark transition-colors"
+                    >
+                        + Adicionar idioma
+                    </button>
+                    <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Aptidões e competências sociais</label>
+                    <textarea value={socialSkills} onChange={(e) => setSocialSkills(e.target.value)} rows={3} placeholder="Ex.: trabalho em equipa, comunicação, autonomia." className={`${inputCls} resize-y`} />
+                    <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Aptidões e competências técnicas</label>
+                    <textarea value={technicalSkills} onChange={(e) => setTechnicalSkills(e.target.value)} rows={3} placeholder="Ex.: computadores, ferramentas específicas, máquinas." className={`${inputCls} resize-y`} />
+                    <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">CV / Notas <span className="text-pri normal-case">(aparece no Curriculum Vitae, secção PERFIL)</span></label>
                     <textarea value={cv} onChange={(e) => setCv(e.target.value)} rows={5} placeholder="Biografia, experiência profissional, competências — o RH digitaliza aqui." className={`${inputCls} resize-y`} />
 
                     {/* Formação académica guardada */}
