@@ -44,10 +44,36 @@ const SITUACOES_VINCULO = [
     "Rescisão pelo trabalhador com justa causa",
 ];
 
+interface EducationItem {
+    nivel?: string | null;
+    ano_inicio?: number | null;
+    ano_fim?: number | null;
+    pais?: string | null;
+    instituicao?: string | null;
+    curso?: string | null;
+    areas?: string | null;
+}
+
+interface ExperienceItem {
+    onde?: string | null;
+    ano_inicio?: number | null;
+    ano_fim?: number | null;
+    funcao?: string | null;
+}
+
+interface CertificationItem {
+    nome?: string | null;
+    instituicao?: string | null;
+    data?: string | null;
+    certificado_url?: string | null;
+    validade?: string | null;
+}
+
 interface Perfil {
     employee_number?: string | null;
     admission_date?: string | null;
     contract_type?: string | null;
+    contract_end_date?: string | null;
     job_category?: string | null;
     job_title?: string | null;
     department?: string | null;
@@ -55,6 +81,14 @@ interface Perfil {
     work_schedule?: string | null;
     situation_tags?: string | null;
     photo_url?: string | null;
+    nationality?: string | null;
+    habilitacoes?: string | null;
+    university?: string | null;
+    course?: string | null;
+    cv?: string | null;
+    education?: EducationItem[] | null;
+    experience?: ExperienceItem[] | null;
+    certifications?: CertificationItem[] | null;
 }
 
 // Rótulo legível do tipo de vínculo.
@@ -85,6 +119,22 @@ export default function Portal() {
         ? `/evaluations/collaborators/${collaboratorId}/score-history`
         : "/evaluations/me/score-history";
     const nomeMostrado = verOutro ? (nomeDoState || "Colaborador") : (user?.full_name || "");
+    // Destinatário do PDF: o colaborador visto ou, no portal próprio, o próprio utilizador.
+    const idParaPdf = collaboratorId ?? user?.id;
+
+    const imprimirFichaPdf = async () => {
+        if (!idParaPdf) return;
+        const token = localStorage.getItem("kamba_token");
+        const url = `${api.defaults.baseURL}/collaborators/${idParaPdf}/ficha-pdf`;
+        try {
+            const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+            if (!resp.ok) throw new Error("Falha na resposta");
+            const blob = await resp.blob();
+            window.open(URL.createObjectURL(blob), "_blank");
+        } catch {
+            alert("Não foi possível gerar o PDF da ficha.");
+        }
+    };
 
     const [tab, setTab] = useState("ficha");
     const [perfil, setPerfil] = useState<Perfil | null>(null);
@@ -122,14 +172,15 @@ export default function Portal() {
     const [aCarregarFoto, setACarregarFoto] = useState(false);
     const [fotoModal, setFotoModal] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const idParaFoto = collaboratorId ?? user?.id;
     const aoEscolherFoto = async (e: ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (!file || !verOutro) return;
+        if (!file || !idParaFoto) return;
         setACarregarFoto(true);
         try {
             const fd = new FormData();
             fd.append("file", file);
-            const resp = await api.post(`/collaborators/${collaboratorId}/photo`, fd);
+            const resp = await api.post(`/collaborators/${idParaFoto}/photo`, fd);
             setPerfil(resp.data);
         } catch (err: any) {
             alert(err.response?.data?.detail || "Erro ao carregar a foto.");
@@ -139,11 +190,11 @@ export default function Portal() {
         }
     };
     const aoRemoverFoto = async () => {
-        if (!verOutro) return;
-        if (!window.confirm("Remover a foto deste colaborador?")) return;
+        if (!idParaFoto) return;
+        if (!window.confirm("Remover esta foto?")) return;
         setACarregarFoto(true);
         try {
-            const resp = await api.delete(`/collaborators/${collaboratorId}/photo`);
+            const resp = await api.delete(`/collaborators/${idParaFoto}/photo`);
             setPerfil(resp.data);
         } catch (err: any) {
             alert(err.response?.data?.detail || "Erro ao remover a foto.");
@@ -190,10 +241,9 @@ export default function Portal() {
                             <div className="flex flex-col items-center gap-1.5 flex-shrink-0">
                                 <button
                                     type="button"
-                                    onClick={() => verOutro && setFotoModal(true)}
-                                    disabled={!verOutro}
-                                    title={verOutro ? "Gerir foto" : undefined}
-                                    className={`w-24 h-24 rounded-full overflow-hidden bg-pri-bg text-pri-dark flex items-center justify-center font-serif text-3xl font-semibold ${verOutro ? "cursor-pointer hover:ring-2 hover:ring-pri/60 transition-shadow" : "cursor-default"}`}
+                                    onClick={() => setFotoModal(true)}
+                                    title="Gerir foto"
+                                    className={`w-24 h-24 rounded-full overflow-hidden bg-pri-bg text-pri-dark flex items-center justify-center font-serif text-3xl font-semibold cursor-pointer hover:ring-2 hover:ring-pri/60 transition-shadow`}
                                 >
                                     {perfil?.photo_url ? (
                                         <img src={perfil.photo_url} alt={nomeMostrado} className="w-full h-full object-cover" />
@@ -239,7 +289,18 @@ export default function Portal() {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                         {/* Identificação e vínculo */}
                         <Cartao>
-                            <h3 className="text-[14.5px] mb-2">Identificação e vínculo</h3>
+                            <div className="flex items-start justify-between gap-3 mb-2">
+                                <h3 className="text-[14.5px]">Identificação e vínculo</h3>
+                                {idParaPdf && (
+                                    <button
+                                        type="button"
+                                        onClick={imprimirFichaPdf}
+                                        className="inline-flex items-center gap-1.5 bg-panel border border-line rounded-lg px-3 py-1.5 text-[11.5px] font-semibold text-ink hover:border-pri hover:text-pri transition-colors shrink-0"
+                                    >
+                                        Imprimir PDF
+                                    </button>
+                                )}
+                            </div>
                             {aCarregar ? (
                                 <p className="text-dim text-sm">A carregar ficha...</p>
                             ) : (
@@ -248,11 +309,16 @@ export default function Portal() {
                                         <LinhaFicha rotulo="N.º de colaborador" valor={perfil?.employee_number} />
                                         <LinhaFicha rotulo="Admissão" valor={perfil?.admission_date} />
                                         <LinhaFicha rotulo="Vínculo" valor={rotuloVinculo(perfil?.contract_type)} />
+                                        <LinhaFicha rotulo="Término do contrato" valor={perfil?.contract_end_date} />
                                         <LinhaFicha rotulo="Categoria" valor={perfil?.job_category} />
                                         <LinhaFicha rotulo="Cargo" valor={perfil?.job_title} />
                                         <LinhaFicha rotulo="Direção" valor={perfil?.department} />
                                         <LinhaFicha rotulo="Horário" valor={perfil?.work_schedule} />
                                         <LinhaFicha rotulo="Local" valor={perfil?.workplace} />
+                                        <LinhaFicha rotulo="Nacionalidade" valor={perfil?.nationality} />
+                                        <LinhaFicha rotulo="Habilitações" valor={perfil?.habilitacoes} />
+                                        <LinhaFicha rotulo="Universidade" valor={perfil?.university} />
+                                        <LinhaFicha rotulo="Curso" valor={perfil?.course} />
                                     </tbody>
                                 </table>
                             )}
@@ -293,6 +359,78 @@ export default function Portal() {
                         </Cartao>
                     </div>
 
+                    {/* Formação académica */}
+                    {perfil?.education && perfil.education.length > 0 && (
+                        <Cartao className="mt-3">
+                            <h3 className="text-[14.5px] mb-2">Formação académica</h3>
+                            {perfil.education.map((e, i) => {
+                                const titulo = e.curso || e.nivel || "Formação";
+                                const detalhe = [e.instituicao, e.pais].filter(Boolean).join(" · ");
+                                const periodo = [e.ano_inicio, e.ano_fim].filter((a) => a != null).join(" – ");
+                                return (
+                                    <div key={i} className="py-2 border-b border-line last:border-0">
+                                        <div className="text-[13px] text-strong font-semibold">
+                                            {e.curso && e.nivel ? `${e.curso} · ${e.nivel}` : titulo}
+                                        </div>
+                                        {(detalhe || periodo) && (
+                                            <div className="text-[11.5px] text-dim mt-0.5">
+                                                {[detalhe, periodo].filter(Boolean).join(" · ")}
+                                            </div>
+                                        )}
+                                        {e.areas && (
+                                            <div className="text-[11.5px] text-dim mt-0.5">Áreas: {e.areas}</div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </Cartao>
+                    )}
+
+                    {/* Experiência profissional */}
+                    {perfil?.experience && perfil.experience.length > 0 && (
+                        <Cartao className="mt-3">
+                            <h3 className="text-[14.5px] mb-2">Experiência profissional</h3>
+                            {perfil.experience.map((x, i) => {
+                                const periodo = [x.ano_inicio, x.ano_fim].filter((a) => a != null).join(" – ");
+                                return (
+                                    <div key={i} className="py-2 border-b border-line last:border-0">
+                                        <div className="text-[13px] text-strong font-semibold">{x.onde || "—"}</div>
+                                        {(x.funcao || periodo) && (
+                                            <div className="text-[11.5px] text-dim mt-0.5">
+                                                {[x.funcao, periodo].filter(Boolean).join(" · ")}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </Cartao>
+                    )}
+
+                    {/* Cursos e certificações */}
+                    {perfil?.certifications && perfil.certifications.length > 0 && (
+                        <Cartao className="mt-3">
+                            <h3 className="text-[14.5px] mb-2">Cursos e certificações</h3>
+                            {perfil.certifications.map((c, i) => {
+                                const detalhe = [c.instituicao, c.data, c.validade ? `válido até ${c.validade}` : null]
+                                    .filter(Boolean).join(" · ");
+                                return (
+                                    <div key={i} className="py-2 border-b border-line last:border-0">
+                                        <div className="text-[13px] text-strong font-semibold">{c.nome || "Certificação"}</div>
+                                        {detalhe && <div className="text-[11.5px] text-dim mt-0.5">{detalhe}</div>}
+                                    </div>
+                                );
+                            })}
+                        </Cartao>
+                    )}
+
+                    {/* CV / notas */}
+                    {perfil?.cv && perfil.cv.trim() && (
+                        <Cartao className="mt-3">
+                            <h3 className="text-[14.5px] mb-2">CV / Notas</h3>
+                            <p className="text-[12.8px] text-ink leading-relaxed whitespace-pre-line">{perfil.cv}</p>
+                        </Cartao>
+                    )}
+
                     <div className="mt-3">
                         <CorrecoesFicha colaboradorId={collaboratorId} />
                     </div>
@@ -308,7 +446,7 @@ export default function Portal() {
             {tabAtiva === "remuneracao" && <RemuneracaoTab colaboradorId={collaboratorId} />}
             {tabAtiva === "politicas" && <PoliticasTab colaboradorId={collaboratorId} />}
 
-            {fotoModal && verOutro && (
+            {fotoModal && (
                 <Modal aberto aoFechar={() => setFotoModal(false)} titulo="Foto do colaborador" subtitulo={nomeMostrado}>
                     <div className="flex flex-col items-center gap-4">
                         {perfil?.photo_url ? (

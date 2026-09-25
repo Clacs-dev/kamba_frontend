@@ -10,6 +10,10 @@ export default function Registo() {
     const [fullName, setFullName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [vision, setVision] = useState("");
+    const [mission, setMission] = useState("");
+    const [values, setValues] = useState("");
+    const [objectives, setObjectives] = useState("");
     const [erro, setErro] = useState("");
     const [sucesso, setSucesso] = useState(false);
     const [aCarregar, setACarregar] = useState(false);
@@ -24,6 +28,10 @@ export default function Registo() {
                 full_name: fullName,
                 email,
                 password,
+                vision: vision || null,
+                mission: mission || null,
+                values: values || null,
+                objectives: objectives || null,
             });
             setSucesso(true);
             // Após registar, encaminha para o login ao fim de um instante.
@@ -37,7 +45,7 @@ export default function Registo() {
 
     return (
         <div className="min-h-screen bg-bg flex items-center justify-center p-4">
-            <div className="w-full max-w-md bg-paper border border-line rounded-xl shadow-[0_12px_40px_rgba(34,50,58,0.12)] p-6 sm:p-8">
+            <div className="w-full max-w-lg bg-paper border border-line rounded-xl shadow-[0_12px_40px_rgba(34,50,58,0.12)] p-6 sm:p-8">
                 <div className="flex items-baseline gap-2 mb-1">
                     <span className="font-serif font-semibold text-xl text-pri tracking-wide">KAMBA</span>
                 </div>
@@ -66,6 +74,32 @@ export default function Registo() {
                         <div>
                             <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Password (mín. 8 caracteres)</label>
                             <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8}
+                                className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] text-strong focus:outline-none focus:border-pri" />
+                        </div>
+
+                        <div className="pt-1">
+                            <p className="text-[10.5px] uppercase tracking-wide text-dim mb-1">Identidade da empresa <span className="normal-case text-pri">(aparece no rodapé das páginas)</span></p>
+                            <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Visão</label>
+                            <textarea value={vision} onChange={(e) => setVision(e.target.value)} rows={2}
+                                placeholder="A imagem de futuro que a empresa quer alcançar"
+                                className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] text-strong focus:outline-none focus:border-pri" />
+                        </div>
+                        <div>
+                            <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Missão</label>
+                            <textarea value={mission} onChange={(e) => setMission(e.target.value)} rows={2}
+                                placeholder="O propósito e o que a empresa faz"
+                                className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] text-strong focus:outline-none focus:border-pri" />
+                        </div>
+                        <div>
+                            <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Valores</label>
+                            <textarea value={values} onChange={(e) => setValues(e.target.value)} rows={2}
+                                placeholder="Os princípios que norteiam a empresa"
+                                className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] text-strong focus:outline-none focus:border-pri" />
+                        </div>
+                        <div>
+                            <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Objetivos</label>
+                            <textarea value={objectives} onChange={(e) => setObjectives(e.target.value)} rows={2}
+                                placeholder="Os objetivos estratégicos"
                                 className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] text-strong focus:outline-none focus:border-pri" />
                         </div>
 

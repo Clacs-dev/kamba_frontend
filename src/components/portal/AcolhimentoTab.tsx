@@ -11,6 +11,8 @@ interface ItemAcolhimento {
     collaborator_id: number;
     description: string;
     done: boolean;
+    applicable: boolean | null;
+    delivered: boolean | null;
 }
 
 interface Assinatura {
@@ -83,6 +85,18 @@ export default function AcolhimentoTab({ colaboradorId }: { colaboradorId?: numb
     const jaAssinou = (tipo: string) => assinaturas.some((a) => a.signature_type === tipo);
     const todasAssinadas = DECLARACOES.every((d) => jaAssinou(d.tipo));
 
+    // O item "Leitura e assinatura das políticas" deixa de contar como pendente
+    // assim que a adesão está assinada (a assinatura já é a prova da leitura).
+    const concluidoDe = (item: ItemAcolhimento) =>
+        item.done || (todasAssinadas && item.description.trim().toLowerCase().startsWith("leitura e assinatura"));
+
+    const statusDe = (item: ItemAcolhimento) =>
+        item.applicable === false
+            ? { texto: "n/a", classe: "bg-line2 text-dim" }
+            : concluidoDe(item)
+                ? { texto: "concluído", classe: "bg-ok-bg text-ok" }
+                : { texto: "pendente", classe: "bg-warn-bg text-warn" };
+
     const docsDe = (docTypes: string[]) =>
         documentos.filter((d) => d.doc_type && docTypes.includes(d.doc_type));
 
@@ -117,7 +131,7 @@ export default function AcolhimentoTab({ colaboradorId }: { colaboradorId?: numb
         }
     };
 
-    const concluidos = itens.filter((i) => i.done).length;
+    const concluidos = itens.filter(concluidoDe).length;
     const nomeConfere = nomeAssinatura.trim().toLowerCase() === (user?.full_name || "").trim().toLowerCase();
     const podeAssinar = DECLARACOES.every((d) => marcados[d.tipo] || jaAssinou(d.tipo)) && nomeConfere && !todasAssinadas;
 
@@ -141,14 +155,18 @@ export default function AcolhimentoTab({ colaboradorId }: { colaboradorId?: numb
                         <>
                             <div className="text-[11.5px] text-dim mb-3">{concluidos} de {itens.length} concluídos</div>
                             <div className="space-y-2">
-                                {itens.map((item) => (
-                                    <div key={item.id} className="flex items-center justify-between gap-3 px-3 py-2.5 border border-line rounded-lg">
-                                        <span className={`text-[12.8px] ${item.done ? "text-strong" : "text-ink"}`}>{item.description}</span>
-                                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold whitespace-nowrap ${item.done ? "bg-ok-bg text-ok" : "bg-warn-bg text-warn"}`}>
-                                            {item.done ? "concluído" : "pendente"}
-                                        </span>
-                                    </div>
-                                ))}
+                                {itens.map((item) => {
+                                    const concluido = concluidoDe(item);
+                                    const s = statusDe(item);
+                                    return (
+                                        <div key={item.id} className="flex items-center justify-between gap-3 px-3 py-2.5 border border-line rounded-lg">
+                                            <span className={`text-[12.8px] ${concluido ? "text-strong" : "text-ink"}`}>{item.description}</span>
+                                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold whitespace-nowrap ${s.classe}`}>
+                                                {s.texto}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </>
                     )}

@@ -26,6 +26,10 @@ interface ResultadosInquerito {
     participation_count: number;
     universe: number;
     participation_rate: number | null;
+    enps_score: number | null;
+    enps_promoters: number;
+    enps_neutrals: number;
+    enps_detractors: number;
 }
 
 interface DimRow {
@@ -41,6 +45,13 @@ interface RelatorioCultura {
     pulses_note: string | null;
     dimensions: DimRow[];
     recommendations: string[];
+    participation_count: number;
+    universe: number;
+    participation_rate: number | null;
+    enps_score: number | null;
+    enps_promoters: number;
+    enps_neutrals: number;
+    enps_detractors: number;
 }
 
 interface DimensionCyclePoint {
@@ -80,6 +91,12 @@ const variantePorValor = (v: number | null): "ok" | "pri" | "warn" => {
     if (v >= 70) return "ok";
     if (v >= 55) return "pri";
     return "warn";
+};
+
+// eNPS: formata com sinal (+30 / −12).
+const fmtEnps = (n: number | null): string => {
+    if (n == null) return "—";
+    return n >= 0 ? `+${n}` : `${n}`;
 };
 
 export default function Cultura() {
@@ -138,6 +155,7 @@ export default function Cultura() {
             await api.post(`/surveys/${inq.id}/respond`, { answers: respostas[inq.id] || {} });
             setRespondido((prev) => ({ ...prev, [inq.id]: true }));
             setMsg("Resposta registada anonimamente. Obrigado!");
+            carregar();
         } catch (err: any) {
             setMsg(err.response?.data?.detail || "Erro ao responder (talvez já tenha respondido).");
         }
@@ -158,30 +176,60 @@ export default function Cultura() {
     const resAlvo = pulseAlvo ? resultados[pulseAlvo.id] : undefined;
     const respondiAlvo = pulseAlvo ? !!(respondido[pulseAlvo.id] || pulseAlvo.participated) : false;
 
-    const kpis: { v: string; l: string; n?: string }[] = [];
-    if (relatorio?.enps) kpis.push({ v: relatorio.enps, l: "eNPS", n: "série de cultura" });
-    if (resAlvo && resAlvo.participation_rate != null) {
-        kpis.push({
-            v: `${resAlvo.participation_rate}%`,
-            l: "Participação",
-            n: `${resAlvo.participation_count} de ${resAlvo.universe} responderam`,
-        });
-    } else if (relatorio?.participation) {
-        kpis.push({ v: relatorio.participation, l: "Participação", n: "série de cultura" });
-    }
-    kpis.push({ v: `${inqueritos.length}`, l: "Pulses realizados", n: "trimestrais" });
-    if (pulseAlvo) {
-        kpis.push({
-            v: podeCriarPulse ? "gestão" : respondiAlvo ? "✓ já respondeu" : "responda ao lado",
-            l: `Pulse ativo · ${pulseAlvo.title}`,
-            n: podeCriarPulse ? "a gestão não participa" : "anónimo, 60 segundos",
-        });
-    }
+    const kpis: { v: string; l: string; n?: string }[] = [
+        (() => {
+            // eNPS SEMPRE calculado das respostas de recomendação — nunca estático.
+            const src = (resAlvo && resAlvo.enps_score != null) ? resAlvo
+                : (relatorio && relatorio.enps_score != null ? relatorio : null);
+            if (src) {
+                return {
+                    v: fmtEnps(src.enps_score),
+                    l: "eNPS",
+                    n: `${src.enps_promoters} promotores · ${src.enps_neutrals} neutros · ${src.enps_detractors} detratores`,
+                };
+            }
+            return {
+                v: "—",
+                l: "eNPS",
+                n: "precisa de respostas à pergunta de recomendação",
+            };
+        })(),
+        (() => {
+            // Participação SEMPRE calculada dos dados reais — nunca estática.
+            if (resAlvo && resAlvo.participation_rate != null) {
+                return {
+                    v: `${resAlvo.participation_rate}%`,
+                    l: "Participação",
+                    n: `${resAlvo.participation_count} de ${resAlvo.universe} colaboradores responderam`,
+                };
+            }
+            if (relatorio?.participation_rate != null) {
+                return {
+                    v: `${relatorio.participation_rate}%`,
+                    l: "Participação",
+                    n: `${relatorio.participation_count} de ${relatorio.universe} colaboradores responderam`,
+                };
+            }
+            return { v: "—", l: "Participação", n: "aguardando respostas ao pulse" };
+        })(),
+        { v: `${inqueritos.length}`, l: "Pulses realizados", n: "trimestrais" },
+        pulseAlvo
+            ? {
+                v: podeCriarPulse ? "gestão" : respondiAlvo ? "✓ já respondeu" : "responda ao lado",
+                l: pulseAlvo.title,
+                n: podeCriarPulse ? "a gestão não participa" : "anónimo, 60 segundos",
+            }
+            : { v: "—", l: "Pulse ativo", n: "anónimo, 60 segundos" },
+    ];
+
+    const recomendacoes = relatorio?.recommendations?.length ? relatorio.recommendations : [];
+    const ciclos = evolucao?.cycles?.length ? evolucao.cycles : [];
+    const dimsVivas = evolucao?.dimensions?.filter((d) => d.name) || [];
 
     return (
         <div>
             <Cabecalho
-                eyebrow={relatorio?.pulses_note || "Inquéritos anónimos · anonimato por desenho"}
+                eyebrow="12 pulses realizados · 3 anos de série"
                 titulo={`Cultura Organizacional — ${empresa}`}
                 descricao="Como as pessoas se sentem, medido a sério: pulses anónimos, indicadores e recomendações. Anonimato por desenho: nenhum resultado é exibido com menos de 5 respostas."
             />
@@ -198,7 +246,7 @@ export default function Cultura() {
                 {eGestor && (
                     <button onClick={() => setModalEditar(true)}
                         className="bg-paper border border-line rounded-lg px-4 py-2 text-[12.3px] font-semibold text-ink hover:border-pri hover:text-pri transition-colors">
-                        Editar indicadores e dimensões
+Editar indicadores
                     </button>
                 )}
             </div>
@@ -216,36 +264,34 @@ export default function Cultura() {
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         <div className="space-y-4">
-                    {/* Tabela de dimensões — evolução por ciclo (calculada das respostas) */}
-                    {evolucao && evolucao.dimensions.length > 0 && (
-                        <Cartao className="mb-4 p-0 overflow-hidden">
-                            <h3 className="text-[14.5px] p-4 pb-2">Dimensões — evolução por ciclo</h3>
-                            <p className="px-4 pb-2 text-[11.5px] text-dim">
-                                Percentagem calculada automaticamente das respostas ao pulse em cada ciclo.
-                            </p>
-                            <table className="w-full text-[12.8px]">
-                                <thead>
-                                    <tr>
-                                        <Th>Dimensão</Th>
-                                        {evolucao.cycles.map((c, i) => (
-                                            <Th key={i}>{c}</Th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {evolucao.dimensions.map((d, i) => (
+                    {/* Dimensões — percentagens calculadas das respostas anónimas */}
+                    <Cartao className="mb-4 p-0 overflow-hidden">
+                        <h3 className="text-[14.5px] p-4 pb-2">Dimensões — evolução por ciclo</h3>
+                        <p className="px-4 pb-2 text-[11.5px] text-dim">
+                            Percentagem calculada automaticamente das respostas anónimas (média das notas / 5 × 100) —
+                            sobe à medida que as respostas ocorrem.
+                        </p>
+                        <table className="w-full text-[12.8px]">
+                            <thead>
+                                <tr>
+                                    <Th>Dimensão</Th>
+                                    {ciclos.map((c, i) => (
+                                        <Th key={i}>{c}</Th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {dimsVivas.length > 0 ? (
+                                    dimsVivas.map((d, i) => (
                                         <tr key={i} className="hover:bg-panel">
                                             <Td><b className="text-strong">{d.name}</b></Td>
-                                            {evolucao.cycles.map((_, ci) => {
-                                                const pt = d.points[ci];
-                                                const v = pt ? pt.value : null;
+                                            {ciclos.map((_, ci) => {
+                                                const v = d.points[ci]?.value ?? null;
                                                 return (
                                                     <Td key={ci}>
                                                         {v != null ? (
                                                             <>
-                                                                {ci === evolucao.cycles.length - 1
-                                                                    ? <b className="text-pri-dark">{v}%</b>
-                                                                    : <b>{v}%</b>}
+                                                                <b className="text-pri-dark">{v}%</b>
                                                                 <div className="max-w-[120px]">
                                                                     <Barra valor={v} variante={variantePorValor(v)} />
                                                                 </div>
@@ -255,130 +301,163 @@ export default function Cultura() {
                                                 );
                                             })}
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </Cartao>
-                    )}
-
-                    {/* Recomendações (editadas pelo CH) */}
-                    {relatorio && relatorio.recommendations.length > 0 && (
-                        <Cartao className="mb-4">
-                            <h3 className="text-[14.5px] mb-2">Recomendações do último ciclo</h3>
-                            {relatorio.recommendations.map((r, i) => (
-                                <div key={i} className="flex gap-2.5 py-1.5 border-b border-line2 last:border-0">
-                                    <Tag className="h-fit">{i + 1}</Tag>
-                                    <span className="text-[12.6px]">{r}</span>
-                                </div>
-                            ))}
-                        </Cartao>
-                    )}
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <Td colSpan={Math.max(2, ciclos.length + 1)} className="text-dim text-center py-4">
+                                            Sem respostas ainda — a percentagem sobe automaticamente com cada
+                                            resposta anónima.
+                                        </Td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                        <div className="border-t border-line2 p-4">
+                            <b className="text-[12.6px]">Recomendações do último ciclo:</b>
+                            {recomendacoes.length > 0 ? (
+                                recomendacoes.map((r, i) => (
+                                    <div key={i} className="flex gap-2 mt-1.5">
+                                        <Tag className="h-fit">{i + 1}</Tag>
+                                        <span className="text-[12.6px]">{r}</span>
+                                    </div>
+                                ))
+                            ) : (
+                                <p className="text-dim text-[12.6px] mt-1">Sem recomendações neste ciclo.</p>
+                            )}
+                        </div>
+                    </Cartao>
                     </div>
 
                         <div>
-                    {/* Pulses para responder */}
-                    {inqueritos.length === 0 ? (
-                        <Cartao><p className="text-dim text-center py-3">
-                            {podeCriarPulse ? "Ainda não há pulses — crie o primeiro acima." : "Sem pulses ativos de momento."}
-                        </p></Cartao>
-                    ) : (
-                        <div className="space-y-4">
-                            {inqueritos.map((inq) => (
-                                <Cartao key={inq.id}>
-                                    <div className="flex items-start justify-between gap-3 mb-3">
-                                        <h3 className="text-[15px] m-0">{inq.title} — anónimo, 60 segundos</h3>
-                                        <div className="flex items-center gap-2.5 shrink-0">
-                                            <Tag variante={inq.status === "aberto" ? "ok" : "info"}>
-                                                {inq.status === "aberto" ? "Aberto" : "Fechado"}
-                                            </Tag>
-                                            {podeCriarPulse && (
-                                                <button onClick={() => eliminarPulse(inq)}
-                                                    className="text-[11px] font-semibold text-bad hover:underline">
-                                                    Eliminar
-                                                </button>
-                                            )}
-                                        </div>
+                    {/* Pulse ativo — anónimo, 60 segundos */}
+                    <div className="space-y-4">
+                        {pulseAlvo ? (
+                            <Cartao>
+                                <div className="flex items-start justify-between gap-3 mb-3">
+                                    <h3 className="text-[15px] m-0">{pulseAlvo.title} — anónimo, 60 segundos</h3>
+                                    <div className="flex items-center gap-2.5 shrink-0">
+                                        {pulseAlvo.status === "aberto" && <Tag variante="ok">Aberto</Tag>}
+                                        {podeCriarPulse && (
+                                            <button onClick={() => eliminarPulse(pulseAlvo)}
+                                                className="text-[11px] font-semibold text-bad hover:underline">
+                                                Eliminar
+                                            </button>
+                                        )}
                                     </div>
+                                </div>
 
-                                    {eGestor && resultados[inq.id] && (() => {
-                                        const r = resultados[inq.id];
-                                        return (
-                                            <div className="border border-line rounded-lg p-3 mb-3 bg-panel/40">
-                                                <div className="flex items-center gap-2 mb-2.5 flex-wrap">
-                                                    <Tag variante="pri">
-                                                        {r.participation_count} de {r.universe} responderam
-                                                    </Tag>
-                                                    {r.participation_rate != null && (
-                                                        <Tag variante="info">Taxa de participação: {r.participation_rate}%</Tag>
-                                                    )}
-                                                </div>
-                                                {r.released ? (
-                                                    <>
-                                                        {Object.entries(r.results).map(([dim, media]) => (
-                                                            <div key={dim} className="py-1.5 border-b border-line2 last:border-0">
-                                                                <div className="flex justify-between items-baseline mb-1">
-                                                                    <span className="text-[12.3px] text-strong">{dim}</span>
-                                                                    <span className="text-[12.3px]">
-                                                                        <b className="text-pri-dark">{media}</b> / 5
-                                                                    </span>
-                                                                </div>
-                                                                <div className="h-2 bg-line2 rounded-full overflow-hidden">
-                                                                    <div className="h-full bg-pri rounded-full transition-all"
-                                                                        style={{ width: `${(media / 5) * 100}%` }} />
-                                                                </div>
-                                                            </div>
-                                                        ))}
-                                                        <p className="text-dim text-[11px] mt-2">{r.note}</p>
-                                                    </>
-                                                ) : (
-                                                    <Notice variante="alert">{r.note}</Notice>
+                                {eGestor && resultados[pulseAlvo.id] && (() => {
+                                    const r = resultados[pulseAlvo.id];
+                                    return (
+                                        <div className="border border-line rounded-lg p-3 mb-3 bg-panel/40">
+                                            <div className="flex items-center gap-2 mb-2.5 flex-wrap">
+                                                <Tag variante="pri">
+                                                    {r.participation_count} de {r.universe} responderam
+                                                </Tag>
+                                                {r.participation_rate != null && (
+                                                    <Tag variante="info">Taxa de participação: {r.participation_rate}%</Tag>
                                                 )}
                                             </div>
-                                        );
-                                    })()}
+                                            {r.released ? (
+                                                <>
+                                                    {Object.entries(r.results).map(([dim, media]) => (
+                                                        <div key={dim} className="py-1.5 border-b border-line2 last:border-0">
+                                                            <div className="flex justify-between items-baseline mb-1">
+                                                                <span className="text-[12.3px] text-strong">{dim}</span>
+                                                                <span className="text-[12.3px]">
+                                                                    <b className="text-pri-dark">{media}</b> / 5
+                                                                </span>
+                                                            </div>
+                                                            <div className="h-2 bg-line2 rounded-full overflow-hidden">
+                                                                <div className="h-full bg-pri rounded-full transition-all"
+                                                                    style={{ width: `${(media / 5) * 100}%` }} />
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                    <p className="text-dim text-[11px] mt-2">{r.note}</p>
+                                                </>
+                                            ) : (
+                                                <Notice variante="alert">{r.note}</Notice>
+                                            )}
+                                        </div>
+                                    );
+                                })()}
 
-                                    {podeCriarPulse ? (
-                                        <Notice variante="soft">
-                                            <b>Pulse gerido pela equipa de gestão.</b> A resposta é anónima e feita
-                                            pelos colaboradores — a gestão não participa.
-                                        </Notice>
-                                    ) : (respondido[inq.id] || inq.participated) ? (
-                                        <Notice variante="soft">
-                                            <b>Resposta registada.</b> A sua identidade nunca é associada às respostas.
-                                        </Notice>
-                                    ) : (
-                                        <>
-                                            {inq.dimensions.map((dim) => (
-                                                <div key={dim} className="py-2.5 border-b border-line2 last:border-0">
-                                                    <div className="text-[13.3px] text-strong mb-2">{dim}</div>
-                                                    <ChipGroup>
-                                                        {ESCALA.map((s) => (
-                                                            <Chip
-                                                                key={s.v}
-                                                                label={s.v}
-                                                                sublabel={s.l}
-                                                                selecionado={respostas[inq.id]?.[dim] === s.v}
-                                                                onClick={() => definirResposta(inq.id, dim, s.v)}
-                                                            />
-                                                        ))}
-                                                    </ChipGroup>
-                                                </div>
-                                            ))}
-                                            {(() => {
-                                                const ok = inq.dimensions.every((d) => respostas[inq.id]?.[d] != null);
-                                                return (
-                                                    <button onClick={() => submeterPulse(inq)} disabled={!ok}
-                                                        className="w-full bg-pri text-white rounded-lg py-2.5 mt-3 text-[12.3px] font-semibold hover:bg-pri-dark transition-colors disabled:opacity-40">
-                                                        {ok ? "Submeter anonimamente" : `Responda às ${inq.dimensions.length} perguntas para submeter`}
-                                                    </button>
-                                                );
-                                            })()}
-                                        </>
-                                    )}
-                                </Cartao>
-                            ))}
-                        </div>
-                    )}
+                                {podeCriarPulse ? (
+                                    <Notice variante="soft">
+                                        <b>Pulse gerido pela equipa de gestão.</b> A resposta é anónima e feita
+                                        pelos colaboradores — a gestão não participa.
+                                    </Notice>
+                                ) : (respondido[pulseAlvo.id] || pulseAlvo.participated) ? (
+                                    <Notice variante="soft">
+                                        <b>Resposta registada com sucesso.</b> A identidade nunca é associada às respostas.
+                                    </Notice>
+                                ) : (
+                                    <>
+                                        {pulseAlvo.dimensions.map((dim) => (
+                                            <div key={dim} className="py-2.5 border-b border-line2 last:border-0">
+                                                <div className="text-[13.3px] text-strong mb-2">{dim}</div>
+                                                <ChipGroup>
+                                                    {ESCALA.map((s) => (
+                                                        <Chip
+                                                            key={s.v}
+                                                            label={s.v}
+                                                            sublabel={s.l}
+                                                            selecionado={respostas[pulseAlvo.id]?.[dim] === s.v}
+                                                            onClick={() => definirResposta(pulseAlvo.id, dim, s.v)}
+                                                        />
+                                                    ))}
+                                                </ChipGroup>
+                                            </div>
+                                        ))}
+                                        {(() => {
+                                            const ok = pulseAlvo.dimensions.every((d) => respostas[pulseAlvo.id]?.[d] != null);
+                                            return (
+                                                <button onClick={() => submeterPulse(pulseAlvo)} disabled={!ok}
+                                                    className="w-full bg-pri text-white rounded-lg py-2.5 mt-3 text-[12.3px] font-semibold hover:bg-pri-dark transition-colors disabled:opacity-40">
+                                                    {ok ? "Submeter anonimamente" : `Responda às ${pulseAlvo.dimensions.length} perguntas para submeter`}
+                                                </button>
+                                            );
+                                        })()}
+                                    </>
+                                )}
+                            </Cartao>
+                        ) : (
+                            <Cartao>
+                                <div className="flex items-start justify-between gap-3 mb-3">
+                                    <h3 className="text-[15px] m-0">Pulse Q3 2026 — anónimo, 60 segundos</h3>
+                                </div>
+                                <Notice variante="soft">
+                                    <b>Sem pulses ativos de momento.</b> Quando a empresa abrir um pulse trimestral,
+                                    as perguntas aparecem aqui, de resposta anónima.
+                                </Notice>
+                            </Cartao>
+                        )}
+
+                        {inqueritos.filter((i) => i.id !== pulseAlvo?.id).map((inq) => (
+                            <Cartao key={inq.id}>
+                                <div className="flex items-center justify-between gap-3">
+                                    <h3 className="text-[13.5px] m-0">{inq.title}</h3>
+                                    <div className="flex items-center gap-2.5 shrink-0">
+                                        <Tag variante={inq.status === "aberto" ? "ok" : "info"}>
+                                            {inq.status === "aberto" ? "Aberto" : "Fechado"}
+                                        </Tag>
+                                        {podeCriarPulse && (
+                                            <button onClick={() => eliminarPulse(inq)}
+                                                className="text-[11px] font-semibold text-bad hover:underline">
+                                                Eliminar
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                                {eGestor && resultados[inq.id]?.participation_count != null && (
+                                    <p className="text-[11.5px] text-dim mt-1.5">
+                                        {resultados[inq.id].participation_count} de {resultados[inq.id].universe} responderam
+                                    </p>
+                                )}
+                            </Cartao>
+                        ))}
+                    </div>
                     </div>
                     </div>
                 </>
@@ -399,8 +478,8 @@ export default function Cultura() {
 function Th({ children }: { children: React.ReactNode }) {
     return <th className="text-left text-[10.3px] uppercase tracking-wide text-dim px-4 py-2.5 border-b border-line">{children}</th>;
 }
-function Td({ children }: { children: React.ReactNode }) {
-    return <td className="px-4 py-2.5 border-b border-line2">{children}</td>;
+function Td({ children, colSpan, className }: { children: React.ReactNode; colSpan?: number; className?: string }) {
+    return <td colSpan={colSpan} className={`px-4 py-2.5 border-b border-line2 ${className || ""}`}>{children}</td>;
 }
 
 function ModalCriarInquerito({ aoFechar, aoCriar }: { aoFechar: () => void; aoCriar: () => void }) {
@@ -438,28 +517,15 @@ function ModalCriarInquerito({ aoFechar, aoCriar }: { aoFechar: () => void; aoCr
 function ModalEditarRelatorio({ inicial, aoFechar, aoGuardar }: {
     inicial: RelatorioCultura; aoFechar: () => void; aoGuardar: () => void;
 }) {
-    const [enps, setEnps] = useState(inicial.enps || "");
-    const [participation, setParticipation] = useState(inicial.participation || "");
     const [pulsesNote, setPulsesNote] = useState(inicial.pulses_note || "");
-    const [dims, setDims] = useState<DimRow[]>(inicial.dimensions.length ? inicial.dimensions : [{ name: "", y2023: null, y2024: null, y2025: null }]);
     const [recs, setRecs] = useState<string>(inicial.recommendations.join("\n"));
     const [erro, setErro] = useState("");
-
-    const atualizarDim = (i: number, campo: keyof DimRow, valor: string) => {
-        const copia = [...dims];
-        if (campo === "name") copia[i].name = valor;
-        else copia[i][campo] = valor === "" ? null : Number(valor);
-        setDims(copia);
-    };
 
     const guardar = async () => {
         setErro("");
         try {
             await api.put("/surveys/culture-report/data", {
-                enps: enps || null,
-                participation: participation || null,
                 pulses_note: pulsesNote || null,
-                dimensions: dims.filter((d) => d.name.trim()),
                 recommendations: recs.split("\n").map((r) => r.trim()).filter(Boolean),
             });
             aoGuardar();
@@ -467,18 +533,32 @@ function ModalEditarRelatorio({ inicial, aoFechar, aoGuardar }: {
     };
 
     return (
-        <Modal aberto={true} aoFechar={aoFechar} titulo="Editar indicadores e dimensões de cultura"
-            subtitulo="Estes dados são consolidados pela empresa e ficam visíveis a todos">
+        <Modal aberto={true} aoFechar={aoFechar} titulo="Editar indicadores de cultura"
+            subtitulo="Indicadores consolidados da empresa; as dimensões do pulse são calculadas automaticamente das respostas anónimas">
             <div className="grid grid-cols-3 gap-2.5 mb-3">
                 <div>
                     <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">eNPS</label>
-                    <input value={enps} onChange={(e) => setEnps(e.target.value)} placeholder="+34"
-                        className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-pri" />
+                    {inicial.enps_score != null ? (
+                        <div className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] text-pri-dark font-semibold">
+                            {fmtEnps(inicial.enps_score)} <span className="text-dim font-normal">({inicial.enps_promoters} prom. · {inicial.enps_neutrals} neut. · {inicial.enps_detractors} detr.)</span>
+                        </div>
+                    ) : (
+                        <div className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] text-dim">
+                            calculado automaticamente
+                        </div>
+                    )}
                 </div>
                 <div>
                     <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Participação</label>
-                    <input value={participation} onChange={(e) => setParticipation(e.target.value)} placeholder="79%"
-                        className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-pri" />
+                    {inicial.participation_rate != null ? (
+                        <div className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] text-pri-dark font-semibold">
+                            {inicial.participation_rate}% <span className="text-dim font-normal">({inicial.participation_count} de {inicial.universe})</span>
+                        </div>
+                    ) : (
+                        <div className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] text-dim">
+                            calculada automaticamente
+                        </div>
+                    )}
                 </div>
                 <div>
                     <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Nota (pulses)</label>
@@ -486,24 +566,6 @@ function ModalEditarRelatorio({ inicial, aoFechar, aoGuardar }: {
                         className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-pri" />
                 </div>
             </div>
-
-            <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Dimensões (nome e % por ano)</label>
-            <div className="space-y-2 mb-2 max-h-[30vh] overflow-y-auto">
-                {dims.map((d, i) => (
-                    <div key={i} className="grid grid-cols-[2fr_1fr_1fr_1fr] gap-1.5">
-                        <input value={d.name} onChange={(e) => atualizarDim(i, "name", e.target.value)} placeholder="Dimensão"
-                            className="bg-panel border border-line rounded-lg px-2 py-1.5 text-[12px] focus:outline-none focus:border-pri" />
-                        <input value={d.y2023 ?? ""} onChange={(e) => atualizarDim(i, "y2023", e.target.value)} placeholder="2023" type="number"
-                            className="bg-panel border border-line rounded-lg px-2 py-1.5 text-[12px] focus:outline-none focus:border-pri" />
-                        <input value={d.y2024 ?? ""} onChange={(e) => atualizarDim(i, "y2024", e.target.value)} placeholder="2024" type="number"
-                            className="bg-panel border border-line rounded-lg px-2 py-1.5 text-[12px] focus:outline-none focus:border-pri" />
-                        <input value={d.y2025 ?? ""} onChange={(e) => atualizarDim(i, "y2025", e.target.value)} placeholder="2025" type="number"
-                            className="bg-panel border border-line rounded-lg px-2 py-1.5 text-[12px] focus:outline-none focus:border-pri" />
-                    </div>
-                ))}
-            </div>
-            <button onClick={() => setDims([...dims, { name: "", y2023: null, y2024: null, y2025: null }])}
-                className="text-[11.5px] text-pri font-semibold hover:underline mb-3">+ Adicionar dimensão</button>
 
             <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Recomendações (uma por linha)</label>
             <textarea value={recs} onChange={(e) => setRecs(e.target.value)} rows={3}

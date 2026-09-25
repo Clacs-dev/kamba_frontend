@@ -1,4 +1,5 @@
-import { NavLink } from "react-router-dom";
+import { useState } from "react";
+import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 interface ItemMenu {
@@ -8,11 +9,27 @@ interface ItemMenu {
     perfis: string[];
 }
 
+interface SubItem {
+    caminho: string;
+    label: string;
+}
+
+// Sub-módulos que aparecem ao abrir determinado item (ex.: Órgãos Sociais).
+const SUB_ITENS: Record<string, SubItem[]> = {
+    "/orgaos-sociais": [
+        { caminho: "/orgaos-sociais/ca", label: "Conselho de Administração" },
+        { caminho: "/orgaos-sociais/ce", label: "Comissão Executiva" },
+        { caminho: "/orgaos-sociais/cf", label: "Conselho Fiscal" },
+        { caminho: "/orgaos-sociais/ma", label: "Mesa da Assembleia" },
+    ],
+};
+
 // A ordem deste array é a ordem apresentada em cada bloco (alinhado com o protótipo KAMBA).
 const ITENS: ItemMenu[] = [
     { caminho: "/", icone: "◈", label: "Início", perfis: ["colaborador", "director", "capital_humano", "comissao", "administracao", "admin"] },
     { caminho: "/portal", icone: "▣", label: "Portal do Colaborador", perfis: ["colaborador", "director", "capital_humano", "comissao", "administracao"] },
     { caminho: "/colaboradores", icone: "☰", label: "Colaboradores", perfis: ["capital_humano", "administracao", "admin"] },
+    { caminho: "/orgaos-sociais", icone: "❖", label: "Órgãos Sociais", perfis: ["capital_humano", "administracao", "admin"] },
     { caminho: "/equipa", icone: "☰", label: "Equipa de direção", perfis: ["director"] },
     { caminho: "/avaliacoes", icone: "✎", label: "Avaliação", perfis: ["colaborador", "director", "capital_humano", "comissao", "administracao"] },
     { caminho: "/disciplina", icone: "§", label: "Processos Disciplinares", perfis: ["director", "capital_humano", "administracao"] },
@@ -22,7 +39,7 @@ const ITENS: ItemMenu[] = [
     { caminho: "/chat", icone: "✉", label: "Mensagens", perfis: ["colaborador", "director", "capital_humano", "comissao", "administracao", "admin"] },
     { caminho: "/relatorios", icone: "▤", label: "Relatórios", perfis: ["capital_humano", "administracao"] },
     { caminho: "/dashboard", icone: "◇", label: "Dashboard", perfis: ["capital_humano", "administracao"] },
-    { caminho: "/historico", icone: "↗", label: "Histórico (3 anos)", perfis: ["director", "capital_humano", "administracao"] },
+    { caminho: "/historico", icone: "↗", label: "Histórico (3 anos)", perfis: ["colaborador", "director", "capital_humano", "comissao", "administracao", "admin"] },
     { caminho: "/auditoria", icone: "§", label: "Auditoria", perfis: ["administracao"] },
     { caminho: "/administracao", icone: "⚙", label: "Administração", perfis: ["administracao"] },
 ];
@@ -30,7 +47,7 @@ const ITENS: ItemMenu[] = [
 // Blocos de navegação — labels estilo KAMBA (`.side-lab`).
 const BLOCOS: { titulo: string; caminhos: string[] }[] = [
     { titulo: "Geral", caminhos: ["/", "/portal", "/chat"] },
-    { titulo: "Gestão", caminhos: ["/colaboradores", "/equipa", "/avaliacoes", "/disciplina", "/ausencias", "/formacao"] },
+    { titulo: "Gestão", caminhos: ["/colaboradores", "/orgaos-sociais", "/equipa", "/avaliacoes", "/disciplina", "/ausencias", "/formacao"] },
     { titulo: "Empresa", caminhos: ["/cultura", "/relatorios", "/dashboard", "/historico"] },
     { titulo: "Sistema", caminhos: ["/auditoria", "/administracao"] },
 ];
@@ -44,7 +61,70 @@ export default function Sidebar({ aberto, aoFechar }: SidebarProps) {
     const { user } = useAuth();
     const perfil = user?.role || "";
     const nomeEmpresa = user?.company_name || "";
+    const location = useLocation();
     const visiveis = ITENS.filter((i) => i.perfis.includes(perfil));
+
+    const [abertos, setAbertos] = useState<Record<string, boolean>>({});
+
+    const toggleSub = (caminho: string) =>
+        setAbertos((prev) => ({ ...prev, [caminho]: !prev[caminho] }));
+
+    const renderItem = (item: ItemMenu) => {
+        const sub = SUB_ITENS[item.caminho];
+        if (!sub || sub.length === 0) {
+            return (
+                <NavLink
+                    key={item.caminho}
+                    to={item.caminho}
+                    end={item.caminho === "/"}
+                    onClick={aoFechar}
+                    className={({ isActive }) =>
+                        `w-full flex items-center gap-2.5 px-[18px] py-[9px] text-left text-[13px] border-l-[3px] transition-colors ${isActive
+                            ? "text-pri-dark border-pri bg-pri-bg"
+                            : "text-dim border-transparent hover:text-strong hover:bg-panel"
+                        }`
+                    }
+                >
+                    <span className="w-[18px] text-center">{item.icone}</span>
+                    <span>{item.label}</span>
+                </NavLink>
+            );
+        }
+
+        const abertoItem = abertos[item.caminho] ?? location.pathname.startsWith(item.caminho);
+        return (
+            <div key={item.caminho}>
+                <button
+                    onClick={() => toggleSub(item.caminho)}
+                    className={`w-full flex items-center gap-2.5 px-[18px] py-[9px] text-left text-[13px] border-l-[3px] transition-colors ${
+                        abertoItem ? "text-pri-dark border-pri bg-pri-bg" : "text-dim border-transparent hover:text-strong hover:bg-panel"
+                    }`}
+                >
+                    <span className="w-[18px] text-center">{item.icone}</span>
+                    <span className="flex-1">{item.label}</span>
+                    <span className={`text-[10px] transition-transform ${abertoItem ? "rotate-90" : ""}`}>▸</span>
+                </button>
+                {abertoItem && (
+                    <div className="space-y-0.5 pb-1">
+                        {sub.map((s) => (
+                            <NavLink
+                                key={s.caminho}
+                                to={s.caminho}
+                                onClick={aoFechar}
+                                className={({ isActive }) =>
+                                    `w-full flex items-center gap-2.5 pl-[42px] pr-[18px] py-[7px] text-left text-[12.5px] border-l-[3px] transition-colors ${
+                                        isActive ? "text-pri-dark border-pri bg-pri-bg" : "text-dim border-transparent hover:text-strong hover:bg-panel"
+                                    }`
+                                }
+                            >
+                                <span>{s.label}</span>
+                            </NavLink>
+                        ))}
+                    </div>
+                )}
+            </div>
+        );
+    };
 
     return (
         <>
@@ -83,23 +163,7 @@ export default function Sidebar({ aberto, aoFechar }: SidebarProps) {
                     return (
                         <div key={bloco.titulo}>
                             <div className="side-lab px-5 mt-4 mb-1.5">{bloco.titulo}</div>
-                            {itens.map((item) => (
-                                <NavLink
-                                    key={item.caminho}
-                                    to={item.caminho}
-                                    end={item.caminho === "/"}
-                                    onClick={aoFechar}
-                                    className={({ isActive }) =>
-                                        `w-full flex items-center gap-2.5 px-[18px] py-[9px] text-left text-[13px] border-l-[3px] transition-colors ${isActive
-                                            ? "text-pri-dark border-pri bg-pri-bg"
-                                            : "text-dim border-transparent hover:text-strong hover:bg-panel"
-                                        }`
-                                    }
-                                >
-                                    <span className="w-[18px] text-center">{item.icone}</span>
-                                    <span>{item.label}</span>
-                                </NavLink>
-                            ))}
+                            {itens.map(renderItem)}
                         </div>
                     );
                 })}

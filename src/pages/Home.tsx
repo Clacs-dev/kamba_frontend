@@ -20,11 +20,27 @@ export default function Home() {
     const location = useLocation();
     const [menuAberto, setMenuAberto] = useState(false);
     const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+    const [numeroMec, setNumeroMec] = useState<string>("");
+
+    // Identidade da empresa — mostrada no rodapé das páginas (visão, missão, valores, objetivos).
+    const [identidade, setIdentidade] = useState<{
+        name: string;
+        vision: string | null;
+        mission: string | null;
+        values: string | null;
+        objectives: string | null;
+    } | null>(null);
 
     useEffect(() => {
         api.get("/me/profile")
-            .then((r) => setPhotoUrl(r.data?.photo_url ?? null))
-            .catch(() => setPhotoUrl(null));
+            .then((r) => {
+                setPhotoUrl(r.data?.photo_url ?? null);
+                setNumeroMec(r.data?.employee_number ?? "");
+            })
+            .catch(() => { setPhotoUrl(null); setNumeroMec(""); });
+        api.get("/company/identity")
+            .then((r) => setIdentidade(r.data))
+            .catch(() => setIdentidade(null));
     }, [user?.id]);
 
     const iniciais = (user?.full_name || "")
@@ -61,7 +77,7 @@ export default function Home() {
                     <div className="text-right leading-tight min-w-0">
                         <div className="text-[12.5px] font-semibold text-ink truncate max-w-[140px]">{user?.full_name}</div>
                         <div className="text-[10px] text-dim truncate max-w-[140px]">
-                            {ROTULO_PERFIL[user?.role || ""] || user?.role}
+                            {numeroMec ? `Nº ${numeroMec}` : (ROTULO_PERFIL[user?.role || ""] || user?.role)}
                         </div>
                     </div>
                     <div className="w-[30px] h-[30px] rounded-full overflow-hidden bg-pri-bg text-pri-dark flex items-center justify-center font-semibold text-xs flex-shrink-0">
@@ -91,6 +107,43 @@ export default function Home() {
                     </div>
                 </main>
             </div>
+
+            {/* Rodapé das páginas — identidade da empresa em modo noticioso (a rodar) */}
+            {identidade && (
+                <footer className="bg-paper border-t border-line">
+                    <div className="max-w-[1230px] mx-auto px-4 sm:px-7 py-3 flex items-center gap-4">
+                        <div className="shrink-0 flex items-baseline gap-2.5">
+                            <span className="font-serif font-semibold text-sm text-pri tracking-wide">KAMBA</span>
+                            <span className="hidden sm:inline text-[10px] uppercase tracking-[0.15em] text-dim">{identidade.name}</span>
+                        </div>
+                        <div className="flex-1 min-w-0 overflow-hidden">
+                            <div className="kamba-ticker">
+                                {[...itensRodape(identidade), ...itensRodape(identidade)].map((item, i) => (
+                                    <span key={i} className="text-[11.5px] text-ink leading-snug">
+                                        <b className="text-[9.5px] uppercase tracking-widest text-pri-dark mr-1.5">{item.rotulo}:</b>
+                                        {item.texto}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </footer>
+            )}
         </div>
     );
+}
+
+function itensRodape(identidade: {
+    name: string;
+    vision: string | null;
+    mission: string | null;
+    values: string | null;
+    objectives: string | null;
+}): { rotulo: string; texto: string }[] {
+    return [
+        identidade.vision ? { rotulo: "Visão", texto: identidade.vision } : null,
+        identidade.mission ? { rotulo: "Missão", texto: identidade.mission } : null,
+        identidade.values ? { rotulo: "Valores", texto: identidade.values } : null,
+        identidade.objectives ? { rotulo: "Metas", texto: identidade.objectives } : null,
+    ].filter((x): x is { rotulo: string; texto: string } => !!x);
 }

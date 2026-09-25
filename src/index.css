@@ -142,3 +142,21 @@
         white-space: nowrap;
     }
 }
+
+/* Rodapé em modo noticioso (ticker): a identidade da empresa passa a rodar */
+.kamba-ticker {
+    display: inline-flex;
+    gap: 2.5rem;
+    white-space: nowrap;
+    min-width: max-content;
+    animation: kamba-ticker-roll 45s linear infinite;
+}
+
+@keyframes kamba-ticker-roll {
+    from {
+        transform: translateX(0);
+    }
+    to {
+        transform: translateX(-50%);
+    }
+}

@@ -19,6 +19,7 @@ import Auditoria from "./pages/Auditoria";
 import Historico from "./pages/Historico";
 import Administracao from "./pages/Administracao";
 import Chat from "./pages/Chat";
+import OrgaosSociais from "./pages/OrgaosSociais";
 
 function RotaProtegida({ children }: { children: React.ReactNode }) {
   const { token, user, aCarregar } = useAuth();
@@ -48,6 +49,8 @@ function App() {
             <Route path="portal" element={<Portal />} />
             <Route path="colaboradores/:id/portal" element={<Portal />} />
             <Route path="colaboradores" element={<Colaboradores />} />
+            <Route path="orgaos-sociais" element={<OrgaosSociais />} />
+            <Route path="orgaos-sociais/:sigla" element={<OrgaosSociais />} />
             <Route path="equipa" element={<Equipa />} />
             <Route path="avaliacoes" element={<Avaliacoes />} />
             <Route path="ausencias" element={<Ausencias />} />

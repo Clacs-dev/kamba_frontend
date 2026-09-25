@@ -12,6 +12,10 @@ interface EmpresaOverview {
     plan: string;
     is_active: boolean;
     user_count: number;
+    vision: string | null;
+    mission: string | null;
+    values: string | null;
+    objectives: string | null;
 }
 
 interface Parametros {
@@ -88,6 +92,15 @@ export default function Administracao() {
     const [erroParam, setErroParam] = useState("");
     const [aGuardarParam, setAGuardarParam] = useState(false);
 
+    // Identidade da empresa (visão, missão, valores, objetivos).
+    const [vision, setVision] = useState("");
+    const [mission, setMission] = useState("");
+    const [values, setValues] = useState("");
+    const [objectives, setObjectives] = useState("");
+    const [msgIdent, setMsgIdent] = useState("");
+    const [erroIdent, setErroIdent] = useState("");
+    const [aGuardarIdent, setAGuardarIdent] = useState(false);
+
     const carregar = () => {
         setACarregar(true);
         api.get("/admin/overview")
@@ -98,6 +111,11 @@ export default function Administracao() {
                 setDirO(s.dir_objectives); setDirC(s.dir_competencies); setDirV(s.dir_values);
                 setPrazo(s.appeal_deadline_days);
                 setCalendario(s.cycle_calendar || "");
+                const c = r.data.company;
+                setVision(c.vision || "");
+                setMission(c.mission || "");
+                setValues(c.values || "");
+                setObjectives(c.objectives || "");
             })
             .catch((e) => setErro(e.response?.data?.detail || "Erro ao carregar a administração."))
             .finally(() => setACarregar(false));
@@ -127,6 +145,24 @@ export default function Administracao() {
             setErroParam(err.response?.data?.detail || "Não foi possível guardar os parâmetros.");
         } finally {
             setAGuardarParam(false);
+        }
+    };
+
+    const guardarIdentidade = async () => {
+        setErroIdent(""); setMsgIdent(""); setAGuardarIdent(true);
+        try {
+            await api.put("/admin/company/identity", {
+                vision: vision.trim() || null,
+                mission: mission.trim() || null,
+                values: values.trim() || null,
+                objectives: objectives.trim() || null,
+            });
+            setMsgIdent("Identidade guardada — o rodapé das páginas foi atualizado.");
+            carregar();
+        } catch (err: any) {
+            setErroIdent(err.response?.data?.detail || "Não foi possível guardar a identidade.");
+        } finally {
+            setAGuardarIdent(false);
         }
     };
 
@@ -213,6 +249,32 @@ export default function Administracao() {
                         <Botao onClick={guardarParametros}
                             disabled={aGuardarParam || tecSoma !== 100 || dirSoma !== 100 || prazo < 1}>
                             {aGuardarParam ? "A guardar..." : "Guardar parâmetros"}
+                        </Botao>
+                    </div>
+                </Cartao>
+
+                {/* Identidade da empresa (mostrada no rodapé das páginas) */}
+                <Cartao>
+                    <h3 className="text-[14.5px] mb-2">Identidade da empresa</h3>
+                    <p className="text-[11.5px] text-dim mb-3">Visão, missão, valores e objetivos. Aparecem no rodapé de todas as páginas da empresa.</p>
+                    <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Visão</label>
+                    <textarea value={vision} onChange={(e) => setVision(e.target.value)} rows={2}
+                        placeholder="A imagem de futuro que a empresa quer alcançar" className={campoCls + " resize-y"} />
+                    <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Missão</label>
+                    <textarea value={mission} onChange={(e) => setMission(e.target.value)} rows={2}
+                        placeholder="O propósito e o que a empresa faz" className={campoCls + " resize-y"} />
+                    <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Valores</label>
+                    <textarea value={values} onChange={(e) => setValues(e.target.value)} rows={2}
+                        placeholder="Os princípios que norteiam a empresa" className={campoCls + " resize-y"} />
+                    <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Objetivos</label>
+                    <textarea value={objectives} onChange={(e) => setObjectives(e.target.value)} rows={2}
+                        placeholder="Os objetivos estratégicos" className={campoCls + " resize-y"} />
+
+                    <div className="mt-1">
+                        {msgIdent && <Notice variante="soft" className="mb-3">{msgIdent}</Notice>}
+                        {erroIdent && <Notice variante="alert" className="mb-3">{erroIdent}</Notice>}
+                        <Botao onClick={guardarIdentidade} disabled={aGuardarIdent}>
+                            {aGuardarIdent ? "A guardar..." : "Guardar identidade"}
                         </Botao>
                     </div>
                 </Cartao>

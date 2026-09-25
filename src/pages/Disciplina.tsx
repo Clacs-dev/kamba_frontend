@@ -13,6 +13,14 @@ const FASE_INDICE: Record<string, number> = {
     instauracao: 0, nota_culpa: 1, defesa: 2, decisao: 3, conhecimento_decisao: 4, arquivado: 5,
 };
 
+const PAPEIS_COMISSAO = [
+    { valor: "relator", rotulo: "Relator" },
+    { valor: "instrutor", rotulo: "Instrutor" },
+    { valor: "presidente", rotulo: "Presidente da Comissão" },
+];
+
+interface MembrosComissao { id: number; full_name: string; role: string; }
+
 interface Processo {
     id: number;
     accused_id: number;
@@ -21,9 +29,10 @@ interface Processo {
     imputed_facts: string;
     charge_note: string | null;
     defense_deadline: string | null;
+    committee_members: MembrosComissao[];
 }
 
-interface Colaborador { id: number; full_name: string; }
+interface Colaborador { id: number; full_name: string; role?: string; }
 
 export default function Disciplina() {
     const { user } = useAuth();
@@ -109,6 +118,23 @@ export default function Disciplina() {
                             <div className="mt-3 text-[12.3px] text-ink bg-panel border border-line rounded-lg p-3">
                                 <b className="text-strong">Factos imputados:</b> {p.imputed_facts}
                             </div>
+
+                            {p.committee_members?.length > 0 && (
+                                <div className="mt-3 text-[12.3px] text-ink bg-panel border border-line rounded-lg p-3">
+                                    <b className="text-strong">Comissão disciplinar</b>
+                                    <ul className="mt-1.5 space-y-1">
+                                        {PAPEIS_COMISSAO.map((papel) => {
+                                            const m = p.committee_members.find((x) => x.role === papel.valor);
+                                            return (
+                                                <li key={papel.valor} className="flex justify-between gap-3">
+                                                    <span className="text-dim">{papel.rotulo}</span>
+                                                    <span className="text-ink">{m ? m.full_name : "—"}</span>
+                                                </li>
+                                            );
+                                        })}
+                                    </ul>
+                                </div>
+                            )}
 
                             <button
                                 onClick={() => descarregarPdf(p.id, p.reference)}
@@ -253,14 +279,26 @@ function ModalInstaurar({ colaboradores, aoFechar, aoCriar }: {
     colaboradores: Colaborador[]; aoFechar: () => void; aoCriar: () => void;
 }) {
     const [accusedId, setAccusedId] = useState(0);
-    const [reference, setReference] = useState("");
     const [facts, setFacts] = useState("");
+    const [membros, setMembros] = useState<number[]>([0, 0, 0]);
     const [erro, setErro] = useState("");
+
+    const directores = colaboradores.filter((c) => c.role === "director");
+
+    const defMembro = (indice: number, id: number) =>
+        setMembros((ant) => ant.map((v, i) => (i === indice ? id : v)));
+
+    const membrosValidos = membros.every((id, i) => id > 0 && !membros.some((o, j) => j > i && o === id));
+    const podeSubmeter = accusedId > 0 && facts.length >= 3 && membrosValidos;
 
     const submeter = async () => {
         setErro("");
         try {
-            await api.post("/disciplinary", { accused_id: accusedId, reference, imputed_facts: facts });
+            await api.post("/disciplinary", {
+                accused_id: accusedId,
+                imputed_facts: facts,
+                committee: membros.map((userId, i) => ({ user_id: userId, role: PAPEIS_COMISSAO[i].valor })),
+            });
             aoCriar();
         } catch (err: any) {
             setErro(err.response?.data?.detail || "Erro ao instaurar.");
@@ -269,23 +307,48 @@ function ModalInstaurar({ colaboradores, aoFechar, aoCriar }: {
 
     return (
         <Modal aberto={true} aoFechar={aoFechar} titulo="Instaurar processo disciplinar"
-            subtitulo="Início do procedimento com garantias">
+            subtitulo="Início do procedimento com garantias · referência gerada automaticamente (PD-AAAA/NNN)">
             <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Arguido</label>
             <select value={accusedId} onChange={(e) => setAccusedId(Number(e.target.value))}
                 className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-3 focus:outline-none focus:border-pri">
                 <option value={0}>— escolher —</option>
                 {colaboradores.map((c) => <option key={c.id} value={c.id}>{c.full_name}</option>)}
             </select>
-            <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Referência</label>
-            <input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="Ex.: PD-2026/01"
-                className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-3 focus:outline-none focus:border-pri" />
+
+            <div className="text-[10.5px] uppercase tracking-wide text-dim mb-1.5">Comissão disciplinar (3 Directores)</div>
+            <div className="space-y-2.5 mb-3">
+                {PAPEIS_COMISSAO.map((papel, i) => (
+                    <div key={papel.valor} className="flex items-center gap-2">
+                        <span className="w-[150px] shrink-0 text-[12px] text-ink">{papel.rotulo}</span>
+                        <select
+                            value={membros[i]}
+                            onChange={(e) => defMembro(i, Number(e.target.value))}
+                            className={`flex-1 bg-panel border rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-pri ${
+                                membros[i] && membros.some((o, j) => j !== i && o === membros[i])
+                                    ? "border-bad"
+                                    : "border-line"
+                            }`}
+                        >
+                            <option value={0}>— escolher Director —</option>
+                            {directores
+                                .filter((d) => d.id !== accusedId || accusedId === 0)
+                                .map((d) => (
+                                    <option key={d.id} value={d.id} disabled={membros.some((o, j) => j !== i && o === d.id)}>
+                                        {d.full_name}
+                                    </option>
+                                ))}
+                        </select>
+                    </div>
+                ))}
+            </div>
+
             <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Factos imputados</label>
             <textarea value={facts} onChange={(e) => setFacts(e.target.value)} rows={3}
                 className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-4 focus:outline-none focus:border-pri" />
             {erro && <p className="text-bad text-sm mb-3">{erro}</p>}
             <div className="flex gap-2.5">
                 <button onClick={aoFechar} className="bg-paper border border-line rounded-lg px-4 py-2 text-sm text-ink hover:border-pri hover:text-pri transition-colors">Cancelar</button>
-                <button onClick={submeter} disabled={!accusedId || !reference || facts.length < 3}
+                <button onClick={submeter} disabled={!podeSubmeter}
                     className="bg-pri text-white rounded-lg px-4 py-2 text-[12.3px] font-semibold hover:bg-pri-dark transition-colors disabled:opacity-40">
                     Instaurar
                 </button>

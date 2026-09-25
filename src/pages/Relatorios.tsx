@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import api from "../lib/api";
 import Cabecalho from "../components/Cabecalho";
 import Cartao from "../components/Cartao";
+import TalentoSucessao from "../components/talent/TalentoSucessao";
 
 interface Ciclo {
     id: number;
@@ -248,6 +249,9 @@ export default function Relatorios() {
                     )}
                 </>
             ) : null}
+
+            {/* Comité de talento: matriz 9-Box e plano de sucessão */}
+            <TalentoSucessao cicloId={cicloId} />
         </div>
     );
 }

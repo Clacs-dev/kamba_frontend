@@ -18,6 +18,7 @@ interface Colaborador {
     role: string;
     is_active: boolean;
     // Ficha profissional (linha enriquecida — estrutura KAMBA).
+    employee_number?: string | null;
     job_title?: string | null;
     job_category?: string | null;
     department?: string | null;
@@ -49,6 +50,21 @@ function situacao(c: Colaborador): { texto: string; variante: "bad" | "info" | "
     return { texto: "Regular", variante: "ok" };
 }
 
+// Perfil de acesso do utilizador (secção 1.1 do manual).
+const ROTULO_PERFIL: Record<string, string> = {
+    colaborador: "Colaborador",
+    director: "Director",
+    capital_humano: "Capital Humano",
+    comissao: "Comissão de Avaliação",
+    administracao: "Administração",
+    admin: "Admin",
+    superadmin: "Super Admin",
+};
+
+function traduzPerfil(role: string): string {
+    return ROTULO_PERFIL[role] || role;
+}
+
 const DIRECOES = [
     { sigla: "DAF", nome: "DAF — Contabilidade e Finanças" },
     { sigla: "DCM", nome: "DCM — Comercial" },
@@ -68,6 +84,14 @@ const NIVEIS_FORMACAO = [
     "Doutoramento",
     "Outro",
 ];
+
+// Níveis de ensino superior: só nestes se sugere universidades na instituição.
+const NIVEIS_UNIVERSITARIOS = new Set([
+    "Licenciatura",
+    "Mestrado",
+    "Pós-graduação",
+    "Doutoramento",
+]);
 
 // Itens de acolhimento criados por defeito para cada novo colaborador.
 const ACOLHIMENTO_DEFAULT = [
@@ -238,6 +262,7 @@ export default function Colaboradores() {
     const [colaboradores, setColaboradores] = useState<Colaborador[]>([]);
     const [dadosRhDe, setDadosRhDe] = useState<Colaborador | null>(null);
     const [mudarPerfilDe, setMudarPerfilDe] = useState<Colaborador | null>(null);
+    const [redefinirDe, setRedefinirDe] = useState<Colaborador | null>(null);
     const [aCarregar, setACarregar] = useState(true);
     const [erro, setErro] = useState("");
     const [pesquisa, setPesquisa] = useState("");
@@ -337,10 +362,12 @@ export default function Colaboradores() {
             ) : (
                 <Cartao className="p-0">
                     <div className="overflow-x-auto md:overflow-visible">
-                        <table className="w-full text-[12.8px] min-w-[640px]">
+                        <table className="w-full text-[12.8px] min-w-[720px]">
                             <thead>
                                 <tr>
+                                    <th className="text-left text-[10.3px] uppercase tracking-wide text-dim px-3 py-2.5 border-b border-line">Nº</th>
                                     <th className="text-left text-[10.3px] uppercase tracking-wide text-dim px-3 py-2.5 border-b border-line">Colaborador</th>
+                                    <th className="text-left text-[10.3px] uppercase tracking-wide text-dim px-3 py-2.5 border-b border-line">Perfil</th>
                                     <th className="text-left text-[10.3px] uppercase tracking-wide text-dim px-3 py-2.5 border-b border-line">Cargo</th>
                                     <th className="text-left text-[10.3px] uppercase tracking-wide text-dim px-3 py-2.5 border-b border-line">Dir.</th>
                                     <th className="text-left text-[10.3px] uppercase tracking-wide text-dim px-3 py-2.5 border-b border-line">Adm.</th>
@@ -362,10 +389,18 @@ export default function Colaboradores() {
                                             className="hover:bg-panel transition-colors cursor-pointer"
                                         >
                                             <td className="px-3 py-2.5 border-b border-line2">
+                                                <span className="text-[11.3px] text-dim font-mono">{c.employee_number || "—"}</span>
+                                            </td>
+                                            <td className="px-3 py-2.5 border-b border-line2">
                                                 <button type="button" onClick={() => navigate(`/colaboradores/${c.id}/portal`, { state: { nome: c.full_name } })} className="text-strong font-bold hover:text-pri hover:underline text-left">
                                                     {c.full_name}
                                                 </button>
                                                 <span className="block text-[11px] text-dim">{c.email}</span>
+                                            </td>
+                                            <td className="px-3 py-2.5 border-b border-line2">
+                                                <span className="inline-block px-2 py-0.5 rounded-full bg-panel border border-line text-[10.8px] font-semibold text-ink whitespace-nowrap">
+                                                    {traduzPerfil(c.role)}
+                                                </span>
                                             </td>
                                             <td className="px-3 py-2.5 border-b border-line2">
                                                 {c.job_title
@@ -400,6 +435,7 @@ export default function Colaboradores() {
                                                         if (user?.role === "admin") {
                                                             opcoes.push({ label: "Mudar perfil", onClick: () => setMudarPerfilDe(c) });
                                                         }
+                                                        opcoes.push({ label: "Redefinir password", onClick: () => setRedefinirDe(c) });
                                                         opcoes.push({
                                                             label: c.is_active ? "Desativar" : "Reativar",
                                                             onClick: () => alternarEstado(c),
@@ -454,6 +490,13 @@ export default function Colaboradores() {
                 />
             )}
 
+            {redefinirDe && (
+                <ModalRedefinir
+                    colaborador={redefinirDe}
+                    aoFechar={() => { setRedefinirDe(null); carregar(); }}
+                />
+            )}
+
             {modalCorrecoes && (
                 <ModalCorrecoesFicha aoFechar={() => setModalCorrecoes(false)} />
             )}
@@ -485,6 +528,7 @@ function ModalCadastro({ aoFechar, aoCriar }: { aoFechar: () => void; aoCriar: (
     // Passo 2 — ficha profissional.
     const [admission, setAdmission] = useState("");
     const [contractType, setContractType] = useState("");
+    const [contractEndDate, setContractEndDate] = useState("");
     const [jobCategory, setJobCategory] = useState("");
     const [jobTitle, setJobTitle] = useState("");
     const [department, setDepartment] = useState("");
@@ -492,6 +536,7 @@ function ModalCadastro({ aoFechar, aoCriar }: { aoFechar: () => void; aoCriar: (
     const [workSchedule, setWorkSchedule] = useState("");
     const [situationTags, setSituationTags] = useState("");
     const [nationality, setNationality] = useState("");
+    const [birthDate, setBirthDate] = useState("");
     const [cv, setCv] = useState("");
     const [erroFicha, setErroFicha] = useState("");
     const [aGuardarFicha, setAGuardarFicha] = useState(false);
@@ -516,11 +561,23 @@ function ModalCadastro({ aoFechar, aoCriar }: { aoFechar: () => void; aoCriar: (
     const removerExperiencia = (i: number) =>
         setExperiencia(prev => prev.length > 1 ? prev.filter((_, idx) => idx !== i) : prev);
 
-    // IA — sugestões de universidades (por linha de formação, consoante o país da linha)
+    // IA — sugestões de universidades (por linha de formação, consoante o país da linha;
+    // só para níveis de ensino superior; nos restantes a instituição é escrita à mão).
     const [universities, setUniversities] = useState<string[][]>([]);
     const [loadingUniv, setLoadingUniv] = useState<boolean[]>([]);
 
-    const carregarUniversidades = (i: number, pais: string) => {
+    const atualizarNivelFormacao = (i: number, valor: string) => {
+        atualizarFormacao(i, "nivel", valor);
+        if (!NIVEIS_UNIVERSITARIOS.has(valor)) {
+            setUniversities((prev) => { const n = [...prev]; n[i] = []; return n; });
+        }
+    };
+
+    const carregarUniversidades = (i: number, pais: string, nivel: string) => {
+        if (!NIVEIS_UNIVERSITARIOS.has(nivel)) {
+            setUniversities((prev) => { const n = [...prev]; n[i] = []; return n; });
+            return;
+        }
         if (!pais.trim() || pais.length < 4) {
             setUniversities((prev) => { const n = [...prev]; n[i] = []; return n; });
             return;
@@ -597,6 +654,7 @@ function ModalCadastro({ aoFechar, aoCriar }: { aoFechar: () => void; aoCriar: (
             await api.put(`/collaborators/${novoId}/profile`, {
                 admission_date: admission || null,
                 contract_type: contractType || null,
+                contract_end_date: contractEndDate || null,
                 job_category: jobCategory || null,
                 job_title: jobTitle || null,
                 department: department || null,
@@ -604,6 +662,12 @@ function ModalCadastro({ aoFechar, aoCriar }: { aoFechar: () => void; aoCriar: (
                 work_schedule: workSchedule || null,
                 situation_tags: situationTags || null,
                 nationality: nationality || null,
+                birth_date: birthDate || null,
+                // A ficha reutiliza a primeira linha da formação para preencher
+                // os campos consolidados (habilitações, universidade, curso).
+                habilitacoes: formacao[0]?.nivel || null,
+                university: formacao[0]?.instituicao || null,
+                course: formacao[0]?.curso || null,
                 cv: cv || null,
                 education: formacao.map((f) => ({
                     nivel: f.nivel || null,
@@ -635,6 +699,11 @@ function ModalCadastro({ aoFechar, aoCriar }: { aoFechar: () => void; aoCriar: (
         // Um director tem de gerir uma direção: sem direção não avança.
         if (role === "director" && !department.trim()) {
             setErroFicha("Um director tem de gerir uma direção. Selecione a direção que vai gerir.");
+            return;
+        }
+        // Contrato a termo certo exige a data de término.
+        if (contractType === "termo_certo" && !contractEndDate.trim()) {
+            setErroFicha("Um contrato por tempo determinado exige a data de término.");
             return;
         }
         const ok = await guardarFicha();
@@ -807,7 +876,12 @@ function ModalCadastro({ aoFechar, aoCriar }: { aoFechar: () => void; aoCriar: (
                                 <option value="">— escolher —</option>
                                 <option value="termo_certo">Tempo determinado</option>
                                 <option value="efetivo">Por tempo indeterminado</option>
-                            </select></div>
+                            </select>
+                            {contractType === "termo_certo" && (
+                                <div className="-mt-2"><label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Data de término <span className="text-pri normal-case">(obrigatória)</span></label>
+                                    <input value={contractEndDate} onChange={(e) => setContractEndDate(e.target.value)} type="date" className={inputCls} /></div>
+                            )}
+                        </div>
                         <div><label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Cargo {!jobTitle.trim() && <span className="text-dim normal-case">(sugestões ao clicar)</span>}</label>
                             <AutocompleteIA
                                 value={jobTitle}
@@ -848,7 +922,7 @@ function ModalCadastro({ aoFechar, aoCriar }: { aoFechar: () => void; aoCriar: (
                                             <div className="flex-[1.3]">
                                                 <select
                                                     value={f.nivel}
-                                                    onChange={(e) => atualizarFormacao(i, "nivel", e.target.value)}
+                                                    onChange={(e) => atualizarNivelFormacao(i, e.target.value)}
                                                     className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-pri"
                                                 >
                                                     <option value="">Habilitação literária</option>
@@ -912,8 +986,12 @@ function ModalCadastro({ aoFechar, aoCriar }: { aoFechar: () => void; aoCriar: (
                                                     options={universities[i] || []}
                                                     loading={loadingUniv[i]}
                                                     disabled={!f.pais.trim()}
-                                                    onFocus={() => carregarUniversidades(i, f.pais)}
-                                                    placeholder={f.pais.trim() ? "Instituição de ensino (universidade)" : "Defina o país de formação primeiro"}
+                                                    onFocus={() => carregarUniversidades(i, f.pais, f.nivel)}
+                                                    placeholder={!f.pais.trim()
+                                                        ? "Defina o país de formação primeiro"
+                                                        : NIVEIS_UNIVERSITARIOS.has(f.nivel)
+                                                            ? "Instituição de ensino (universidade)"
+                                                            : "Instituição de ensino (escola/instituto)"}
                                                     className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-pri"
                                                 />
                                             </div>
@@ -1007,6 +1085,8 @@ function ModalCadastro({ aoFechar, aoCriar }: { aoFechar: () => void; aoCriar: (
                             <input value={workSchedule} onChange={(e) => setWorkSchedule(e.target.value)} placeholder="Ex.: 08h-16h30" className={inputCls} /></div>
                         <div><label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Nacionalidade</label>
                             <input value={nationality} onChange={(e) => setNationality(e.target.value)} placeholder="Ex.: Angolana" className={inputCls} /></div>
+                        <div><label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Data de nascimento <span className="text-pri normal-case">(aniversário)</span></label>
+                            <input value={birthDate} onChange={(e) => setBirthDate(e.target.value)} type="date" className={inputCls} /></div>
                     </div>
                     <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Tags de situação</label>
                     <input value={situationTags} onChange={(e) => setSituationTags(e.target.value)} placeholder="separadas por vírgula" className={inputCls} />
@@ -1149,7 +1229,7 @@ function ModalCadastro({ aoFechar, aoCriar }: { aoFechar: () => void; aoCriar: (
 
 
 function ModalAcolhimento({ colaborador, aoFechar }: { colaborador: Colaborador; aoFechar: () => void }) {
-    const [itens, setItens] = useState<{ id: number; description: string; done: boolean }[]>([]);
+    const [itens, setItens] = useState<{ id: number; description: string; done: boolean; applicable: boolean | null; delivered: boolean | null }[]>([]);
     const [novoItem, setNovoItem] = useState("");
     const [aCarregar, setACarregar] = useState(true);
 
@@ -1171,12 +1251,26 @@ function ModalAcolhimento({ colaborador, aoFechar }: { colaborador: Colaborador;
         } catch { /* ignora */ }
     };
 
-    const alternar = async (itemId: number) => {
+    // Atualiza aplicável/entregue (S/N). O estado concluído deriva destes
+    // campos no backend — por isso recarrega a lista no fim.
+    const atualizarItem = async (itemId: number, campo: "applicable" | "delivered", valor: boolean | null) => {
         try {
-            await api.post(`/onboarding/${itemId}/toggle`);
+            await api.patch(`/onboarding/${itemId}`, { [campo]: valor });
             carregar();
         } catch { /* ignora */ }
     };
+
+    // Clique no item alterna rapidamente Entregue S/N.
+    const alternarEntregue = async (itemId: number, entregue: boolean | null) => {
+        await atualizarItem(itemId, "delivered", entregue !== true);
+    };
+
+    const statusDe = (item: { done: boolean; applicable: boolean | null }) =>
+        item.applicable === false
+            ? { texto: "n/a", classe: "bg-line2 text-dim" }
+            : item.done
+                ? { texto: "concluído", classe: "bg-ok-bg text-ok" }
+                : { texto: "pendente", classe: "bg-warn-bg text-warn" };
 
     return (
         <Modal
@@ -1191,21 +1285,53 @@ function ModalAcolhimento({ colaborador, aoFechar }: { colaborador: Colaborador;
                 <>
                     <div className="space-y-2 mb-4 max-h-[40vh] overflow-y-auto">
                         {itens.length === 0 && <p className="text-dim text-sm">Ainda não há itens. Adicione o primeiro abaixo.</p>}
-                        {itens.map((item) => (
-                            <div
-                                key={item.id}
-                                onClick={() => alternar(item.id)}
-                                className="flex items-center gap-3 px-3 py-2.5 border border-line rounded-lg cursor-pointer hover:border-pri"
-                            >
-                                <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] flex-shrink-0 ${item.done ? "bg-ok text-white" : "bg-line2 text-dim"
-                                    }`}>
-                                    {item.done ? "✓" : ""}
-                                </span>
-                                <span className={`text-[12.8px] ${item.done ? "text-strong" : "text-ink"}`}>
-                                    {item.description}
-                                </span>
-                            </div>
-                        ))}
+                        {itens.map((item) => {
+                            const s = statusDe(item);
+                            return (
+                                <div
+                                    key={item.id}
+                                    className="flex items-center gap-2 px-3 py-2 border border-line rounded-lg"
+                                >
+                                    <button
+                                        type="button"
+                                        onClick={() => alternarEntregue(item.id, item.delivered)}
+                                        title={item.delivered === true ? "Marcar como não entregue" : "Marcar como entregue"}
+                                        className="flex items-center gap-2 flex-1 text-left cursor-pointer hover:opacity-80"
+                                    >
+                                        <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] flex-shrink-0 ${item.done ? "bg-ok text-white" : "bg-line2 text-dim"
+                                            }`}>
+                                            {item.done ? "✓" : ""}
+                                        </span>
+                                        <span className={`text-[12.8px] ${item.done ? "text-strong" : "text-ink"}`}>
+                                            {item.description}
+                                        </span>
+                                    </button>
+                                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold whitespace-nowrap ${s.classe}`}>{s.texto}</span>
+                                    <label className="text-[10px] uppercase tracking-wide text-dim">Aplicável</label>
+                                    <select
+                                        value={item.applicable === null ? "" : item.applicable ? "S" : "N"}
+                                        onChange={(e) => atualizarItem(item.id, "applicable", e.target.value === "" ? null : e.target.value === "S")}
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="w-[58px] bg-panel border border-line rounded-md px-1.5 py-1 text-[12px] focus:outline-none focus:border-pri"
+                                    >
+                                        <option value="">—</option>
+                                        <option value="S">S</option>
+                                        <option value="N">N</option>
+                                    </select>
+                                    <label className="text-[10px] uppercase tracking-wide text-dim">Entregue</label>
+                                    <select
+                                        value={item.delivered === null ? "" : item.delivered ? "S" : "N"}
+                                        onChange={(e) => atualizarItem(item.id, "delivered", e.target.value === "" ? null : e.target.value === "S")}
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="w-[58px] bg-panel border border-line rounded-md px-1.5 py-1 text-[12px] focus:outline-none focus:border-pri"
+                                    >
+                                        <option value="">—</option>
+                                        <option value="S">S</option>
+                                        <option value="N">N</option>
+                                    </select>
+                                </div>
+                            );
+                        })}
                     </div>
 
                     <div className="flex gap-2.5">
@@ -1224,7 +1350,9 @@ function ModalAcolhimento({ colaborador, aoFechar }: { colaborador: Colaborador;
                             Adicionar
                         </button>
                     </div>
-                    <p className="text-dim text-[11px] mt-2">Clique num item para marcar/desmarcar como concluído.</p>
+                    <p className="text-dim text-[11px] mt-2">
+                        Clique no item para alternar Entregue; o estado concluído deriva de Aplicável/Entregue.
+                    </p>
                 </>
             )}
         </Modal>
@@ -1262,6 +1390,7 @@ function ModalDadosRh({ colaborador, aoFechar, aoGuardar }: { colaborador: Colab
     const [empNumber, setEmpNumber] = useState("");
     const [admission, setAdmission] = useState("");
     const [contractType, setContractType] = useState("");
+    const [contractEndDate, setContractEndDate] = useState("");
     const [jobCategory, setJobCategory] = useState("");
     const [department, setDepartment] = useState("");
     const [workplace, setWorkplace] = useState("");
@@ -1273,6 +1402,7 @@ function ModalDadosRh({ colaborador, aoFechar, aoGuardar }: { colaborador: Colab
     const [habilitacoes, setHabilitacoes] = useState("");
     const [university, setUniversity] = useState("");
     const [course, setCourse] = useState("");
+    const [birthDate, setBirthDate] = useState("");
     const [cv, setCv] = useState("");
 
     // Formação e experiência (JSON do perfil).
@@ -1410,6 +1540,7 @@ function ModalDadosRh({ colaborador, aoFechar, aoGuardar }: { colaborador: Colab
                 setEmpNumber(p.employee_number || "");
                 setAdmission(p.admission_date || "");
                 setContractType(p.contract_type || "");
+                setContractEndDate(p.contract_end_date || "");
                 setJobCategory(p.job_category || "");
                 setDepartment(p.department || "");
                 setWorkplace(p.workplace || "");
@@ -1421,6 +1552,7 @@ function ModalDadosRh({ colaborador, aoFechar, aoGuardar }: { colaborador: Colab
                 setHabilitacoes(p.habilitacoes || "");
                 setUniversity(p.university || "");
                 setCourse(p.course || "");
+                setBirthDate(p.birth_date || "");
                 setCv(p.cv || "");
                 // Carrega formação e experiência do JSON.
                 if (Array.isArray(p.education)) {
@@ -1454,6 +1586,10 @@ function ModalDadosRh({ colaborador, aoFechar, aoGuardar }: { colaborador: Colab
     };
     const gravarFicha = async () => {
         try {
+            if (contractType === "termo_certo" && !contractEndDate.trim()) {
+                falhou({ response: { data: { detail: "Contrato por tempo determinado exige a data de término." } } });
+                return;
+            }
             // Guarda os dados da conta (nome e email) se mudaram.
             if (fullName !== colaborador.full_name || email !== colaborador.email) {
                 await api.patch(`/collaborators/${colaborador.id}`, { full_name: fullName, email: email });
@@ -1462,6 +1598,7 @@ function ModalDadosRh({ colaborador, aoFechar, aoGuardar }: { colaborador: Colab
                 employee_number: empNumber || null,
                 admission_date: admission || null,
                 contract_type: contractType || null,
+                contract_end_date: contractEndDate || null,
                 job_category: jobCategory || null,
                 job_title: jobTitle || null,
                 department: department || null,
@@ -1469,6 +1606,7 @@ function ModalDadosRh({ colaborador, aoFechar, aoGuardar }: { colaborador: Colab
                 work_schedule: workSchedule || null,
                 situation_tags: situationTags || null,
                 nationality: nationality || null,
+                birth_date: birthDate || null,
                 habilitacoes: habilitacoes || null,
                 university: university || null,
                 course: course || null,
@@ -1568,6 +1706,12 @@ function ModalDadosRh({ colaborador, aoFechar, aoGuardar }: { colaborador: Colab
                         <option value="termo_certo">Tempo determinado</option>
                         <option value="efetivo">Por tempo indeterminado</option>
                     </select>
+                    {contractType === "termo_certo" && (
+                        <div className="-mt-2">
+                            <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Data de término <span className="text-pri normal-case">(obrigatória)</span></label>
+                            <input type="date" value={contractEndDate} onChange={(e) => setContractEndDate(e.target.value)} className={inputCls} />
+                        </div>
+                    )}
                     <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Cargo</label>
                     <AutocompleteIA
                         value={jobTitle}
@@ -1612,6 +1756,8 @@ function ModalDadosRh({ colaborador, aoFechar, aoGuardar }: { colaborador: Colab
                         placeholder="Escreva ou escolha o país"
                         className={inputCls}
                     />
+                    <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Data de nascimento <span className="text-pri normal-case">(aniversário)</span></label>
+                    <input value={birthDate} onChange={(e) => setBirthDate(e.target.value)} type="date" className={inputCls} />
                     <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Habilitações literárias</label>
                     <input value={habilitacoes} onChange={(e) => setHabilitacoes(e.target.value)} placeholder="Ex.: Licenciatura" className={inputCls} />
                     <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Universidade</label>
@@ -2020,6 +2166,65 @@ function msgErro(err: any, fallback = "Ocorreu um erro."): string {
     if (Array.isArray(d)) return d.map((x: any) => x?.msg || "").filter(Boolean).join("; ") || fallback;
     if (d && typeof d === "object") return d.msg || fallback;
     return fallback;
+}
+
+
+
+// ---- Modal de redefinição de password (email não chegou / password perdida) ----
+function ModalRedefinir({ colaborador, aoFechar }: { colaborador: Colaborador; aoFechar: () => void }) {
+    const [passwordTemp, setPasswordTemp] = useState<string | null>(null);
+    const [aCarregar, setACarregar] = useState(true);
+    const [erro, setErro] = useState("");
+
+    const redefinir = async () => {
+        setErro("");
+        setACarregar(true);
+        try {
+            const resp = await api.post(`/collaborators/${colaborador.id}/reset-password`);
+            setPasswordTemp(resp.data.temporary_password);
+        } catch (err: any) {
+            setErro(msgErro(err, "Erro ao redefinir a password."));
+        } finally {
+            setACarregar(false);
+        }
+    };
+
+    useEffect(() => { redefinir(); }, [colaborador.id]);
+
+    return (
+        <Modal
+            aberto={true}
+            aoFechar={aoFechar}
+            titulo={`Redefinir password — ${colaborador.full_name}`}
+            subtitulo="Gera uma nova password temporária de primeiro acesso"
+        >
+            {aCarregar && !passwordTemp && !erro ? (
+                <p className="text-dim text-sm">A gerar nova password...</p>
+            ) : erro ? (
+                <div>
+                    <p className="text-bad text-sm mb-3">{erro}</p>
+                    <Botao variante="ghost" onClick={aoFechar}>Fechar</Botao>
+                </div>
+            ) : (
+                <div>
+                    <Notice variante="soft">
+                        <b>Password redefinida com sucesso!</b>
+                        <div className="mt-2">Nova password temporária (exibida uma única vez):</div>
+                        <div className="font-mono text-[15px] text-strong bg-paper border border-line rounded-lg px-3 py-2 mt-1.5 select-all">
+                            {passwordTemp}
+                        </div>
+                        <div className="text-dim text-[11px] mt-2">
+                            Entregue esta password ao colaborador. Ele terá de a alterar no primeiro acesso.
+                            O email de boas-vindas foi reenviado, se estiver configurado.
+                        </div>
+                    </Notice>
+                    <div className="flex gap-2.5 mt-4">
+                        <Botao onClick={aoFechar}>Concluir</Botao>
+                    </div>
+                </div>
+            )}
+        </Modal>
+    );
 }
 
 
