@@ -1,9 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import api from "../../lib/api";
 import Cartao from "../Cartao";
 
 interface Resumo {
-    collaborators: { total: number; active: number; inactive: number };
+    collaborators: {
+        total: number;
+        active: number;
+        inactive: number;
+        by_gender?: Record<string, number>;
+        gender_por_definir?: number;
+    };
     evaluations: { total: number; validated: number; in_progress: number; below_threshold: number };
     disciplinary: { total: number; in_progress: number; archived: number };
     training: { plans: number; actions: number };
@@ -11,10 +17,13 @@ interface Resumo {
 }
 
 // Cartão de KPI ao estilo do protótipo, com "ver detalhe →" clicável.
-function KpiCard({ valor, label, detalhe, onClick, indisponivel }: {
+// `extra` é uma linha opcional renderizada ACIMA do "detalhe" (ex.: a quebra
+// por sexo no cartão dos colaboradores ativos).
+function KpiCard({ valor, label, detalhe, extra, onClick, indisponivel }: {
     valor: string | number;
     label: string;
     detalhe?: string;
+    extra?: ReactNode;
     onClick?: () => void;
     indisponivel?: boolean;
 }) {
@@ -24,6 +33,7 @@ function KpiCard({ valor, label, detalhe, onClick, indisponivel }: {
                 {valor}
             </div>
             <div className="text-[10.5px] text-dim uppercase tracking-wide mt-0.5 leading-tight">{label}</div>
+            {extra && <div className="text-[11px] text-strong mt-1.5 leading-tight">{extra}</div>}
             {detalhe && <div className="text-[10.5px] text-pri mt-1.5">{detalhe}</div>}
         </Cartao>
     );
@@ -43,6 +53,25 @@ export default function PainelGestao({ irPara }: { irPara: (seccao: string) => v
     if (aCarregar) return <p className="text-dim text-sm">A carregar métricas...</p>;
     if (!resumo) return <p className="text-bad text-sm">Não foi possível carregar as métricas.</p>;
 
+    const porGenero = resumo.collaborators.by_gender ?? {};
+    const homens = porGenero.masculino ?? 0;
+    const mulheres = porGenero.feminino ?? 0;
+    const semSexo = resumo.collaborators.gender_por_definir ?? 0;
+
+    // Quebra por sexo, mostrada dentro do cartão dos colaboradores ativos.
+    const quebraGenero =
+        homens + mulheres > 0 ? (
+            <span>
+                <span className="font-semibold">{mulheres}</span> mulheres ·{" "}
+                <span className="font-semibold">{homens}</span> homens
+                {semSexo > 0 && (
+                    <span className="text-dim"> · {semSexo} por definir</span>
+                )}
+            </span>
+        ) : (
+            <span className="text-dim">Sexo por definir nas fichas</span>
+        );
+
     return (
         <div>
             {/* Primeira fila — dados reais do backend */}
@@ -50,6 +79,7 @@ export default function PainelGestao({ irPara }: { irPara: (seccao: string) => v
                 <KpiCard
                     valor={resumo.collaborators.active}
                     label="Colaboradores ativos"
+                    extra={quebraGenero}
                     detalhe="ver detalhe →"
                     onClick={() => irPara("colaboradores")}
                 />

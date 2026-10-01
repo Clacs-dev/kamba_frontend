@@ -535,6 +535,7 @@ function ModalCadastro({ aoFechar, aoCriar }: { aoFechar: () => void; aoCriar: (
     const [workplace, setWorkplace] = useState("");
     const [workSchedule, setWorkSchedule] = useState("");
     const [situationTags, setSituationTags] = useState("");
+    const [gender, setGender] = useState("");
     const [nationality, setNationality] = useState("");
     const [birthDate, setBirthDate] = useState("");
     const [cv, setCv] = useState("");
@@ -661,6 +662,7 @@ function ModalCadastro({ aoFechar, aoCriar }: { aoFechar: () => void; aoCriar: (
                 workplace: workplace || null,
                 work_schedule: workSchedule || null,
                 situation_tags: situationTags || null,
+                gender: gender || null,
                 nationality: nationality || null,
                 birth_date: birthDate || null,
                 // A ficha reutiliza a primeira linha da formação para preencher
@@ -1083,6 +1085,12 @@ function ModalCadastro({ aoFechar, aoCriar }: { aoFechar: () => void; aoCriar: (
                         </div>
                         <div><label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Horário</label>
                             <input value={workSchedule} onChange={(e) => setWorkSchedule(e.target.value)} placeholder="Ex.: 08h-16h30" className={inputCls} /></div>
+                        <div><label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Sexo</label>
+                            <select value={gender} onChange={(e) => setGender(e.target.value)} className={inputCls}>
+                                <option value="">Por definir</option>
+                                <option value="masculino">Masculino</option>
+                                <option value="feminino">Feminino</option>
+                            </select></div>
                         <div><label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Nacionalidade</label>
                             <input value={nationality} onChange={(e) => setNationality(e.target.value)} placeholder="Ex.: Angolana" className={inputCls} /></div>
                         <div><label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Data de nascimento <span className="text-pri normal-case">(aniversário)</span></label>
@@ -1398,6 +1406,7 @@ function ModalDadosRh({ colaborador, aoFechar, aoGuardar }: { colaborador: Colab
     const [jobTitle, setJobTitle] = useState("");
     const [workSchedule, setWorkSchedule] = useState("");
     const [situationTags, setSituationTags] = useState("");
+    const [gender, setGender] = useState("");
     const [nationality, setNationality] = useState("");
     const [address, setAddress] = useState("");
     const [phone, setPhone] = useState("");
@@ -1562,6 +1571,7 @@ function ModalDadosRh({ colaborador, aoFechar, aoGuardar }: { colaborador: Colab
                 setJobTitle(p.job_title || "");
                 setWorkSchedule(p.work_schedule || "");
                 setSituationTags(p.situation_tags || "");
+                setGender(p.gender || "");
                 setNationality(p.nationality || "");
                 setAddress(p.address || "");
                 setPhone(p.phone || "");
@@ -1630,6 +1640,7 @@ function ModalDadosRh({ colaborador, aoFechar, aoGuardar }: { colaborador: Colab
                 workplace: workplace || null,
                 work_schedule: workSchedule || null,
                 situation_tags: situationTags || null,
+                gender: gender || null,
                 nationality: nationality || null,
                 birth_date: birthDate || null,
                 address: address || null,
@@ -1785,6 +1796,12 @@ function ModalDadosRh({ colaborador, aoFechar, aoGuardar }: { colaborador: Colab
                     <input value={workSchedule} onChange={(e) => setWorkSchedule(e.target.value)} placeholder="Ex.: 2.ª a 6.ª · 08h00-16h30" className={inputCls} />
                     <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Etiquetas de situação (separadas por vírgula)</label>
                     <input value={situationTags} onChange={(e) => setSituationTags(e.target.value)} placeholder="Ex.: promovido 2025, Chefia" className={inputCls} />
+                    <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Sexo</label>
+                    <select value={gender} onChange={(e) => setGender(e.target.value)} className={inputCls}>
+                        <option value="">Por definir</option>
+                        <option value="masculino">Masculino</option>
+                        <option value="feminino">Feminino</option>
+                    </select>
                     <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Morada</label>
                     <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Ex.: Rua Manuel Nascimento de Oliveira, n.º 42, Luanda" className={inputCls} />
                     <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Telefone</label>
