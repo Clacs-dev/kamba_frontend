@@ -634,7 +634,7 @@ function ModalCadastro({ aoFechar, aoCriar }: { aoFechar: () => void; aoCriar: (
         setErro("");
         setACarregar(true);
         try {
-            const resp = await api.post("/collaborators", { full_name: fullName, email, role });
+            const resp = await api.post("/collaborators", { full_name: fullName, email, role, gender: gender || null });
             setPasswordTemp(resp.data.temporary_password);
             setNovoId(resp.data.id);
             // Não avança automaticamente: mostra a senha temporária no passo 1.
@@ -836,6 +836,12 @@ function ModalCadastro({ aoFechar, aoCriar }: { aoFechar: () => void; aoCriar: (
                         <>
                             <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Nome completo</label>
                             <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Ex.: Nelma Cassule" className={inputCls} />
+                            <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Sexo</label>
+                            <select value={gender} onChange={(e) => setGender(e.target.value)} className={inputCls}>
+                                <option value="">Por definir</option>
+                                <option value="masculino">Masculino</option>
+                                <option value="feminino">Feminino</option>
+                            </select>
                             <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Email</label>
                             <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="nome@empresa.ao" className={inputCls} />
                             <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Perfil</label>
