@@ -11,7 +11,7 @@ interface Resumo {
         by_gender?: Record<string, number>;
         gender_por_definir?: number;
     };
-    evaluations: { total: number; validated: number; in_progress: number; below_threshold: number };
+    evaluations: { total: number; validated: number; in_progress: number; in_appeal?: number; below_threshold: number };
     disciplinary: { total: number; in_progress: number; archived: number };
     training: { plans: number; actions: number };
     health: { exams: number; overdue: number };
@@ -42,8 +42,9 @@ const ORGAOS = [
 ];
 
 // Cartão de KPI ao estilo do protótipo, com "ver detalhe →" clicável.
-// `extra` é uma linha opcional renderizada ACIMA do "detalhe" (ex.: a quebra
-// por sexo no cartão dos colaboradores ativos).
+// Todo o texto do cartão usa a mesma cor azul (pri) — a hierarquia vem do
+// tamanho e do peso, não da cor. `extra` é uma linha opcional ACIMA do
+// "detalhe" (ex.: a quebra por sexo no cartão dos colaboradores ativos).
 function KpiCard({ valor, label, detalhe, extra, onClick, indisponivel }: {
     valor: string | number;
     label: string;
@@ -54,11 +55,11 @@ function KpiCard({ valor, label, detalhe, extra, onClick, indisponivel }: {
 }) {
     return (
         <Cartao onClick={onClick}>
-            <div className={`font-serif font-semibold text-[26px] ${indisponivel ? "text-dim" : "text-pri-dark"}`}>
+            <div className="font-serif font-semibold text-[26px] text-pri-dark">
                 {valor}
             </div>
-            <div className="text-[10.5px] text-dim uppercase tracking-wide mt-0.5 leading-tight">{label}</div>
-            {extra && <div className="text-[11px] text-strong mt-1.5 leading-tight">{extra}</div>}
+            <div className="text-[10.5px] text-pri uppercase tracking-wide mt-0.5 leading-tight">{label}</div>
+            {extra && <div className="text-[11px] text-pri mt-1.5 leading-tight">{extra}</div>}
             <div className="text-[10.5px] text-pri mt-1.5">{detalhe || (indisponivel ? "em breve" : "ver detalhe →")}</div>
         </Cartao>
     );
@@ -131,11 +132,11 @@ export default function PainelGestao({ irPara }: { irPara: (seccao: string) => v
                 <span className="font-semibold">{mulheres}</span> mulheres ·{" "}
                 <span className="font-semibold">{homens}</span> homens
                 {semSexo > 0 && (
-                    <span className="text-dim"> · {semSexo} por definir</span>
+                    <span> · {semSexo} por definir</span>
                 )}
             </span>
         ) : (
-            <span className="text-dim">Sexo por definir nas fichas</span>
+            <span className="text-pri">Sexo por definir nas fichas</span>
         );
 
     // Contagens de ausências por tipo (o backend ainda não as agregava).
@@ -162,8 +163,24 @@ export default function PainelGestao({ irPara }: { irPara: (seccao: string) => v
                     </span>
                 ))}
             </span>
+) : (
+            <span className="text-pri">Nenhum membro atribuido</span>
+        );
+
+    // Avaliações: em curso (total a Liquidar) vs. em disputa (recurso na
+    // comissão). A disputa é um subconjunto das em curso, por isso o total do
+    // cartão é a soma das duas.
+    const emDisputa = resumo.evaluations.in_appeal ?? 0;
+    const emCurso = Math.max(resumo.evaluations.in_progress - emDisputa, 0);
+
+    const estadoAvaliacoes =
+        resumo.evaluations.in_progress === 0 ? (
+            <span className="text-pri">Sem avaliações abertas</span>
         ) : (
-            <span className="text-dim">Nenhum membro atribuido</span>
+            <span>
+                <span className="font-semibold">{emCurso}</span> em curso ·{" "}
+                <span className="font-semibold">{emDisputa}</span> em disputa
+            </span>
         );
 
     const pulses = cultura?.cycles?.length ?? 0;
@@ -208,8 +225,9 @@ export default function PainelGestao({ irPara }: { irPara: (seccao: string) => v
                     onClick={() => irPara("historico")}
                 />
                 <KpiCard
-                    valor={`${resumo.evaluations.in_progress}/${resumo.evaluations.total}`}
-                    label="Avaliações em curso (fecho previsto)"
+                    valor={resumo.evaluations.in_progress}
+                    label="Avaliações em curso"
+                    extra={estadoAvaliacoes}
                     onClick={() => irPara("avaliacoes")}
                 />
                 <KpiCard
