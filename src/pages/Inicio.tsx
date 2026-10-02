@@ -4,6 +4,7 @@ import Cabecalho from "../components/Cabecalho";
 import Cartao from "../components/Cartao";
 import PainelColaborador from "../components/inicio/PainelColaborador";
 import PainelGestao from "../components/inicio/PainelGestao";
+import PainelOrgaosSociais from "../components/inicio/PainelOrgaosSociais";
 
 export default function Inicio() {
     const { user } = useAuth();
@@ -40,7 +41,10 @@ export default function Inicio() {
                     </Cartao>
                 </div>
             ) : eGestao ? (
-                <PainelGestao irPara={irPara} />
+                <>
+                    <PainelGestao irPara={irPara} />
+                    <PainelOrgaosSociais irPara={irPara} />
+                </>
             ) : (
                 <>
                     {eDirector && (
