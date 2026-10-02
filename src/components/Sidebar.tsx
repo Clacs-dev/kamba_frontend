@@ -34,6 +34,7 @@ const ITENS: ItemMenu[] = [
     { caminho: "/avaliacoes", icone: "✎", label: "Avaliação", perfis: ["colaborador", "director", "capital_humano", "comissao", "administracao"] },
     { caminho: "/disciplina", icone: "§", label: "Processos Disciplinares", perfis: ["director", "capital_humano", "administracao"] },
     { caminho: "/ausencias", icone: "⧗", label: "Férias & Ausências", perfis: ["colaborador", "director", "capital_humano", "administracao"] },
+    { caminho: "/exames", icone: "✚", label: "Exames Profissionais", perfis: ["capital_humano", "administracao", "admin"] },
     { caminho: "/formacao", icone: "▸", label: "Plano de Formação", perfis: ["director", "capital_humano", "administracao"] },
     { caminho: "/cultura", icone: "◉", label: "Cultura", perfis: ["colaborador", "director", "capital_humano", "administracao"] },
     { caminho: "/chat", icone: "✉", label: "Mensagens", perfis: ["colaborador", "director", "capital_humano", "comissao", "administracao", "admin"] },
@@ -47,7 +48,7 @@ const ITENS: ItemMenu[] = [
 // Blocos de navegação — labels estilo KAMBA (`.side-lab`).
 const BLOCOS: { titulo: string; caminhos: string[] }[] = [
     { titulo: "Geral", caminhos: ["/", "/portal", "/chat"] },
-    { titulo: "Gestão", caminhos: ["/colaboradores", "/orgaos-sociais", "/equipa", "/avaliacoes", "/disciplina", "/ausencias", "/formacao"] },
+    { titulo: "Gestão", caminhos: ["/colaboradores", "/orgaos-sociais", "/equipa", "/avaliacoes", "/disciplina", "/ausencias", "/exames", "/formacao"] },
     { titulo: "Empresa", caminhos: ["/cultura", "/relatorios", "/dashboard", "/historico"] },
     { titulo: "Sistema", caminhos: ["/auditoria", "/administracao"] },
 ];

@@ -9,6 +9,7 @@ export default function Login() {
     const { login } = useAuth();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [verSenha, setVerSenha] = useState(false);
     const [erro, setErro] = useState("");
     const [aCarregar, setACarregar] = useState(false);
 
@@ -77,10 +78,26 @@ export default function Login() {
                             </div>
                             <div>
                                 <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Password</label>
-                                <input
-                                    type="password" value={password} onChange={(e) => setPassword(e.target.value)} required
-                                    className={inputCls}
-                                />
+                                <div className="relative">
+                                    <input
+                                        type={verSenha ? "text" : "password"}
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        required
+                                        autoComplete="current-password"
+                                        className={`${inputCls} pr-10`}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setVerSenha((v) => !v)}
+                                        aria-label={verSenha ? "Ocultar a password" : "Mostrar a password"}
+                                        aria-pressed={verSenha}
+                                        title={verSenha ? "Ocultar a password" : "Mostrar a password"}
+                                        className="absolute right-0 top-0 h-full w-10 flex items-center justify-center text-dim hover:text-pri transition-colors"
+                                    >
+                                        <Olho oculto={verSenha} />
+                                    </button>
+                                </div>
                                 <div className="flex justify-end mt-1">
                                     <button type="button" onClick={abrirRecuperar}
                                         className="text-[11.5px] text-dim hover:text-pri transition-colors">
@@ -147,5 +164,27 @@ export default function Login() {
                 )}
             </div>
         </div>
+    );
+}
+
+// Olho para mostrar/ocultar a password. Fica com a cor do texto herdada
+// (currentColor) para acompanhar os estados de hover e foco do botão.
+function Olho({ oculto }: { oculto: boolean }) {
+    return (
+        <svg
+            width="17"
+            height="17"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+        >
+            <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z" />
+            <circle cx="12" cy="12" r="3" />
+            {oculto && <path d="M3 3l18 18" />}
+        </svg>
     );
 }

@@ -11,7 +11,15 @@ interface Resumo {
         by_gender?: Record<string, number>;
         gender_por_definir?: number;
     };
-    evaluations: { total: number; validated: number; in_progress: number; in_appeal?: number; below_threshold: number };
+    evaluations: {
+        total: number;
+        validated: number;
+        in_progress: number;
+        in_appeal?: number;
+        below_threshold: number;
+        avg_score?: number | null;
+        by_classification?: Record<string, number>;
+    };
     disciplinary: { total: number; in_progress: number; archived: number };
     training: { plans: number; actions: number };
     health: { exams: number; overdue: number };
@@ -41,6 +49,191 @@ const ORGAOS = [
     { organ: "mesa_assembleia", sigla: "MA" },
 ];
 
+// Um pulse de cultura tal como o devolve GET /surveys.
+interface PulseApi {
+    id: number;
+    title: string;
+    created_at: string;
+}
+
+// Os resultados agregados de um pulse, tal como os devolve
+// GET /surveys/{id}/results.
+interface ResultadosPulse {
+    released: boolean;
+    note: string;
+    results: Record<string, number>;
+    enps_score: number | null;
+    enps_detractors: number;
+    participation_rate: number | null;
+    participation_count: number;
+    universe: number;
+}
+
+// Limiares usados para transformar números em recomendações. A escala dos
+// pulses é 1–5 e o eNPS vai de −100 a +100.
+const DIMENSION_MIN = 3.0;
+const ENPS_BENCHMARK = 30;
+const PARTICIPATION_TARGET = 70;
+const NOTA_MINIMA = 3.5;
+const MAX_RECOMENDACOES = 3;
+
+// Formata um número com vírgula decimal (convenção portuguesa).
+const num = (n: number, casas = 1) => n.toFixed(casas).replace(".", ",");
+
+// Uma recomendação com a sua prioridade:higher `peso` aparece primeiro.
+interface Recomendacao {
+    peso: number;
+    texto: string;
+}
+
+// ---------- Recomendações de cultura, a partir das respostas do pulse ----------
+function recomendacoesCultura(pulse: ResultadosPulse | null): string[] {
+    if (!pulse || !pulse.released) {
+        return ["Ainda não há um pulse de cultura com resultados liberados — são necessárias 5 respostas por pulse para proteger o anonimato."];
+    }
+
+    const recs: Recomendacao[] = [];
+
+    // 1. As dimensões mais baixas do pulse. Quando alguma está abaixo do
+    //    limiar é um problema a tratar; quando todas passam, o que fica é
+    //    indicar onde investir a margem de melhoria — por isso a lista nunca
+    //    fica vazia enquanto houver respostas.
+    const ord = Object.entries(pulse.results).sort((a, b) => a[1] - b[1]);
+    const fracas = ord.filter(([, media]) => media < DIMENSION_MIN);
+
+    if (fracas.length > 0) {
+        const [nome, media] = fracas[0];
+        recs.push({
+            peso: 10 - media,
+            texto: `“${nome}” é a dimensão mais fraca do pulse (${num(media)}/5, abaixo de ${num(DIMENSION_MIN)}) — abrir plano de melhoria até ao próximo ciclo.`,
+        });
+        if (fracas.length > 1) {
+            const restantes = fracas
+                .slice(1, 3)
+                .map(([n, m]) => `${n} (${num(m)})`)
+                .join(", ");
+            recs.push({
+                peso: 8 - media,
+                texto: `Também abaixo de ${num(DIMENSION_MIN)}/5: ${restantes} — avaliar se a causa é comum e tratá-la em conjunto.`,
+            });
+        }
+    } else if (ord.length > 0) {
+        // Nenhuma abaixo do limiar: recommends-se as duas mais baixas.
+        const [nome, media] = ord[0];
+        const seguintes = ord.slice(1, 2).map(([n, m]) => ` e ${n} (${num(m)})`).join("");
+        recs.push({
+            peso: 6,
+            texto: `Nenhuma dimensão abaixo de ${num(DIMENSION_MIN)}/5; as mais baixas do pulse são ${nome} (${num(media)}/5)${seguintes} — é aí que há margem de melhoria.`,
+        });
+    }
+
+    // 2. eNPS — a pergunta de recomendação.
+    const enps = pulse.enps_score;
+    if (enps !== null && enps < ENPS_BENCHMARK) {
+        recs.push(
+            enps < 0
+                ? {
+                    peso: 8,
+                    texto: `eNPS negativo (${enps}): há mais detratores que promotores — agir sobre as causas apontadas nas respostas.`,
+                }
+                : {
+                    peso: 5,
+                    texto: `eNPS de ${enps}, abaixo do referencial de ${ENPS_BENCHMARK} — ${pulse.enps_detractors} detrator(es) a recuperar.`,
+                }
+        );
+    }
+
+    // 3. Participação — uma leitura com pouca resposta não representa o clima.
+    const taxa = pulse.participation_rate;
+    if (taxa !== null && taxa < PARTICIPATION_TARGET) {
+        recs.push({
+            peso: 4,
+            texto: `Apenas ${num(taxa)}% do universo respondeu (${pulse.participation_count} de ${pulse.universe}) — a leitura do clima é parcial.`,
+        });
+    }
+
+    // 4. Se o pulse não tiver a pergunta de recomendação medida, dizê-lo evita
+    //    que se leia a ausência de um alerta como um bom sinal.
+    if (enps === null && ord.length > 0) {
+        recs.push({
+            peso: 3,
+            texto: "O pulse não mediu a pergunta de recomendação, por isso não há eNPS para interpretar.",
+        });
+    }
+
+    // Nada a assinalar: recomendar manter o que está a funcionar.
+    if (recs.length === 0) {
+        recs.push({
+            peso: 1,
+            texto: `Nenhuma dimensão abaixo de ${num(DIMENSION_MIN)}/5 — manter o pulse trimestral como leitura regular do clima.`,
+        });
+    }
+
+    return recs
+        .sort((a, b) => b.peso - a.peso)
+        .slice(0, MAX_RECOMENDACOES)
+        .map((r) => r.texto);
+}
+
+// ---------- Recomendações de desempenho, a partir dos resultados das avaliações ----------
+function recomendacoesDesempenho(ev: Resumo["evaluations"]): string[] {
+    const emDisputa = ev.in_appeal ?? 0;
+    const emCurso = Math.max(ev.in_progress - emDisputa, 0);
+    const media = ev.avg_score;
+
+    const recs: Recomendacao[] = [];
+
+    // 1. Recursos pendentes na Comissão — bloqueiam o fecho do ciclo.
+    if (emDisputa > 0) {
+        recs.push({
+            peso: 9,
+            texto: `${emDisputa} avaliação(ões) com recurso pendente na Comissão — agendar a sessão de decisão.`,
+        });
+    }
+
+    // 2. Desempenhos validados abaixo do limiar → plano de recuperação.
+    if (ev.below_threshold > 0) {
+        recs.push({
+            peso: 8,
+            texto: `${ev.below_threshold} colaborador(es) validado(s) com nota abaixo de ${num(NOTA_MINIMA)} — plano de recuperação com reavaliação intercalar.`,
+        });
+    }
+
+    // 3. Média do ciclo abaixo do limiar.
+    if (media !== null && media !== undefined && media < NOTA_MINIMA) {
+        recs.push({
+            peso: 7,
+            texto: `Média de desempenho validada em ${num(media, 2)}/5, abaixo de ${num(NOTA_MINIMA)} — reforçar a formação em gestão das chefias com equipas abaixo do esperado.`,
+        });
+    }
+
+    // 4. O que ainda falta fechar.
+    if (emCurso > 0) {
+        recs.push({
+            peso: 5,
+            texto: `${emCurso} avaliação(ões) ainda em curso — completar o fecho do ciclo antes de iniciar o período seguinte.`,
+        });
+    }
+
+    if (recs.length === 0) {
+        recs.push(
+            ev.total > 0
+                ? {
+                    peso: 1,
+                    texto: media !== null && media !== undefined
+                        ? `As ${ev.total} avaliações do ciclo estão validadas, com média de ${num(media, 2)}/5 e sem resultados abaixo do limiar — homologar os resultados.`
+                        : `As ${ev.total} avaliações do ciclo estão validadas e sem resultados abaixo do limiar — homologar os resultados.`,
+                }
+                : { peso: 1, texto: "Ainda não há avaliações neste ciclo." }
+        );
+    }
+
+    return recs
+        .sort((a, b) => b.peso - a.peso)
+        .slice(0, MAX_RECOMENDACOES)
+        .map((r) => r.texto);
+}
+
 // Cartão de KPI ao estilo do protótipo, com "ver detalhe →" clicável.
 // Todo o texto do cartão usa a mesma cor azul (pri) — a hierarquia vem do
 // tamanho e do peso, não da cor. `extra` é uma linha opcional ACIMA do
@@ -65,11 +258,10 @@ function KpiCard({ valor, label, detalhe, extra, onClick, indisponivel }: {
     );
 }
 
-// Lista numerada de recomendações, como no demo.
-function CartaoRecomendacoes({ titulo, itens, tom, rodape, onClick }: {
+// Lista numerada de recomendações, calculada dos dados reais do ciclo.
+function CartaoRecomendacoes({ titulo, itens, rodape, onClick }: {
     titulo: string;
     itens: string[];
-    tom: "pri" | "gold";
     rodape: string;
     onClick?: () => void;
 }) {
@@ -78,8 +270,7 @@ function CartaoRecomendacoes({ titulo, itens, tom, rodape, onClick }: {
             <h3 className="text-[14.5px] mb-2.5">{titulo}</h3>
             {itens.map((r, i) => (
                 <div key={i} className="flex items-start gap-2 py-1.5 border-b border-line2 last:border-0">
-                    <span className={`shrink-0 rounded-full px-2 py-[3px] text-[10.5px] font-semibold ${
-                        tom === "pri" ? "bg-pri-bg text-pri-dark" : "bg-warn-bg text-gold"}`}>
+                    <span className="shrink-0 rounded-full px-2 py-[3px] text-[10.5px] font-semibold bg-pri-bg text-pri-dark">
                         {i + 1}
                     </span>
                     <span className="text-[12.6px] leading-snug">{r}</span>
@@ -95,6 +286,8 @@ export default function PainelGestao({ irPara }: { irPara: (seccao: string) => v
     const [cultura, setCultura] = useState<EvolucaoCultura | null>(null);
     const [ausencias, setAusencias] = useState<PedidoAusencia[]>([]);
     const [organs, setOrgaos] = useState<OrganoApi[]>([]);
+    const [pulseResultados, setPulseResultados] = useState<ResultadosPulse | null>(null);
+    const [tituloPulse, setTituloPulse] = useState("");
     const [aCarregar, setACarregar] = useState(true);
 
     useEffect(() => {
@@ -115,6 +308,32 @@ export default function PainelGestao({ irPara }: { irPara: (seccao: string) => v
         api.get("/organs")
             .then((r) => setOrgaos(Array.isArray(r.data) ? r.data : []))
             .catch(() => setOrgaos([]));
+
+        // Recomendações de cultura: o pulse mais recente cujos resultados já
+        // foram liberados. `GET /surveys` vem do mais novo para o mais antigo,
+        // por isso percorre-se a lista até encontrar um com resultados.
+        api.get("/surveys")
+            .then(async (r) => {
+                const lista: PulseApi[] = Array.isArray(r.data) ? r.data : [];
+                for (const pulse of lista) {
+                    try {
+                        const res = await api.get(`/surveys/${pulse.id}/results`);
+                        if (res.data?.released) {
+                            setPulseResultados(res.data);
+                            setTituloPulse(pulse.title);
+                            return;
+                        }
+                    } catch {
+                        // Pulse sem resultados released: segue para o anterior.
+                    }
+                }
+                setPulseResultados(null);
+                setTituloPulse(lista[0]?.title || "");
+            })
+            .catch(() => {
+                setPulseResultados(null);
+                setTituloPulse("");
+            });
     }, []);
 
     if (aCarregar) return <p className="text-dim text-sm">A carregar métricas...</p>;
@@ -187,18 +406,12 @@ export default function PainelGestao({ irPara }: { irPara: (seccao: string) => v
 
     const ano = new Date().getFullYear();
 
-    // Recomendações — a lógica de cálculo entra depois; por agora a estrutura
-    // fica igual à do demo, com as listas por definir.
-    const recCultura = [
-        "Rever as práticas de reconhecimento归结das na última edição.",
-        "Reforçar a comunicação entre direcções nas dimensões mais fracas.",
-        "Manter o pulse trimestral como leitura regular do clima.",
-    ];
-    const recDesempenho = [
-        "Estabelecer plano de recuperação com reavaliação intercalar para os desempenhos insuficientes.",
-        "Reforçar a formação em gestão para as chefias com equipas abaixo do esperado.",
-        "Homologar os resultados do ciclo antes de iniciar o período de avaliação seguinte.",
-    ];
+    // Recomendações calculadas: a de cultura sai das respostas do pulse, a de
+// desempenho sai dos resultados das avaliações.
+const recCultura = recomendacoesCultura(pulseResultados);
+const recDesempenho = recomendacoesDesempenho(resumo.evaluations);
+
+const cicloCultura = tituloPulse ? ` — ${tituloPulse}` : "";
 
     return (
         <div>
@@ -259,9 +472,11 @@ export default function PainelGestao({ irPara }: { irPara: (seccao: string) => v
                     onClick={() => irPara("cultura")}
                 />
                 <KpiCard
-                    valor="—"
+                    valor={resumo.evaluations.avg_score !== null && resumo.evaluations.avg_score !== undefined
+                        ? num(resumo.evaluations.avg_score, 2)
+                        : "—"}
                     label="Média de desempenho homologada"
-                    indisponivel
+                    indisponivel={resumo.evaluations.avg_score === null || resumo.evaluations.avg_score === undefined}
                     onClick={() => irPara("historico")}
                 />
             </div>
@@ -291,19 +506,18 @@ export default function PainelGestao({ irPara }: { irPara: (seccao: string) => v
                 />
             </div>
 
-            {/* Recomendações do último ciclo — cultura e desempenho */}
+            {/* Recomendações — cultura a partir das respostas do pulse, desempenho a
+                partir dos resultados das avaliações */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                 <CartaoRecomendacoes
-                    titulo="Recomendações — último ciclo de cultura"
+                    titulo={`Recomendações — ciclo de cultura${cicloCultura}`}
                     itens={recCultura}
-                    tom="pri"
                     rodape="abrir módulo de cultura →"
                     onClick={() => irPara("cultura")}
                 />
                 <CartaoRecomendacoes
-                    titulo="Recomendações — último ciclo de desempenho"
+                    titulo="Recomendações — ciclo de desempenho"
                     itens={recDesempenho}
-                    tom="gold"
                     rodape="abrir relatórios →"
                     onClick={() => irPara("relatorios")}
                 />

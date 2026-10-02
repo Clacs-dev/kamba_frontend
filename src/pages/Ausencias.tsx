@@ -8,6 +8,7 @@ import Botao from "../components/ui/Botao";
 import Notice from "../components/ui/Notice";
 import Modal from "../components/Modal";
 import TabelaAusencias, { type PedidoAusencia } from "../components/ausencias/TabelaAusencias";
+import MapaFerias from "../components/ausencias/MapaFerias";
 
 // ---------------------------------------------------------------------------
 // Módulo "Férias & Ausências" — usa os endpoints /leave/* do backend
@@ -402,6 +403,10 @@ function VistaDirector() {
                 )}
             />
 
+            <div className="mt-6">
+                <MapaFerias mostrarDireccao={false} />
+            </div>
+
             {detalheDe && (
                 <Modal aberto={true} aoFechar={() => setDetalheDe(null)} titulo="Detalhe do pedido" subtitulo="Tramitação registada">
                     <div className="text-[12.8px] space-y-1.5">
@@ -559,11 +564,12 @@ function VistaCH() {
                             </button>
                         )}
                     />
-
-                    <h3 className="text-[14.5px] mb-3 mt-5">Mapa completo da empresa</h3>
-                    <TabelaAusencias pedidos={pedidos} mostrarColaborador mostrarDocumento vazio="Ainda não há pedidos registados." />
                 </>
             )}
+
+            <div className="mt-6">
+                <MapaFerias aoAverbar={averbar} />
+            </div>
         </div>
     );
 }

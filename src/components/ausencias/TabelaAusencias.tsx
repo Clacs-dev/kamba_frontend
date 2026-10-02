@@ -13,6 +13,7 @@ export interface PedidoAusencia {
     status: "pendente_dir" | "pendente_ch" | "aprovada" | "justificada" | "recusada";
     document_name?: string | null;
     document_url?: string | null;
+    averbado?: boolean;
 }
 
 const ROTULO_TIPO: Record<PedidoAusencia["type"], string> = {

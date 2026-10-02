@@ -20,6 +20,7 @@ import Historico from "./pages/Historico";
 import Administracao from "./pages/Administracao";
 import Chat from "./pages/Chat";
 import OrgaosSociais from "./pages/OrgaosSociais";
+import Exames from "./pages/Exames";
 
 function RotaProtegida({ children }: { children: React.ReactNode }) {
   const { token, user, aCarregar } = useAuth();
@@ -57,6 +58,7 @@ function App() {
             <Route path="disciplina" element={<Disciplina />} />
             <Route path="relatorios" element={<Relatorios />} />
             <Route path="formacao" element={<Formacao />} />
+            <Route path="exames" element={<Exames />} />
             <Route path="cultura" element={<Cultura />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="auditoria" element={<Auditoria />} />
