@@ -77,7 +77,41 @@ export default function MapaFerias({ ano, mostrarDireccao = true, aoAverbar }: P
         setACarregar(true);
         setErro("");
         api.get("/leave/map", { params: { ano: y } })
-            .then((r) => setMapa(r.data))
+            .then((r) => {
+                const d = r.data;
+                // O servidor pode responder com um formato inesperado (ex.: versao
+                // antiga do endpoint). Validamos para nunca deixar a pagina partir.
+                if (!d || !Array.isArray(d.colaboradores)) {
+                    throw new Error("Resposta do mapa em formato inesperado.");
+                }
+                setMapa({
+                    ano: d.ano ?? y,
+                    scope: d.scope === "departamento" ? "departamento" : "empresa",
+                    direccao: d.direccao ?? null,
+                    direito_anual: d.direito_anual ?? 22,
+                    aviso: d.aviso ?? null,
+                    departamentos: Array.isArray(d.departamentos) ? d.departamentos : [],
+                    colaboradores: d.colaboradores.map((c: any) => ({
+                        ...c,
+                        departamento: c.department ?? null,
+                        admissao: c.admission_date ?? null,
+                        direito: Number(c.direito ?? 0),
+                        gozados: Number(c.gozados ?? 0),
+                        marcados: Number(c.marcados ?? 0),
+                        em_curso: Number(c.em_curso ?? 0),
+                        disponiveis: Number(c.disponiveis ?? 0),
+                        pode_pedir: Boolean(c.pode_pedir),
+                        ferias: Array.isArray(c.ferias) ? c.ferias : [],
+                        ausencias: Array.isArray(c.ausencias) ? c.ausencias : [],
+                    })),
+                    totais: {
+                        colaboradores: d.totais?.colaboradores ?? d.colaboradores.length,
+                        ferias: d.totais?.ferias ?? 0,
+                        ausencias: d.totais?.ausencias ?? 0,
+                        sem_direito: d.totais?.sem_direito ?? 0,
+                    },
+                });
+            })
             .catch(() => setErro("Não foi possível carregar o mapa de férias."))
             .finally(() => setACarregar(false));
     };
