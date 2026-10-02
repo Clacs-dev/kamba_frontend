@@ -27,6 +27,20 @@ interface PedidoAusencia {
     type?: string;
 }
 
+// Um órgão social tal como o devolve GET /organs.
+interface OrganoApi {
+    organ: string;
+    members: { user_id: number }[];
+}
+
+// Os quatro órgãos sociais, pela ordem em que aparecem no módulo.
+const ORGAOS = [
+    { organ: "conselho_administracao", sigla: "CA" },
+    { organ: "comissao_executiva", sigla: "CE" },
+    { organ: "conselho_fiscal", sigla: "CF" },
+    { organ: "mesa_assembleia", sigla: "MA" },
+];
+
 // Cartão de KPI ao estilo do protótipo, com "ver detalhe →" clicável.
 // `extra` é uma linha opcional renderizada ACIMA do "detalhe" (ex.: a quebra
 // por sexo no cartão dos colaboradores ativos).
@@ -79,6 +93,7 @@ export default function PainelGestao({ irPara }: { irPara: (seccao: string) => v
     const [resumo, setResumo] = useState<Resumo | null>(null);
     const [cultura, setCultura] = useState<EvolucaoCultura | null>(null);
     const [ausencias, setAusencias] = useState<PedidoAusencia[]>([]);
+    const [organs, setOrgaos] = useState<OrganoApi[]>([]);
     const [aCarregar, setACarregar] = useState(true);
 
     useEffect(() => {
@@ -95,6 +110,10 @@ export default function PainelGestao({ irPara }: { irPara: (seccao: string) => v
         api.get("/leave/requests")
             .then((r) => setAusencias(Array.isArray(r.data) ? r.data : []))
             .catch(() => setAusencias([]));
+
+        api.get("/organs")
+            .then((r) => setOrgaos(Array.isArray(r.data) ? r.data : []))
+            .catch(() => setOrgaos([]));
     }, []);
 
     if (aCarregar) return <p className="text-dim text-sm">A carregar métricas...</p>;
@@ -122,6 +141,31 @@ export default function PainelGestao({ irPara }: { irPara: (seccao: string) => v
     // Contagens de ausências por tipo (o backend ainda não as agregava).
     const nAusencias = (tipo: string) => ausencias.filter((p) => p.type === tipo).length;
 
+    // Órgãos sociais: total de membros por órgão e total geral (pessoas
+    // distintas — alguém pode estar em mais de um órgão).
+    const totaisOrgaos = ORGAOS.map((o) => {
+        const membros = organs.find((x) => x.organ === o.organ)?.members ?? [];
+        return { sigla: o.sigla, total: membros.length };
+    });
+    const totalOrgaos = new Set(
+        organs.flatMap((o) => o.members.map((m) => m.user_id))
+    ).size;
+    const orgaosComMembros = totaisOrgaos.filter((o) => o.total > 0).length;
+
+    const quebraOrgaos =
+        totalOrgaos > 0 ? (
+            <span>
+                {totaisOrgaos.map((o, i) => (
+                    <span key={o.sigla}>
+                        {i > 0 && " · "}
+                        <span className="font-semibold">{o.total}</span> {o.sigla}
+                    </span>
+                ))}
+            </span>
+        ) : (
+            <span className="text-dim">Nenhum membro atribuido</span>
+        );
+
     const pulses = cultura?.cycles?.length ?? 0;
 
     const ano = new Date().getFullYear();
@@ -141,14 +185,21 @@ export default function PainelGestao({ irPara }: { irPara: (seccao: string) => v
 
     return (
         <div>
-            {/* Linha 1 — colaboradores, histórico de ciclos, ciclo corrente e disciplina */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5 mb-3.5">
+            {/* Linha 1 — colaboradores, órgãos sociais, ciclos, ciclo corrente e disciplina */}
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3.5 mb-3.5">
                 <KpiCard
                     valor={resumo.collaborators.active}
                     label="Colaboradores ativos"
                     extra={quebraGenero}
                     detalhe="ver detalhe →"
                     onClick={() => irPara("colaboradores")}
+                />
+                <KpiCard
+                    valor={totalOrgaos}
+                    label="Órgãos sociais (membros)"
+                    extra={quebraOrgaos}
+                    detalhe={`abrir órgãos → ${orgaosComMembros}/4 com membros`}
+                    onClick={() => irPara("orgaos-sociais")}
                 />
                 <KpiCard
                     valor="—"
