@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import Cartao from "../Cartao";
 import Notice from "../ui/Notice";
 import Tag from "../ui/Tag";
+import VerMais from "../ui/VerMais";
 import api from "../../lib/api";
 import type { PedidoAusencia } from "./TabelaAusencias";
 
@@ -11,7 +12,13 @@ import type { PedidoAusencia } from "./TabelaAusencias";
 // O Capital Humano recebe um único mapa consolidado de toda a empresa; cada
 // director recebe apenas o mapa da sua Direcção. O direito de cada colaborador
 // é lido da data de admissão (22 dias úteis por ano de férias) pelo backend.
+//
+// À esquerda ficam as ausências, à direita o saldo de férias. As duas listas
+// crescem sob pedido ("ver mais"), para não obrigarem a percorrer dezenas de
+// linhas de uma vez.
 // ---------------------------------------------------------------------------
+
+const PASSO = 10;
 
 interface LinhaMapa {
     collaborator_id: number;
@@ -72,6 +79,9 @@ export default function MapaFerias({ ano, mostrarDireccao = true, aoAverbar }: P
     const [mapa, setMapa] = useState<Mapa | null>(null);
     const [aCarregar, setACarregar] = useState(true);
     const [erro, setErro] = useState("");
+    // Quantos colaboradores / ausências já estão a ser mostrados.
+    const [visiveisColabs, setVisiveisColabs] = useState(PASSO);
+    const [visiveisAusencias, setVisiveisAusencias] = useState(PASSO);
 
     const carregar = (y: number) => {
         setACarregar(true);
@@ -112,11 +122,23 @@ export default function MapaFerias({ ano, mostrarDireccao = true, aoAverbar }: P
                     },
                 });
             })
-            .catch(() => setErro("Não foi possível carregar o mapa de férias."))
+            .catch((e: any) => {
+                const detalhe = e?.response?.data?.detail;
+                setErro(
+                    "Não foi possível carregar o mapa de férias."
+                    + (detalhe ? ` (${detalhe})` : "")
+                    + " — confirma que o backend está a correr e a esta versão."
+                );
+            })
             .finally(() => setACarregar(false));
     };
 
-    useEffect(() => { carregar(anoSel); }, [anoSel]);
+    // Ao trocar de ano a lista volta ao primeiro bloco.
+    useEffect(() => {
+        setVisiveisColabs(PASSO);
+        setVisiveisAusencias(PASSO);
+        carregar(anoSel);
+    }, [anoSel]);
 
     const mostrarAno = ano ?? anoSel;
 
@@ -134,6 +156,13 @@ export default function MapaFerias({ ano, mostrarDireccao = true, aoAverbar }: P
 
     const totaisFerias = mapa.colaboradores.reduce((s, c) => s + c.ferias.length, 0);
     const totaisAusencias = mapa.colaboradores.reduce((s, c) => s + c.ausencias.length, 0);
+
+    // Lista plana de ausências (para paginar) e colaboradores visíveis.
+    const ausenciasPlanas = mapa.colaboradores.flatMap((c) =>
+        c.ausencias.map((p) => ({ pedido: p, colaborador: c.full_name }))
+    );
+    const ausenciasVisiveis = ausenciasPlanas.slice(0, visiveisAusencias);
+    const colaboradoresVisiveis = mapa.colaboradores.slice(0, visiveisColabs);
 
     return (
         <div>
@@ -184,11 +213,79 @@ export default function MapaFerias({ ano, mostrarDireccao = true, aoAverbar }: P
 
             {mapa.aviso && <Notice variante="alert" className="mb-3">{mapa.aviso}</Notice>}
 
-            {/* Duas tabelas lado a lado: mapa de férias + mapa de ausências */}
+            {/* Duas tabelas lado a lado: mapa de ausências (esquerda) + saldo de férias (direita) */}
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                {/* Tabela 1 — Mapa de férias */}
+                {/* Tabela 1 — Mapa de ausências (faltas, maternidade, doença) */}
                 <div>
-                    <h3 className="text-[13.5px] mb-2 text-pri">Saldo de férias</h3>
+                    <h3 className="text-[13.5px] mb-2 text-pri">Mapa de ausências</h3>
+                    <Cartao className="p-0 overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-[12.5px] min-w-[520px]">
+                                <thead>
+                                    <tr>
+                                        <Th>Colaborador</Th>
+                                        <Th>Tipo</Th>
+                                        <Th>Período</Th>
+                                        <Th className="text-center">Dias</Th>
+                                        <Th>Estado</Th>
+                                        {aoAverbar && <Th />}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {ausenciasVisiveis.map(({ pedido: p, colaborador }) => (
+                                        <tr key={p.id} className="hover:bg-panel transition-colors">
+                                            <td className="px-3 py-2.5 border-b border-line2">
+                                                <b className="text-strong">{colaborador}</b>
+                                            </td>
+                                            <td className="px-3 py-2.5 border-b border-line2 text-ink">
+                                                {rotuloAusencia(p)}
+                                            </td>
+                                            <td className="px-3 py-2.5 border-b border-line2 text-ink whitespace-nowrap">
+                                                {dataCurta(p.start_date)}{p.start_date !== p.end_date && ` → ${dataCurta(p.end_date)}`}
+                                            </td>
+                                            <Td centro>{p.days}</Td>
+                                            <td className="px-3 py-2.5 border-b border-line2">
+                                                <Tag variante={VARIANTE_ESTADO[p.status]}>{ESTADO[p.status]}</Tag>
+                                            </td>
+                                            {aoAverbar && (
+                                                <td className="px-3 py-2.5 border-b border-line2 text-right whitespace-nowrap">
+                                                    {p.status === "aprovada" && !p.averbado && (
+                                                        <button
+                                                            onClick={() => aoAverbar(p.id)}
+                                                            className="text-[11.5px] text-pri font-semibold hover:underline"
+                                                        >
+                                                            Averbar
+                                                        </button>
+                                                    )}
+                                                </td>
+                                            )}
+                                        </tr>
+                                    ))}
+                                    {totaisAusencias === 0 && (
+                                        <tr>
+                                            <td colSpan={aoAverbar ? 6 : 5} className="px-3 py-4 text-center text-dim">
+                                                Sem ausências registadas em {mapa.ano}.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                        <VerMais
+                            visiveis={ausenciasVisiveis.length}
+                            total={ausenciasPlanas.length}
+                            passo={PASSO}
+                            aoVerMais={() => setVisiveisAusencias((n) => n + PASSO)}
+                            aoVerTodos={() => setVisiveisAusencias(ausenciasPlanas.length)}
+                            rotulo="ausências"
+                            className="border-t border-line2"
+                        />
+                    </Cartao>
+                </div>
+
+                {/* Tabela 2 — Saldo de férias por colaborador */}
+                <div>
+                    <h3 className="text-[13.5px] mb-2 text-pri">Mapa de férias</h3>
                     <Cartao className="p-0 overflow-hidden">
                         <div className="overflow-x-auto">
                             <table className="w-full text-[12.5px] min-w-[520px]">
@@ -203,7 +300,7 @@ export default function MapaFerias({ ano, mostrarDireccao = true, aoAverbar }: P
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {mapa.colaboradores.map((c) => (
+                                    {colaboradoresVisiveis.map((c) => (
                                         <tr key={c.collaborator_id} className="hover:bg-panel transition-colors">
                                             <td className="px-3 py-2.5 border-b border-line2">
                                                 <b className="text-strong">{c.full_name}</b>
@@ -254,67 +351,15 @@ export default function MapaFerias({ ano, mostrarDireccao = true, aoAverbar }: P
                                 </tbody>
                             </table>
                         </div>
-                    </Cartao>
-                </div>
-
-                {/* Tabela 2 — Mapa de ausências (faltas, maternidade, doença) */}
-                <div>
-                    <h3 className="text-[13.5px] mb-2 text-pri">Outras ausências</h3>
-                    <Cartao className="p-0 overflow-hidden">
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-[12.5px] min-w-[520px]">
-                                <thead>
-                                    <tr>
-                                        <Th>Colaborador</Th>
-                                        <Th>Tipo</Th>
-                                        <Th>Período</Th>
-                                        <Th className="text-center">Dias</Th>
-                                        <Th>Estado</Th>
-                                        {aoAverbar && <Th />}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {mapa.colaboradores.flatMap((c) =>
-                                        c.ausencias.map((p) => (
-                                            <tr key={p.id} className="hover:bg-panel transition-colors">
-                                                <td className="px-3 py-2.5 border-b border-line2">
-                                                    <b className="text-strong">{c.full_name}</b>
-                                                </td>
-                                                <td className="px-3 py-2.5 border-b border-line2 text-ink">
-                                                    {rotuloAusencia(p)}
-                                                </td>
-                                                <td className="px-3 py-2.5 border-b border-line2 text-ink whitespace-nowrap">
-                                                    {dataCurta(p.start_date)}{p.start_date !== p.end_date && ` → ${dataCurta(p.end_date)}`}
-                                                </td>
-                                                <Td centro>{p.days}</Td>
-                                                <td className="px-3 py-2.5 border-b border-line2">
-                                                    <Tag variante={VARIANTE_ESTADO[p.status]}>{ESTADO[p.status]}</Tag>
-                                                </td>
-                                                {aoAverbar && (
-                                                    <td className="px-3 py-2.5 border-b border-line2 text-right whitespace-nowrap">
-                                                        {p.status === "aprovada" && !p.averbado && (
-                                                            <button
-                                                                onClick={() => aoAverbar(p.id)}
-                                                                className="text-[11.5px] text-pri font-semibold hover:underline"
-                                                            >
-                                                                Averbar
-                                                            </button>
-                                                        )}
-                                                    </td>
-                                                )}
-                                            </tr>
-                                        ))
-                                    )}
-                                    {totaisAusencias === 0 && (
-                                        <tr>
-                                            <td colSpan={aoAverbar ? 6 : 5} className="px-3 py-4 text-center text-dim">
-                                                Sem ausências registadas em {mapa.ano}.
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
+                        <VerMais
+                            visiveis={colaboradoresVisiveis.length}
+                            total={mapa.colaboradores.length}
+                            passo={PASSO}
+                            aoVerMais={() => setVisiveisColabs((n) => n + PASSO)}
+                            aoVerTodos={() => setVisiveisColabs(mapa.colaboradores.length)}
+                            rotulo="colaboradores"
+                            className="border-t border-line2"
+                        />
                     </Cartao>
                 </div>
             </div>

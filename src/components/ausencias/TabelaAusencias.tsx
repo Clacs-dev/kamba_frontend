@@ -1,5 +1,7 @@
+import { useState } from "react";
 import Cartao from "../Cartao";
 import Tag from "../ui/Tag";
+import VerMais from "../ui/VerMais";
 
 export interface PedidoAusencia {
     id: number;
@@ -46,10 +48,25 @@ interface Props {
     mostrarDocumento?: boolean;
     acoes?: (p: PedidoAusencia) => React.ReactNode;
     vazio?: string;
+    /** Linhas reveladas de cada vez. 0 desliga a paginação. */
+    passo?: number;
 }
 
-// Tabela de pedidos de férias/faltas, reutilizada nas 3 vistas por perfil (colaborador/director/CH).
-export default function TabelaAusencias({ pedidos, mostrarColaborador, mostrarDocumento, acoes, vazio }: Props) {
+const PASSO_PADRAO = 10;
+
+// Tabela de pedidos de férias/faltas, reutilizada nas 3 vistas por perfil
+// (colaborador/director/CH). Listas longas são reveladas sob pedido, para não
+// obrigarem a percorrer dezenas de linhas de uma vez.
+export default function TabelaAusencias({
+    pedidos,
+    mostrarColaborador,
+    mostrarDocumento,
+    acoes,
+    vazio,
+    passo = PASSO_PADRAO,
+}: Props) {
+    const [visiveis, setVisiveis] = useState(passo || pedidos.length);
+
     if (pedidos.length === 0) {
         return (
             <Cartao>
@@ -57,6 +74,8 @@ export default function TabelaAusencias({ pedidos, mostrarColaborador, mostrarDo
             </Cartao>
         );
     }
+
+    const aMostrar = passo > 0 ? pedidos.slice(0, visiveis) : pedidos;
 
     return (
         <Cartao className="p-0 overflow-hidden">
@@ -74,7 +93,7 @@ export default function TabelaAusencias({ pedidos, mostrarColaborador, mostrarDo
                         </tr>
                     </thead>
                     <tbody>
-                        {pedidos.map((p) => {
+                        {aMostrar.map((p) => {
                             const estado = ROTULO_ESTADO[p.status];
                             return (
                                 <tr key={p.id} className="hover:bg-panel transition-colors">
@@ -122,6 +141,15 @@ export default function TabelaAusencias({ pedidos, mostrarColaborador, mostrarDo
                     </tbody>
                 </table>
             </div>
+            <VerMais
+                visiveis={aMostrar.length}
+                total={pedidos.length}
+                passo={passo}
+                aoVerMais={() => setVisiveis((n) => n + passo)}
+                aoVerTodos={() => setVisiveis(pedidos.length)}
+                rotulo="pedidos"
+                className="border-t border-line2"
+            />
         </Cartao>
     );
 }
