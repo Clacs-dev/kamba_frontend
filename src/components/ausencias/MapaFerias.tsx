@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import Cartao from "../Cartao";
 import Notice from "../ui/Notice";
 import Tag from "../ui/Tag";
@@ -221,76 +221,9 @@ export default function MapaFerias({ ano, mostrarDireccao = true, aoAverbar }: P
 
             {mapa.aviso && <Notice variante="alert" className="mb-3">{mapa.aviso}</Notice>}
 
-            {/* Mapas sempre lado a lado: ausências (esquerda) + férias (direita) */}
+            {/* Mapas sempre lado a lado: férias (esquerda) + ausências (direita) */}
             <div className="grid grid-cols-2 gap-4 items-start">
-                {/* Tabela 1 — Mapa de ausências (faltas, maternidade, doença) */}
-                <div>
-                    <h3 className="text-[13.5px] mb-2 text-pri">Mapa de ausências</h3>
-                    <Cartao className="p-0 overflow-hidden">
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-[12.5px] min-w-[520px]">
-                                <thead>
-                                    <tr>
-                                        <Th>Colaborador</Th>
-                                        <Th>Tipo</Th>
-                                        <Th>Período</Th>
-                                        <Th className="text-center">Dias</Th>
-                                        <Th>Estado</Th>
-                                        {aoAverbar && <Th />}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {ausenciasVisiveis.map(({ pedido: p, colaborador }) => (
-                                        <tr key={p.id} className="hover:bg-panel transition-colors">
-                                            <td className="px-3 py-2.5 border-b border-line2">
-                                                <b className="text-strong">{colaborador}</b>
-                                            </td>
-                                            <td className="px-3 py-2.5 border-b border-line2 text-ink">
-                                                {rotuloAusencia(p)}
-                                            </td>
-                                            <td className="px-3 py-2.5 border-b border-line2 text-ink whitespace-nowrap">
-                                                {dataCurta(p.start_date)}{p.start_date !== p.end_date && ` → ${dataCurta(p.end_date)}`}
-                                            </td>
-                                            <Td centro>{p.days}</Td>
-                                            <td className="px-3 py-2.5 border-b border-line2">
-                                                <Tag variante={VARIANTE_ESTADO[p.status]}>{ESTADO[p.status]}</Tag>
-                                            </td>
-                                            {aoAverbar && (
-                                                <td className="px-3 py-2.5 border-b border-line2 text-right whitespace-nowrap">
-                                                    {p.status === "aprovada" && !p.averbado && (
-                                                        <button
-                                                            onClick={() => aoAverbar(p.id)}
-                                                            className="text-[11.5px] text-pri font-semibold hover:underline"
-                                                        >
-                                                            Averbar
-                                                        </button>
-                                                    )}
-                                                </td>
-                                            )}
-                                        </tr>
-                                    ))}
-                                    {totaisAusencias === 0 && (
-                                        <tr>
-                                            <td colSpan={aoAverbar ? 6 : 5} className="px-3 py-4 text-center text-dim">
-                                                Sem ausências registadas em {mapa.ano}.
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                        <Paginacao
-                            total={ausenciasPlanas.length}
-                            passo={PASSO}
-                            pagina={paginaAusencias}
-                            aoMudarPagina={setPaginaAusencias}
-                            rotulo="ausências"
-                            className="border-t border-line2"
-                        />
-                    </Cartao>
-                </div>
-
-                {/* Tabela 2 — Saldo de férias por colaborador */}
+                {/* Tabela 1 — Mapa de férias (saldo por colaborador) */}
                 <div>
                     <h3 className="text-[13.5px] mb-2 text-pri">Mapa de férias</h3>
                     <Cartao className="p-0 overflow-hidden">
@@ -367,7 +300,74 @@ export default function MapaFerias({ ano, mostrarDireccao = true, aoAverbar }: P
                             className="border-t border-line2"
                         />
                     </Cartao>
+                </div>                {/* Tabela 2 — Mapa de ausências (faltas, maternidade, doença) */}
+                <div>
+                    <h3 className="text-[13.5px] mb-2 text-pri">Mapa de ausências</h3>
+                    <Cartao className="p-0 overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-[12.5px] min-w-[520px]">
+                                <thead>
+                                    <tr>
+                                        <Th>Colaborador</Th>
+                                        <Th>Tipo</Th>
+                                        <Th>Período</Th>
+                                        <Th className="text-center">Dias</Th>
+                                        <Th>Estado</Th>
+                                        {aoAverbar && <Th />}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {ausenciasVisiveis.map(({ pedido: p, colaborador }) => (
+                                        <tr key={p.id} className="hover:bg-panel transition-colors">
+                                            <td className="px-3 py-2.5 border-b border-line2">
+                                                <b className="text-strong">{colaborador}</b>
+                                            </td>
+                                            <td className="px-3 py-2.5 border-b border-line2 text-ink">
+                                                {rotuloAusencia(p)}
+                                            </td>
+                                            <td className="px-3 py-2.5 border-b border-line2 text-ink whitespace-nowrap">
+                                                {dataCurta(p.start_date)}{p.start_date !== p.end_date && ` → ${dataCurta(p.end_date)}`}
+                                            </td>
+                                            <Td centro>{p.days}</Td>
+                                            <td className="px-3 py-2.5 border-b border-line2">
+                                                <Tag variante={VARIANTE_ESTADO[p.status]}>{ESTADO[p.status]}</Tag>
+                                            </td>
+                                            {aoAverbar && (
+                                                <td className="px-3 py-2.5 border-b border-line2 text-right whitespace-nowrap">
+                                                    {p.status === "aprovada" && !p.averbado && (
+                                                        <button
+                                                            onClick={() => aoAverbar(p.id)}
+                                                            className="text-[11.5px] text-pri font-semibold hover:underline"
+                                                        >
+                                                            Averbar
+                                                        </button>
+                                                    )}
+                                                </td>
+                                            )}
+                                        </tr>
+                                    ))}
+                                    {totaisAusencias === 0 && (
+                                        <tr>
+                                            <td colSpan={aoAverbar ? 6 : 5} className="px-3 py-4 text-center text-dim">
+                                                Sem ausências registadas em {mapa.ano}.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                        <Paginacao
+                            total={ausenciasPlanas.length}
+                            passo={PASSO}
+                            pagina={paginaAusencias}
+                            aoMudarPagina={setPaginaAusencias}
+                            rotulo="ausências"
+                            className="border-t border-line2"
+                        />
+                    </Cartao>
                 </div>
+
+
             </div>
         </div>
     );

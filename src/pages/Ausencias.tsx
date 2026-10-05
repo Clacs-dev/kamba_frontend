@@ -9,6 +9,7 @@ import Notice from "../components/ui/Notice";
 import Modal from "../components/Modal";
 import TabelaAusencias, { periodoCurto, type PedidoAusencia } from "../components/ausencias/TabelaAusencias";
 import MapaFerias from "../components/ausencias/MapaFerias";
+import MapasLado from "../components/ausencias/MapasLado";
 
 // ---------------------------------------------------------------------------
 // Módulo "Férias & Ausências" — usa os endpoints /leave/* do backend
@@ -424,18 +425,9 @@ function VistaDirector({ departamento }: { departamento: string }) {
             </div>
 
             <div className="mt-6">
-                <h3 className="text-[14.5px] mb-1">
-                    Mapa de férias &amp; ausências — {departamento || "a sua Direcção"}
-                </h3>
-                <p className="text-[11.5px] text-dim mb-3">
-                    Todos os pedidos da sua Direcção. Só o Capital Humano vê este mapa
-                    consolidado de todas as Direcções.
-                </p>
-                <TabelaAusencias
+                <MapasLado
                     pedidos={pedidos}
-                    mostrarColaborador
-                    mostrarDocumento
-                    vazio="Ainda não há pedidos registados."
+                    subtitulo={`Pedidos de férias da sua Direcção${departamento ? ` (${departamento})` : ""}.`}
                     acoes={(p) => (
                         <button onClick={() => setDetalheDe(p)} className="text-[11.5px] font-semibold cursor-pointer hover:underline text-pri">
                             detalhe
@@ -729,22 +721,20 @@ function VistaCH() {
                 <MapaFerias aoAverbar={averbar} mostrarDireccao={false} />
             </div>
 
-            {/* Mapa 2 — mapa consolidado de férias & ausências da empresa */}
+            {/* Mapas da empresa: férias à esquerda, ausências à direita */}
             <div ref={mapaCard} id="mapCard" className="mt-6 scroll-mt-4">
-                <h3 className="text-[14.5px] mb-1">Mapa de férias &amp; ausências — toda a empresa</h3>
+                <h3 className="text-[14.5px] mb-1">Mapas — toda a empresa</h3>
                 <p className="text-[11.5px] text-dim mb-3">
-                    Todos os pedidos registados, do mais recente para o mais antigo.
+                    Férias e ausências em mapas separados, do pedido mais recente para o mais antigo.
                 </p>
                 {aCarregar ? (
                     <p className="text-dim text-sm">A carregar...</p>
                 ) : erroCarga ? (
                     <Notice variante="alert">{erroCarga}</Notice>
                 ) : (
-                    <TabelaAusencias
+                    <MapasLado
                         pedidos={[...pedidos].sort((a, b) => b.id - a.id)}
-                        mostrarColaborador
-                        mostrarDocumento
-                        vazio="Sem registos."
+                        subtitulo="Férias de todos os colaboradores da empresa."
                         acoes={(p) => (
                             <button onClick={() => setDetalheDe(p)} className="text-[11.5px] font-semibold cursor-pointer hover:underline text-pri">
                                 detalhe
