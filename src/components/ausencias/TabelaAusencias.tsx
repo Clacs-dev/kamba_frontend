@@ -1,7 +1,7 @@
 import { useState } from "react";
 import Cartao from "../Cartao";
 import Tag from "../ui/Tag";
-import VerMais from "../ui/VerMais";
+import Paginacao from "../ui/Paginacao";
 
 export interface PedidoAusencia {
     id: number;
@@ -48,15 +48,14 @@ interface Props {
     mostrarDocumento?: boolean;
     acoes?: (p: PedidoAusencia) => React.ReactNode;
     vazio?: string;
-    /** Linhas reveladas de cada vez. 0 desliga a paginação. */
+    /** Linhas por página. 0 desliga a paginação. */
     passo?: number;
 }
 
-const PASSO_PADRAO = 10;
+const PASSO_PADRAO = 15;
 
 // Tabela de pedidos de férias/faltas, reutilizada nas 3 vistas por perfil
-// (colaborador/director/CH). Listas longas são reveladas sob pedido, para não
-// obrigarem a percorrer dezenas de linhas de uma vez.
+// (colaborador/director/CH). Listas longas paginam 15 linhas por página.
 export default function TabelaAusencias({
     pedidos,
     mostrarColaborador,
@@ -65,7 +64,7 @@ export default function TabelaAusencias({
     vazio,
     passo = PASSO_PADRAO,
 }: Props) {
-    const [visiveis, setVisiveis] = useState(passo || pedidos.length);
+    const [pagina, setPagina] = useState(1);
 
     if (pedidos.length === 0) {
         return (
@@ -75,7 +74,8 @@ export default function TabelaAusencias({
         );
     }
 
-    const aMostrar = passo > 0 ? pedidos.slice(0, visiveis) : pedidos;
+    const inicio = passo > 0 ? (pagina - 1) * passo : 0;
+    const aMostrar = passo > 0 ? pedidos.slice(inicio, inicio + passo) : pedidos;
 
     return (
         <Cartao className="p-0 overflow-hidden">
@@ -141,12 +141,11 @@ export default function TabelaAusencias({
                     </tbody>
                 </table>
             </div>
-            <VerMais
-                visiveis={aMostrar.length}
+            <Paginacao
                 total={pedidos.length}
                 passo={passo}
-                aoVerMais={() => setVisiveis((n) => n + passo)}
-                aoVerTodos={() => setVisiveis(pedidos.length)}
+                pagina={pagina}
+                aoMudarPagina={setPagina}
                 rotulo="pedidos"
                 className="border-t border-line2"
             />

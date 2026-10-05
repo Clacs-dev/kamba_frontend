@@ -61,6 +61,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
     };
 
+    // Qualquer 401 vindo da API significa que o token expirou: limpa a sessão
+    // para o utilizador voltar ao ecrã de login em vez de ver erros no módulo.
+    useEffect(() => {
+        const aoExpirar = () => {
+            localStorage.removeItem("kamba_token");
+            setToken(null);
+            setUser(null);
+            setACarregar(false);
+        };
+        window.addEventListener("kamba:sessao-expirada", aoExpirar);
+        return () => window.removeEventListener("kamba:sessao-expirada", aoExpirar);
+    }, []);
+
     // Vai buscar de novo os dados do utilizador (ex.: após trocar a password).
     const recarregarUtilizador = async () => {
         try {

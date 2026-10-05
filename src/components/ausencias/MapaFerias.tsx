@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import Cartao from "../Cartao";
 import Notice from "../ui/Notice";
 import Tag from "../ui/Tag";
-import VerMais from "../ui/VerMais";
+import Paginacao from "../ui/Paginacao";
 import api from "../../lib/api";
 import type { PedidoAusencia } from "./TabelaAusencias";
 
@@ -13,12 +13,11 @@ import type { PedidoAusencia } from "./TabelaAusencias";
 // director recebe apenas o mapa da sua Direcção. O direito de cada colaborador
 // é lido da data de admissão (22 dias úteis por ano de férias) pelo backend.
 //
-// À esquerda ficam as ausências, à direita o saldo de férias. As duas listas
-// crescem sob pedido ("ver mais"), para não obrigarem a percorrer dezenas de
-// linhas de uma vez.
+// Os dois mapas ficam sempre lado a lado (ausências à esquerda, férias à
+// direita) e paginam 15 registos por página, com "anterior"/"próximo".
 // ---------------------------------------------------------------------------
 
-const PASSO = 10;
+const PASSO = 15;
 
 interface LinhaMapa {
     collaborator_id: number;
@@ -80,8 +79,8 @@ export default function MapaFerias({ ano, mostrarDireccao = true, aoAverbar }: P
     const [aCarregar, setACarregar] = useState(true);
     const [erro, setErro] = useState("");
     // Quantos colaboradores / ausências já estão a ser mostrados.
-    const [visiveisColabs, setVisiveisColabs] = useState(PASSO);
-    const [visiveisAusencias, setVisiveisAusencias] = useState(PASSO);
+    const [paginaColabs, setPaginaColabs] = useState(1);
+    const [paginaAusencias, setPaginaAusencias] = useState(1);
 
     const carregar = (y: number) => {
         setACarregar(true);
@@ -123,20 +122,27 @@ export default function MapaFerias({ ano, mostrarDireccao = true, aoAverbar }: P
                 });
             })
             .catch((e: any) => {
+                const status = e?.response?.status;
                 const detalhe = e?.response?.data?.detail;
-                setErro(
-                    "Não foi possível carregar o mapa de férias."
-                    + (detalhe ? ` (${detalhe})` : "")
-                    + " — confirma que o backend está a correr e a esta versão."
-                );
+                if (status === 401) {
+                    setErro("Sessão expirada. A entrar novamente no sistema...");
+                } else if (!e?.response) {
+                    setErro("Não foi possível ligar ao servidor. Confirma que o backend está a correr em 127.0.0.1:8000.");
+                } else {
+                    setErro(
+                        "Não foi possível carregar o mapa de férias."
+                        + (detalhe ? ` (${detalhe})` : "")
+                        + (status === 404 ? " — o backend em execução não tem esta versão da rota." : "")
+                    );
+                }
             })
             .finally(() => setACarregar(false));
     };
 
-    // Ao trocar de ano a lista volta ao primeiro bloco.
+    // Ao trocar de ano as listas voltam à primeira página.
     useEffect(() => {
-        setVisiveisColabs(PASSO);
-        setVisiveisAusencias(PASSO);
+        setPaginaColabs(1);
+        setPaginaAusencias(1);
         carregar(anoSel);
     }, [anoSel]);
 
@@ -157,12 +163,14 @@ export default function MapaFerias({ ano, mostrarDireccao = true, aoAverbar }: P
     const totaisFerias = mapa.colaboradores.reduce((s, c) => s + c.ferias.length, 0);
     const totaisAusencias = mapa.colaboradores.reduce((s, c) => s + c.ausencias.length, 0);
 
-    // Lista plana de ausências (para paginar) e colaboradores visíveis.
+    // Listas planas para paginar: ausências (por pedido) e colaboradores.
     const ausenciasPlanas = mapa.colaboradores.flatMap((c) =>
         c.ausencias.map((p) => ({ pedido: p, colaborador: c.full_name }))
     );
-    const ausenciasVisiveis = ausenciasPlanas.slice(0, visiveisAusencias);
-    const colaboradoresVisiveis = mapa.colaboradores.slice(0, visiveisColabs);
+    const inicioColabs = (paginaColabs - 1) * PASSO;
+    const inicioAusencias = (paginaAusencias - 1) * PASSO;
+    const ausenciasVisiveis = ausenciasPlanas.slice(inicioAusencias, inicioAusencias + PASSO);
+    const colaboradoresVisiveis = mapa.colaboradores.slice(inicioColabs, inicioColabs + PASSO);
 
     return (
         <div>
@@ -213,8 +221,8 @@ export default function MapaFerias({ ano, mostrarDireccao = true, aoAverbar }: P
 
             {mapa.aviso && <Notice variante="alert" className="mb-3">{mapa.aviso}</Notice>}
 
-            {/* Duas tabelas lado a lado: mapa de ausências (esquerda) + saldo de férias (direita) */}
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            {/* Mapas sempre lado a lado: ausências (esquerda) + férias (direita) */}
+            <div className="grid grid-cols-2 gap-4 items-start">
                 {/* Tabela 1 — Mapa de ausências (faltas, maternidade, doença) */}
                 <div>
                     <h3 className="text-[13.5px] mb-2 text-pri">Mapa de ausências</h3>
@@ -271,12 +279,11 @@ export default function MapaFerias({ ano, mostrarDireccao = true, aoAverbar }: P
                                 </tbody>
                             </table>
                         </div>
-                        <VerMais
-                            visiveis={ausenciasVisiveis.length}
+                        <Paginacao
                             total={ausenciasPlanas.length}
                             passo={PASSO}
-                            aoVerMais={() => setVisiveisAusencias((n) => n + PASSO)}
-                            aoVerTodos={() => setVisiveisAusencias(ausenciasPlanas.length)}
+                            pagina={paginaAusencias}
+                            aoMudarPagina={setPaginaAusencias}
                             rotulo="ausências"
                             className="border-t border-line2"
                         />
@@ -351,12 +358,11 @@ export default function MapaFerias({ ano, mostrarDireccao = true, aoAverbar }: P
                                 </tbody>
                             </table>
                         </div>
-                        <VerMais
-                            visiveis={colaboradoresVisiveis.length}
+                        <Paginacao
                             total={mapa.colaboradores.length}
                             passo={PASSO}
-                            aoVerMais={() => setVisiveisColabs((n) => n + PASSO)}
-                            aoVerTodos={() => setVisiveisColabs(mapa.colaboradores.length)}
+                            pagina={paginaColabs}
+                            aoMudarPagina={setPaginaColabs}
                             rotulo="colaboradores"
                             className="border-t border-line2"
                         />
