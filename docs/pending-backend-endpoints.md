@@ -120,23 +120,53 @@ preencher.
 |---|---|---|
 | `collaborator_id` | `integer` | sim |
 | `inicio` | `date` | sim |
-| `fim` | `date` | sim |
-| `motivo` | `string` | sim |
+| `parto_multiplo` | `boolean` | não (`false` por omissão) |
+| `fim` | `date` | não — calculado a partir de `inicio` quando omitido |
 | `documento` | `file` | recomendado (atestado médico + declaração de nascimento) |
+| `motivo` | `string` | não — texto legal por omissão |
 
-**Resposta 201:** o pedido criado com `type: "maternidade"`, `status: "aprovada"`.
+Quando `fim` é omitido o fim é calculado a partir de `inicio`: **90 dias** (art. 253.º da LGT) ou
+**118 dias** quando `parto_multiplo` é verdadeiro (90 + 4 semanas, parto múltiplo). Enviar `fim`
+sobrepõe-se a esse cálculo, para casos excepcionais. O `motivo` por omissão é
+`Licença de maternidade — 90 dias (art. 253.º LGT), remunerada.`
+(ou `parto múltiplo (90+28 dias)`).
+
+**Resposta 201:** o pedido criado com `type: "maternidade"`, `status: "aprovada"`, `averbado: false`.
+
+### 1.6b `GET /leave/maternity/candidates`
+Colaboradoras a quem se pode registar a licença. **Quem chama:** Capital Humano / Administração.
+Filtra pelo sexo da ficha (`gender == feminino`); se a empresa ainda não tiver o sexo preenchido em
+nenhuma ficha devolve todo o efectivo activo em vez de uma lista vazia, para o registo nunca ficar
+bloqueado por falta de um dado de ficha.
+
+```json
+[{ "id": 42, "full_name": "Esperança Domingos", "department": "DCO — Vendas", "admission_date": "2019-01-15" }]
+```
 
 ### 1.7 `POST /leave/requests/{id}/register`
 Averba no mapa oficial um pedido já aprovado/justificado. **Quem chama:** Capital Humano /
 Administração. Sem corpo. Transição: `aprovada`/`justificada` → mantém-se `aprovada`/`justificada`,
-mas passa a contar como averbado no mapa anual (o backend decide se isto é um campo `averbado:
-boolean` adicional ou um novo estado — o frontend só precisa que o pedido deixe de aparecer na
-lista "por averbar" depois desta chamada).
+mas passa a contar como averbado no mapa anual (`averbado: true`) — o frontend só precisa que o
+pedido deixe de aparecer na lista "a averbar" depois desta chamada.
 
 ### 1.8 `GET /leave/map?ano=`
-Mapa anual de férias da empresa (calendário consolidado). **Quem chama:** Capital Humano /
-Administração. Ainda não é consumido por nenhum ecrã do frontend — reservado para uma futura
-vista de calendário; incluído aqui apenas para o contrato ficar completo face ao mock.
+Mapa anual de férias. **Quem chama:** Capital Humano / Administração (consolidado de toda a
+empresa, `scope: "empresa"`) e Director (apenas a sua Direcção, `scope: "departamento"`). Devolve,
+por colaborador, o direito a férias lido da data de admissão e o consumo (`direito`, `gozados`,
+`marcados`, `em_urso`, `disponiveis`, `pode_pedir`) com a lista de `ferias` e `ausencias`.
+
+### 1.8b `GET /leave/map/estado?ano=`
+Estado do mapa anual do ano (art. 209.º da LGT). **Quem chama:** Capital Humano e Director (ambos
+veem o mesmo estado — só o CH o elabora).
+
+```json
+{ "ano": 2026, "elaborado": true, "elaborado_em": "2026-01-15T09:12:44", "elaborado_por": "Afonso Rogerio" }
+```
+
+### 1.8c `POST /leave/map/elaborar?ano=`
+O Capital Humano elabora a base do mapa de férias do ano (art. 209.º da LGT). Idempotente: voltar
+aElaborar apenas actualiza a marca e o registo de auditoria (`ausencia.mapa_elaborado`) e notifica a
+Administração. **Resposta:** o mesmo objecto de 1.8b.
 
 ---
 

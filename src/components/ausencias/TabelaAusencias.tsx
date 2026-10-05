@@ -18,18 +18,27 @@ export interface PedidoAusencia {
 
 const ROTULO_TIPO: Record<PedidoAusencia["type"], string> = {
     ferias: "Férias",
-    falta: "Falta",
+    falta: "Falta justificada",
     maternidade: "Licença de maternidade",
     doenca: "Doença prolongada",
 };
 
 const ROTULO_ESTADO: Record<PedidoAusencia["status"], { texto: string; variante: "ok" | "warn" | "bad" | "info" }> = {
-    pendente_dir: { texto: "Pendente do director", variante: "warn" },
-    pendente_ch: { texto: "Pendente do CH", variante: "warn" },
-    aprovada: { texto: "Aprovada", variante: "ok" },
-    justificada: { texto: "Justificada", variante: "info" },
-    recusada: { texto: "Recusada", variante: "bad" },
+    pendente_dir: { texto: "aguarda director", variante: "warn" },
+    pendente_ch: { texto: "aguarda Capital Humano", variante: "info" },
+    aprovada: { texto: "aprovada", variante: "ok" },
+    justificada: { texto: "justificada", variante: "ok" },
+    recusada: { texto: "recusada", variante: "bad" },
 };
+
+/** Período no formato dd.mm.yyyy — omite a data final quando é igual à inicial. */
+export function periodoCurto(isoInicio: string, isoFim: string) {
+    const d = (iso: string) => {
+        const [a, m, dia] = iso.split("-");
+        return dia ? `${dia}.${m}.${a}` : "—";
+    };
+    return isoInicio === isoFim ? d(isoInicio) : `${d(isoInicio)}–${d(isoFim)}`;
+}
 
 interface Props {
     pedidos: PedidoAusencia[];
@@ -78,7 +87,7 @@ export default function TabelaAusencias({ pedidos, mostrarColaborador, mostrarDo
                                         {ROTULO_TIPO[p.type]}
                                     </td>
                                     <td className="px-3 py-2.5 border-b border-line2 text-ink whitespace-nowrap">
-                                        {p.start_date} → {p.end_date}
+                                        {periodoCurto(p.start_date, p.end_date)}
                                     </td>
                                     <td className="px-3 py-2.5 border-b border-line2 text-ink">{p.days}</td>
                                     {mostrarDocumento && (
@@ -92,8 +101,10 @@ export default function TabelaAusencias({ pedidos, mostrarColaborador, mostrarDo
                                                 >
                                                     {p.document_name || "Abrir ficheiro"}
                                                 </a>
+                                            ) : p.document_name ? (
+                                                <span className="text-ok">anexado</span>
                                             ) : (
-                                                p.document_name || <span className="text-dim">—</span>
+                                                <span className="text-dim">—</span>
                                             )}
                                         </td>
                                     )}

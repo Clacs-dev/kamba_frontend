@@ -125,11 +125,11 @@ export default function MapaFerias({ ano, mostrarDireccao = true, aoAverbar }: P
     if (!mapa) return null;
 
     const VARIANTE_ESTADO: Record<string, "ok" | "warn" | "bad" | "info"> = {
-        pendente_dir: "warn", pendente_ch: "warn", aprovada: "ok", justificada: "info", recusada: "bad",
+        pendente_dir: "warn", pendente_ch: "info", aprovada: "ok", justificada: "ok", recusada: "bad",
     };
     const ESTADO: Record<string, string> = {
-        pendente_dir: "Pendente", pendente_ch: "Pendente CH",
-        aprovada: "Aprovada", justificada: "Justificada", recusada: "Recusada",
+        pendente_dir: "aguarda director", pendente_ch: "aguarda Capital Humano",
+        aprovada: "aprovada", justificada: "justificada", recusada: "recusada",
     };
 
     const totaisFerias = mapa.colaboradores.reduce((s, c) => s + c.ferias.length, 0);
@@ -188,7 +188,7 @@ export default function MapaFerias({ ano, mostrarDireccao = true, aoAverbar }: P
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                 {/* Tabela 1 — Mapa de férias */}
                 <div>
-                    <h3 className="text-[13.5px] mb-2 text-pri">Mapa de férias</h3>
+                    <h3 className="text-[13.5px] mb-2 text-pri">Saldo de férias</h3>
                     <Cartao className="p-0 overflow-hidden">
                         <div className="overflow-x-auto">
                             <table className="w-full text-[12.5px] min-w-[520px]">
@@ -259,7 +259,7 @@ export default function MapaFerias({ ano, mostrarDireccao = true, aoAverbar }: P
 
                 {/* Tabela 2 — Mapa de ausências (faltas, maternidade, doença) */}
                 <div>
-                    <h3 className="text-[13.5px] mb-2 text-pri">Mapa de ausências</h3>
+                    <h3 className="text-[13.5px] mb-2 text-pri">Outras ausências</h3>
                     <Cartao className="p-0 overflow-hidden">
                         <div className="overflow-x-auto">
                             <table className="w-full text-[12.5px] min-w-[520px]">

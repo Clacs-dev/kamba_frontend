@@ -4,6 +4,8 @@ interface Kpi {
     valor: string | number;
     label: string;
     cor?: "normal" | "ok" | "warn" | "bad";
+    /** Torna o cartão clicável (navegar para a secção associada ao KPI). */
+    onClick?: () => void;
 }
 
 export default function FaixaKpis({ kpis }: { kpis: Kpi[] }) {
@@ -17,7 +19,7 @@ export default function FaixaKpis({ kpis }: { kpis: Kpi[] }) {
     return (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5 mb-5">
             {kpis.map((k, i) => (
-                <Cartao key={i}>
+                <Cartao key={i} onClick={k.onClick}>
                     <div className={`font-serif font-semibold text-[26px] ${corValor(k.cor)}`}>{k.valor}</div>
                     <div className="text-[10.5px] text-dim uppercase tracking-wide mt-0.5 leading-tight">{k.label}</div>
                 </Cartao>

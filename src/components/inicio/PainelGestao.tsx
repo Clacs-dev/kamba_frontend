@@ -381,7 +381,7 @@ export default function PainelGestao({ irPara }: { irPara: (seccao: string) => v
                         <span className="font-semibold">{o.total}</span> {o.sigla}
                     </span>
                 ))}
-            </span>
+            </span> 
 ) : (
             <span className="text-pri">Nenhum membro atribuido</span>
         );
