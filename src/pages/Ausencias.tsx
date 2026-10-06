@@ -479,6 +479,7 @@ function VistaCH() {
     const ano = new Date().getFullYear();
     const [pedidos, setPedidos] = useState<PedidoAusencia[]>([]);
     const [colaboradoras, setColaboradoras] = useState<Colaborador[]>([]);
+    const [erroColaboradoras, setErroColaboradoras] = useState("");
     const [mapa, setMapa] = useState<EstadoMapa>({ ano, elaborado: false, elaborado_em: null, elaborado_por: null });
     const [aCarregar, setACarregar] = useState(true);
     const [erroCarga, setErroCarga] = useState("");
@@ -507,8 +508,23 @@ function VistaCH() {
                 setErroCarga("Não foi possível carregar os pedidos de ausência.")
             ),
             api.get("/leave/maternity/candidates")
-                .then((r) => setColaboradoras(Array.isArray(r.data) ? r.data : []))
-                .catch(() => { }),
+                .then((r) => {
+                    setColaboradoras(Array.isArray(r.data) ? r.data : []);
+                    setErroColaboradoras("");
+                })
+                .catch((e) => {
+                    // Sem este aviso o campo ficava só com "— escolher —" e
+                    // parecia um defeito do formulário.
+                    const status = e?.response?.status;
+                    setColaboradoras([]);
+                    setErroColaboradoras(
+                        status === 404
+                            ? "O servidor não tem esta rota (backend desactualizado) — não é possível listar as colaboradoras."
+                            : status === 401 || status === 403
+                              ? "O seu perfil não tem permissão para consultar as colaboradoras elegíveis."
+                              : "Não foi possível carregar as colaboradoras. Verifique a ligação ao servidor.",
+                    );
+                }),
             api.get("/leave/map/estado", { params: { ano } })
                 .then((r) => setMapa({
                     ano: r.data?.ano ?? ano,
@@ -645,14 +661,25 @@ function VistaCH() {
                     </Notice>
                     <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Colaboradora</label>
                     <select value={empId} onChange={(e) => setEmpId(Number(e.target.value))}
-                        className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-3 focus:outline-none focus:border-pri">
-                        <option value={0}>— escolher —</option>
+                        disabled={colaboradoras.length === 0}
+                        className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-[13px] mb-3 focus:outline-none focus:border-pri disabled:cursor-not-allowed">
+                        <option value={0}>
+                            {colaboradoras.length === 0 ? "— sem colaboradoras para escolher —" : "— escolher —"}
+                        </option>
                         {colaboradoras.map((c) => (
                             <option key={c.id} value={c.id}>
                                 {c.full_name}{c.department ? ` · ${c.department}` : ""}
                             </option>
                         ))}
                     </select>
+                    {erroColaboradoras && (
+                        <p className="text-bad text-[12.3px] mb-3">{erroColaboradoras}</p>
+                    )}
+                    {!erroColaboradoras && colaboradoras.length === 0 && !aCarregar && (
+                        <p className="text-dim text-[12.3px] mb-3">
+                            Sem colaboradoras elegíveis no seu âmbito — confirme se existem colaboradores activos.
+                        </p>
+                    )}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3">
                         <div>
                             <label className="block text-[10.5px] uppercase tracking-wide text-dim mb-1">Início da licença</label>
