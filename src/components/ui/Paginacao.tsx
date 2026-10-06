@@ -11,6 +11,8 @@ interface Props {
     /** Nome do que está a ser paginado, no plural ("colaboradores", "pedidos"...). */
     rotulo?: string;
     className?: string;
+    /** Mostra a barra mesmo com uma só página (mantém os mapas lado a lado do mesmo tamanho). */
+    sempre?: boolean;
 }
 
 const PASSO_PADRAO = 15;
@@ -25,6 +27,7 @@ export default function Paginacao({
     aoMudarPagina,
     rotulo = "elementos",
     className = "",
+    sempre = false,
 }: Props) {
     const totalPaginas = Math.max(1, Math.ceil(total / passo));
 
@@ -33,7 +36,7 @@ export default function Paginacao({
         if (pagina > totalPaginas) aoMudarPagina(totalPaginas);
     }, [pagina, totalPaginas, aoMudarPagina]);
 
-    if (total <= passo) return null;
+    if (total <= passo && !sempre) return null;
 
     const primeiro = (pagina - 1) * passo + 1;
     const ultimo = Math.min(pagina * passo, total);

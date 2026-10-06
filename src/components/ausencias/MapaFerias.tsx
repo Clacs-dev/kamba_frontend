@@ -14,10 +14,25 @@ import type { PedidoAusencia } from "./TabelaAusencias";
 // é lido da data de admissão (22 dias úteis por ano de férias) pelo backend.
 //
 // Os dois mapas ficam sempre lado a lado (ausências à esquerda, férias à
-// direita) e paginam 15 registos por página, com "anterior"/"próximo".
+// direita) e paginam 10 registos por página, com "anterior"/"próximo". Cada
+// página mostra sempre o mesmo número de linhas (linhas vazias a completar),
+// para o tamanho do mapa não mudar ao navegar entre páginas.
 // ---------------------------------------------------------------------------
 
-const PASSO = 15;
+const PASSO = 10;
+
+// Backend configurado no build (.env.production em produção, .env em dev).
+const BASE = (import.meta.env.VITE_API_URL as string | undefined) || "(VITE_API_URL não definido)";
+
+const dormir = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+const VARIANTE_ESTADO: Record<string, "ok" | "warn" | "bad" | "info"> = {
+    pendente_dir: "warn", pendente_ch: "info", aprovada: "ok", justificada: "ok", recusada: "bad",
+};
+const ESTADO: Record<string, string> = {
+    pendente_dir: "aguarda director", pendente_ch: "aguarda Capital Humano",
+    aprovada: "aprovada", justificada: "justificada", recusada: "recusada",
+};
 
 interface LinhaMapa {
     collaborator_id: number;
@@ -82,52 +97,67 @@ export default function MapaFerias({ ano, mostrarDireccao = true, aoAverbar }: P
     const [paginaColabs, setPaginaColabs] = useState(1);
     const [paginaAusencias, setPaginaAusencias] = useState(1);
 
-    const carregar = (y: number) => {
+    const carregar = async (y: number) => {
         setACarregar(true);
         setErro("");
-        api.get("/leave/map", { params: { ano: y } })
-            .then((r) => {
-                const d = r.data;
-                // O servidor pode responder com um formato inesperado (ex.: versao
-                // antiga do endpoint). Validamos para nunca deixar a pagina partir.
-                if (!d || !Array.isArray(d.colaboradores)) {
-                    throw new Error("Resposta do mapa em formato inesperado.");
+        try {
+            let ultimo: any = null;
+            // O backend em produção (Render) adormece: o 1.º pedido pode falhar
+            // sem resposta enquanto o serviço acorda, por isso repetimos uma vez.
+            for (let tentativa = 1; tentativa <= 2; tentativa++) {
+                try {
+                    const r = await api.get("/leave/map", { params: { ano: y } });
+                    const d = r.data;
+                    // O servidor pode responder com um formato inesperado (ex.: versao
+                    // antiga do endpoint). Validamos para nunca deixar a pagina partir.
+                    if (!d || typeof d !== "object" || !Array.isArray(d.colaboradores)) {
+                        console.error("[MapaFerias] resposta inesperada de", BASE, d);
+                        setErro(
+                            `O servidor respondeu o mapa num formato inesperado.`
+                            + ` Confirma que o backend em ${BASE} está na versão certa.`
+                        );
+                        return;
+                    }
+                    setMapa({
+                        ano: d.ano ?? y,
+                        scope: d.scope === "departamento" ? "departamento" : "empresa",
+                        direccao: d.direccao ?? null,
+                        direito_anual: d.direito_anual ?? 22,
+                        aviso: d.aviso ?? null,
+                        departamentos: Array.isArray(d.departamentos) ? d.departamentos : [],
+                        colaboradores: d.colaboradores.map((c: any) => ({
+                            ...c,
+                            departamento: c.department ?? null,
+                            admissao: c.admission_date ?? null,
+                            direito: Number(c.direito ?? 0),
+                            gozados: Number(c.gozados ?? 0),
+                            marcados: Number(c.marcados ?? 0),
+                            em_curso: Number(c.em_curso ?? 0),
+                            disponiveis: Number(c.disponiveis ?? 0),
+                            pode_pedir: Boolean(c.pode_pedir),
+                            ferias: Array.isArray(c.ferias) ? c.ferias : [],
+                            ausencias: Array.isArray(c.ausencias) ? c.ausencias : [],
+                        })),
+                        totais: {
+                            colaboradores: d.totais?.colaboradores ?? d.colaboradores.length,
+                            ferias: d.totais?.ferias ?? 0,
+                            ausencias: d.totais?.ausencias ?? 0,
+                            sem_direito: d.totais?.sem_direito ?? 0,
+                        },
+                    });
+                    return;
+                } catch (e: any) {
+                    ultimo = e;
+                    if (e?.response) break;              // erro HTTP: repetir não resolve
+                    if (tentativa < 2) await dormir(3000);
                 }
-                setMapa({
-                    ano: d.ano ?? y,
-                    scope: d.scope === "departamento" ? "departamento" : "empresa",
-                    direccao: d.direccao ?? null,
-                    direito_anual: d.direito_anual ?? 22,
-                    aviso: d.aviso ?? null,
-                    departamentos: Array.isArray(d.departamentos) ? d.departamentos : [],
-                    colaboradores: d.colaboradores.map((c: any) => ({
-                        ...c,
-                        departamento: c.department ?? null,
-                        admissao: c.admission_date ?? null,
-                        direito: Number(c.direito ?? 0),
-                        gozados: Number(c.gozados ?? 0),
-                        marcados: Number(c.marcados ?? 0),
-                        em_curso: Number(c.em_curso ?? 0),
-                        disponiveis: Number(c.disponiveis ?? 0),
-                        pode_pedir: Boolean(c.pode_pedir),
-                        ferias: Array.isArray(c.ferias) ? c.ferias : [],
-                        ausencias: Array.isArray(c.ausencias) ? c.ausencias : [],
-                    })),
-                    totais: {
-                        colaboradores: d.totais?.colaboradores ?? d.colaboradores.length,
-                        ferias: d.totais?.ferias ?? 0,
-                        ausencias: d.totais?.ausencias ?? 0,
-                        sem_direito: d.totais?.sem_direito ?? 0,
-                    },
-                });
-            })
-            .catch((e: any) => {
-                const status = e?.response?.status;
-                const detalhe = e?.response?.data?.detail;
+            }
+
+            const status = ultimo?.response?.status;
+            const detalhe = ultimo?.response?.data?.detail;
+            if (ultimo?.response) {
                 if (status === 401) {
                     setErro("Sessão expirada. A entrar novamente no sistema...");
-                } else if (!e?.response) {
-                    setErro("Não foi possível ligar ao servidor. Confirma que o backend está a correr em 127.0.0.1:8000.");
                 } else {
                     setErro(
                         "Não foi possível carregar o mapa de férias."
@@ -135,8 +165,16 @@ export default function MapaFerias({ ano, mostrarDireccao = true, aoAverbar }: P
                         + (status === 404 ? " — o backend em execução não tem esta versão da rota." : "")
                     );
                 }
-            })
-            .finally(() => setACarregar(false));
+            } else {
+                console.error("[MapaFerias] erro de rede ao chamar", BASE, ultimo);
+                setErro(
+                    `Não foi possível ligar ao servidor (${BASE}).`
+                    + " O backend pode estar a acordar — tente novamente."
+                );
+            }
+        } finally {
+            setACarregar(false);
+        }
     };
 
     // Ao trocar de ano as listas voltam à primeira página.
@@ -149,16 +187,21 @@ export default function MapaFerias({ ano, mostrarDireccao = true, aoAverbar }: P
     const mostrarAno = ano ?? anoSel;
 
     if (aCarregar) return <Cartao><p className="text-dim text-sm text-center py-4">A carregar o mapa de férias...</p></Cartao>;
-    if (erro) return <Notice variante="alert">{erro}</Notice>;
+    if (erro) {
+        return (
+            <Notice variante="alert">
+                {erro}{" "}
+                <button
+                    type="button"
+                    onClick={() => carregar(anoSel)}
+                    className="font-semibold underline underline-offset-2 cursor-pointer"
+                >
+                    Tentar novamente
+                </button>
+            </Notice>
+        );
+    }
     if (!mapa) return null;
-
-    const VARIANTE_ESTADO: Record<string, "ok" | "warn" | "bad" | "info"> = {
-        pendente_dir: "warn", pendente_ch: "info", aprovada: "ok", justificada: "ok", recusada: "bad",
-    };
-    const ESTADO: Record<string, string> = {
-        pendente_dir: "aguarda director", pendente_ch: "aguarda Capital Humano",
-        aprovada: "aprovada", justificada: "justificada", recusada: "recusada",
-    };
 
     const totaisFerias = mapa.colaboradores.reduce((s, c) => s + c.ferias.length, 0);
     const totaisAusencias = mapa.colaboradores.reduce((s, c) => s + c.ausencias.length, 0);
@@ -171,6 +214,15 @@ export default function MapaFerias({ ano, mostrarDireccao = true, aoAverbar }: P
     const inicioAusencias = (paginaAusencias - 1) * PASSO;
     const ausenciasVisiveis = ausenciasPlanas.slice(inicioAusencias, inicioAusencias + PASSO);
     const colaboradoresVisiveis = mapa.colaboradores.slice(inicioColabs, inicioColabs + PASSO);
+
+    // Completamos cada página até PASSO linhas (linhas vazias) para que o mapa
+    // tenha sempre o mesmo tamanho, tanto na página 1 como na última.
+    const completar = <T,>(visiveis: T[], total: number): (T | null)[] =>
+        total > PASSO
+            ? [...visiveis, ...Array.from({ length: PASSO - visiveis.length }, () => null)]
+            : visiveis;
+    const colabsPagina = completar(colaboradoresVisiveis, mapa.colaboradores.length);
+    const ausenciasPagina = completar(ausenciasVisiveis, ausenciasPlanas.length);
 
     return (
         <div>
@@ -221,13 +273,15 @@ export default function MapaFerias({ ano, mostrarDireccao = true, aoAverbar }: P
 
             {mapa.aviso && <Notice variante="alert" className="mb-3">{mapa.aviso}</Notice>}
 
-            {/* Mapas sempre lado a lado: férias (esquerda) + ausências (direita) */}
-            <div className="grid grid-cols-2 gap-4 items-start">
+            {/* Mapas sempre lado a lado: férias (esquerda) + ausências (direita).
+                As duas colunas esticam para a mesma altura e cada página tem
+                sempre PASSO linhas — o tamanho do mapa não muda ao paginar. */}
+            <div className="grid grid-cols-2 gap-4">
                 {/* Tabela 1 — Mapa de férias (saldo por colaborador) */}
-                <div>
+                <div className="flex flex-col">
                     <h3 className="text-[13.5px] mb-2 text-pri">Mapa de férias</h3>
-                    <Cartao className="p-0 overflow-hidden">
-                        <div className="overflow-x-auto">
+                    <Cartao className="p-0 overflow-hidden flex flex-col grow">
+                        <div className="overflow-x-auto grow">
                             <table className="w-full text-[12.5px] min-w-[520px]">
                                 <thead>
                                     <tr>
@@ -240,47 +294,60 @@ export default function MapaFerias({ ano, mostrarDireccao = true, aoAverbar }: P
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {colaboradoresVisiveis.map((c) => (
-                                        <tr key={c.collaborator_id} className="hover:bg-panel transition-colors">
-                                            <td className="px-3 py-2.5 border-b border-line2">
-                                                <b className="text-strong">{c.full_name}</b>
-                                                {mostrarDireccao && mapa.scope === "empresa" && c.department && (
-                                                    <div className="text-[10.8px] text-dim mt-0.5">{c.department}</div>
-                                                )}
-                                                {!c.admission_date && (
-                                                    <div className="text-[10.8px] text-dim mt-0.5">Sem data de admissão</div>
-                                                )}
-                                            </td>
-                                            <Td centro>
-                                                <span className={c.pode_pedir ? "text-pri font-semibold" : "text-dim"}>
-                                                    {c.direito}
-                                                </span>
-                                            </Td>
-                                            <Td centro>{c.gozados}</Td>
-                                            <Td centro>{c.marcados}</Td>
-                                            <Td centro>
-                                                <b className="text-pri">{c.disponiveis}</b>
-                                            </Td>
-                                            <td className="px-3 py-2.5 border-b border-line2">
-                                                {c.ferias.length === 0 ? (
-                                                    <span className="text-dim">—</span>
-                                                ) : (
-                                                    <div className="space-y-0.5">
-                                                        {c.ferias.map((p) => (
-                                                            <div key={p.id} className="text-[11.8px] flex items-center gap-1.5 whitespace-nowrap">
-                                                                <span className="text-ink">{dataCurta(p.start_date)}</span>
-                                                                {p.start_date !== p.end_date && (
-                                                                    <span className="text-dim">→ {dataCurta(p.end_date)}</span>
-                                                                )}
-                                                                <span className="text-dim">({p.days}d)</span>
-                                                                <Tag variante={VARIANTE_ESTADO[p.status]}>{ESTADO[p.status]}</Tag>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    ))}
+                                    {colabsPagina.map((c, i) => {
+                                        if (!c) {
+                                            return (
+                                                <tr key={`vazio-col-${i}`} aria-hidden="true">
+                                                    <td colSpan={6} className="px-3 py-2.5 border-b border-line2">&nbsp;</td>
+                                                </tr>
+                                            );
+                                        }
+                                        const p0 = c.ferias[0];
+                                        return (
+                                            <tr key={c.collaborator_id} className="hover:bg-panel transition-colors">
+                                                <td className="px-3 py-2.5 border-b border-line2 whitespace-nowrap">
+                                                    <b className="text-strong">{c.full_name}</b>
+                                                    {mostrarDireccao && mapa.scope === "empresa" && c.department && (
+                                                        <span className="text-[10.8px] text-dim"> · {c.department}</span>
+                                                    )}
+                                                    {!c.admission_date && (
+                                                        <span className="text-[10.8px] text-dim"> · sem data de admissão</span>
+                                                    )}
+                                                </td>
+                                                <Td centro>
+                                                    <span className={c.pode_pedir ? "text-pri font-semibold" : "text-dim"}>
+                                                        {c.direito}
+                                                    </span>
+                                                </Td>
+                                                <Td centro>{c.gozados}</Td>
+                                                <Td centro>{c.marcados}</Td>
+                                                <Td centro>
+                                                    <b className="text-pri">{c.disponiveis}</b>
+                                                </Td>
+                                                <td className="px-3 py-2.5 border-b border-line2">
+                                                    {!p0 ? (
+                                                        <span className="text-dim">—</span>
+                                                    ) : (
+                                                        // Uma linha por colaborador: o mapa mantém a mesma
+                                                        // altura quer haja um quer haja vários períodos.
+                                                        <div className="flex items-center gap-1.5 whitespace-nowrap text-[11.8px]">
+                                                            <span className="text-ink">{dataCurta(p0.start_date)}</span>
+                                                            {p0.start_date !== p0.end_date && (
+                                                                <span className="text-dim">→ {dataCurta(p0.end_date)}</span>
+                                                            )}
+                                                            <span className="text-dim">({p0.days}d)</span>
+                                                            <Tag variante={VARIANTE_ESTADO[p0.status]}>{ESTADO[p0.status]}</Tag>
+                                                            {c.ferias.length > 1 && (
+                                                                <span className="text-[10.8px] text-dim" title={`${c.ferias.length} períodos de férias`}>
+                                                                    +{c.ferias.length - 1}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
                                     {mapa.colaboradores.length === 0 && (
                                         <tr>
                                             <td colSpan={6} className="px-3 py-4 text-center text-dim">
@@ -298,13 +365,16 @@ export default function MapaFerias({ ano, mostrarDireccao = true, aoAverbar }: P
                             aoMudarPagina={setPaginaColabs}
                             rotulo="colaboradores"
                             className="border-t border-line2"
+                            sempre
                         />
                     </Cartao>
-                </div>                {/* Tabela 2 — Mapa de ausências (faltas, maternidade, doença) */}
-                <div>
+                </div>
+
+                {/* Tabela 2 — Mapa de ausências (faltas, maternidade, doença) */}
+                <div className="flex flex-col">
                     <h3 className="text-[13.5px] mb-2 text-pri">Mapa de ausências</h3>
-                    <Cartao className="p-0 overflow-hidden">
-                        <div className="overflow-x-auto">
+                    <Cartao className="p-0 overflow-hidden flex flex-col grow">
+                        <div className="overflow-x-auto grow">
                             <table className="w-full text-[12.5px] min-w-[520px]">
                                 <thead>
                                     <tr>
@@ -317,35 +387,45 @@ export default function MapaFerias({ ano, mostrarDireccao = true, aoAverbar }: P
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {ausenciasVisiveis.map(({ pedido: p, colaborador }) => (
-                                        <tr key={p.id} className="hover:bg-panel transition-colors">
-                                            <td className="px-3 py-2.5 border-b border-line2">
-                                                <b className="text-strong">{colaborador}</b>
-                                            </td>
-                                            <td className="px-3 py-2.5 border-b border-line2 text-ink">
-                                                {rotuloAusencia(p)}
-                                            </td>
-                                            <td className="px-3 py-2.5 border-b border-line2 text-ink whitespace-nowrap">
-                                                {dataCurta(p.start_date)}{p.start_date !== p.end_date && ` → ${dataCurta(p.end_date)}`}
-                                            </td>
-                                            <Td centro>{p.days}</Td>
-                                            <td className="px-3 py-2.5 border-b border-line2">
-                                                <Tag variante={VARIANTE_ESTADO[p.status]}>{ESTADO[p.status]}</Tag>
-                                            </td>
-                                            {aoAverbar && (
-                                                <td className="px-3 py-2.5 border-b border-line2 text-right whitespace-nowrap">
-                                                    {p.status === "aprovada" && !p.averbado && (
-                                                        <button
-                                                            onClick={() => aoAverbar(p.id)}
-                                                            className="text-[11.5px] text-pri font-semibold hover:underline"
-                                                        >
-                                                            Averbar
-                                                        </button>
-                                                    )}
+                                    {ausenciasPagina.map((item, i) => {
+                                        if (!item) {
+                                            return (
+                                                <tr key={`vazio-aus-${i}`} aria-hidden="true">
+                                                    <td colSpan={aoAverbar ? 6 : 5} className="px-3 py-2.5 border-b border-line2">&nbsp;</td>
+                                                </tr>
+                                            );
+                                        }
+                                        const { pedido: p, colaborador } = item;
+                                        return (
+                                            <tr key={p.id} className="hover:bg-panel transition-colors">
+                                                <td className="px-3 py-2.5 border-b border-line2 whitespace-nowrap">
+                                                    <b className="text-strong">{colaborador}</b>
                                                 </td>
-                                            )}
-                                        </tr>
-                                    ))}
+                                                <td className="px-3 py-2.5 border-b border-line2 text-ink">
+                                                    {rotuloAusencia(p)}
+                                                </td>
+                                                <td className="px-3 py-2.5 border-b border-line2 text-ink whitespace-nowrap">
+                                                    {dataCurta(p.start_date)}{p.start_date !== p.end_date && ` → ${dataCurta(p.end_date)}`}
+                                                </td>
+                                                <Td centro>{p.days}</Td>
+                                                <td className="px-3 py-2.5 border-b border-line2">
+                                                    <Tag variante={VARIANTE_ESTADO[p.status]}>{ESTADO[p.status]}</Tag>
+                                                </td>
+                                                {aoAverbar && (
+                                                    <td className="px-3 py-2.5 border-b border-line2 text-right whitespace-nowrap">
+                                                        {p.status === "aprovada" && !p.averbado && (
+                                                            <button
+                                                                onClick={() => aoAverbar(p.id)}
+                                                                className="text-[11.5px] text-pri font-semibold hover:underline"
+                                                            >
+                                                                Averbar
+                                                            </button>
+                                                        )}
+                                                    </td>
+                                                )}
+                                            </tr>
+                                        );
+                                    })}
                                     {totaisAusencias === 0 && (
                                         <tr>
                                             <td colSpan={aoAverbar ? 6 : 5} className="px-3 py-4 text-center text-dim">
@@ -363,11 +443,10 @@ export default function MapaFerias({ ano, mostrarDireccao = true, aoAverbar }: P
                             aoMudarPagina={setPaginaAusencias}
                             rotulo="ausências"
                             className="border-t border-line2"
+                            sempre
                         />
                     </Cartao>
                 </div>
-
-
             </div>
         </div>
     );

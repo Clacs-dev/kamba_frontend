@@ -50,12 +50,19 @@ interface Props {
     vazio?: string;
     /** Linhas por página. 0 desliga a paginação. */
     passo?: number;
+    /** Mínimo de linhas visíveis por página (completa com linhas vazias). */
+    minLinhas?: number;
+    /** Mostra a barra de paginação mesmo com uma só página (mapas uniformes). */
+    barraSempre?: boolean;
+    /** Faz o cartão crescer para igualar a altura do mapa ao lado. */
+    crescer?: boolean;
 }
 
 const PASSO_PADRAO = 15;
 
 // Tabela de pedidos de férias/faltas, reutilizada nas 3 vistas por perfil
-// (colaborador/director/CH). Listas longas paginam 15 linhas por página.
+// (colaborador/director/CH). Listas longas paginam 15 linhas por página; os
+// mapas lado a lado usam 10 linhas com altura constante.
 export default function TabelaAusencias({
     pedidos,
     mostrarColaborador,
@@ -63,12 +70,15 @@ export default function TabelaAusencias({
     acoes,
     vazio,
     passo = PASSO_PADRAO,
+    minLinhas = 0,
+    barraSempre = false,
+    crescer = false,
 }: Props) {
     const [pagina, setPagina] = useState(1);
 
     if (pedidos.length === 0) {
         return (
-            <Cartao>
+            <Cartao className={crescer ? "grow" : undefined}>
                 <p className="text-dim text-sm text-center py-4">{vazio || "Não há pedidos para mostrar."}</p>
             </Cartao>
         );
@@ -76,10 +86,18 @@ export default function TabelaAusencias({
 
     const inicio = passo > 0 ? (pagina - 1) * passo : 0;
     const aMostrar = passo > 0 ? pedidos.slice(inicio, inicio + passo) : pedidos;
+    // Com a lista dividida em páginas, cada página mostra minLinhas linhas —
+    // o cartão não encolhe quando se passa para a última página.
+    const preencher = minLinhas > 0 && pedidos.length > passo && aMostrar.length < minLinhas;
+    const linhas: (PedidoAusencia | null)[] = preencher
+        ? [...aMostrar, ...Array.from({ length: minLinhas - aMostrar.length }, () => null)]
+        : aMostrar;
+    const nColunas =
+        (mostrarColaborador ? 1 : 0) + 3 + (mostrarDocumento ? 1 : 0) + 1 + (acoes ? 1 : 0);
 
     return (
-        <Cartao className="p-0 overflow-hidden">
-            <div className="overflow-x-auto">
+        <Cartao className={`p-0 overflow-hidden ${crescer ? "flex flex-col grow" : ""}`}>
+            <div className={`overflow-x-auto ${crescer ? "grow" : ""}`}>
                 <table className="w-full text-[12.8px] min-w-[560px]">
                     <thead>
                         <tr>
@@ -93,12 +111,19 @@ export default function TabelaAusencias({
                         </tr>
                     </thead>
                     <tbody>
-                        {aMostrar.map((p) => {
+                        {linhas.map((p, i) => {
+                            if (!p) {
+                                return (
+                                    <tr key={`vazio-${i}`} aria-hidden="true">
+                                        <td colSpan={nColunas} className="px-3 py-2.5 border-b border-line2">&nbsp;</td>
+                                    </tr>
+                                );
+                            }
                             const estado = ROTULO_ESTADO[p.status];
                             return (
                                 <tr key={p.id} className="hover:bg-panel transition-colors">
                                     {mostrarColaborador && (
-                                        <td className="px-3 py-2.5 border-b border-line2">
+                                        <td className="px-3 py-2.5 border-b border-line2 whitespace-nowrap">
                                             <b className="text-strong">{p.collaborator_name || `#${p.collaborator_id}`}</b>
                                         </td>
                                     )}
@@ -148,6 +173,7 @@ export default function TabelaAusencias({
                 aoMudarPagina={setPagina}
                 rotulo="pedidos"
                 className="border-t border-line2"
+                sempre={barraSempre}
             />
         </Cartao>
     );
